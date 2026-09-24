@@ -264,7 +264,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.3</span></div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.4</span></div>
     </div>
 
     <div class="section">
@@ -1946,6 +1946,16 @@
     });
   }
 
+  // Icons on screen are drawn at the same share of the sheet as in the exported PDF,
+  // so what you see at any zoom is what exports (see drawMarkerOnCanvas).
+  var MIN_SCREEN_ICON = 14;
+  function markerScreenPx(f, m){
+    var d = f.nativeDims[f.currentPage];
+    if (!d) return Math.round(34*(m.size||1));
+    var es = exportScaleForDims(d.w, d.h);
+    var exportIcon = Math.max(30, Math.min(d.w*es, d.h*es)*0.024) * (m.size||1);
+    return Math.max(MIN_SCREEN_ICON, exportIcon * (f.scale / es));
+  }
   function renderMarkers(){
     var f = floor(); el.markerLayer.innerHTML = ""; if (!f) return;
     var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
@@ -1957,7 +1967,7 @@
       wrap.dataset.id = m.id;
       wrap.innerHTML = typeIconSVG(t, m.rotation||0);
       var svgEl = wrap.querySelector("svg");
-      if (svgEl){ var sz = Math.round(34*(m.size||1)); svgEl.style.width = sz+"px"; svgEl.style.height = sz+"px"; }
+      if (svgEl){ var sz = markerScreenPx(f, m); svgEl.style.width = sz+"px"; svgEl.style.height = sz+"px"; }
       if (m.note){ var dot=document.createElement("span"); dot.className="note-dot"; wrap.appendChild(dot); }
       wrap.addEventListener("pointerdown", function(e){
         e.stopPropagation();
@@ -3054,10 +3064,10 @@
   // Floors created by the multi-page splitter are already rasterised at ~2.2x, so a fixed 2.2x
   // on top of that would compound to ~4.8x and can silently fail in toDataURL.
   var MAX_EXPORT_EDGE = 3600;
+  function exportScaleForDims(w, h){ return Math.max(1, Math.min(2.2, MAX_EXPORT_EDGE / Math.max(w, h))); }
   function safeExportScale(page){
     var vp1 = page.getViewport({ scale:1 });
-    var longest = Math.max(vp1.width, vp1.height);
-    return Math.max(1, Math.min(2.2, MAX_EXPORT_EDGE / longest));
+    return exportScaleForDims(vp1.width, vp1.height);
   }
 
   function renderFloorPagesData(f){
