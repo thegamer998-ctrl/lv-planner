@@ -264,7 +264,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.4</span></div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.5</span></div>
     </div>
 
     <div class="section">
@@ -1954,7 +1954,8 @@
     if (!d) return Math.round(34*(m.size||1));
     var es = exportScaleForDims(d.w, d.h);
     var exportIcon = Math.max(30, Math.min(d.w*es, d.h*es)*0.024) * (m.size||1);
-    return Math.max(MIN_SCREEN_ICON, exportIcon * (f.scale / es));
+    // The PDF draws icon geometry at exportIcon/30 px per unit; the on-screen SVG frame is 46 units wide.
+    return Math.max(MIN_SCREEN_ICON, exportIcon * (46/30) * (f.scale / es));
   }
   function renderMarkers(){
     var f = floor(); el.markerLayer.innerHTML = ""; if (!f) return;
