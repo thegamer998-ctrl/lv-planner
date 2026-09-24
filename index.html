@@ -169,6 +169,8 @@
   .canvas-scroll{ flex:1; overflow:auto; position:relative; background-color:var(--bg-deep);
     background-image:linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size:28px 28px; display:flex; align-items:flex-start; justify-content:center; padding:36px; }
+  .canvas-scroll{ touch-action:none; }
+  .canvas-stage{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
   .canvas-stage{ position:relative; box-shadow:0 18px 50px rgba(0,0,0,0.45); flex-shrink:0; }
   #pdfCanvas{ display:block; background:#fff; }
   .layer-canvas{ position:absolute; top:0; left:0; pointer-events:none; }
@@ -262,7 +264,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.2</span></div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.3</span></div>
     </div>
 
     <div class="section">
@@ -1905,14 +1907,15 @@
     return Math.max(0.3, Math.min(3.5, s));
   }
 
+  var IS_TOUCH_UI = (navigator.maxTouchPoints || 0) > 0 && !(window.matchMedia && window.matchMedia("(hover: hover)").matches);
   function updateHint(){
     var f = floor();
     if (!f || !f.pdfDoc){ el.hintText.textContent = "Upload a villa drawing to begin"; return; }
     if (ui.activeTool === "measure") el.hintText.textContent = ui.measureFirstPoint ? "Click the second point to finish the measurement" : "Click two points to measure a distance";
     else if (ui.activeTool === "wall") el.hintText.textContent = ui.wallFirstPoint ? "Click the second point to finish the wall" : "Click two points to draw a wall segment";
     else if (ui.activeTool === "cable") el.hintText.textContent = ui.cableFirstPoint ? "Click the destination point to finish the cable route" : "Click the start, then the destination, to route a cable";
-    else if (ui.activeTool && getTypeDef(ui.activeTool)) el.hintText.textContent = "Tool: " + getTypeDef(ui.activeTool).label + " \u2014 click to place \u00b7 right-click to deselect";
-    else el.hintText.textContent = "Select a tool from the left \u00b7 Ctrl+wheel to zoom \u00b7 Ctrl+drag to pan";
+    else if (ui.activeTool && getTypeDef(ui.activeTool)) el.hintText.textContent = "Tool: " + getTypeDef(ui.activeTool).label + (IS_TOUCH_UI ? " \u2014 tap to place \u00b7 tap the type again to deselect \u00b7 two fingers to move/zoom" : " \u2014 click to place \u00b7 right-click to deselect");
+    else el.hintText.textContent = IS_TOUCH_UI ? "Select a tool from the left \u00b7 pinch to zoom \u00b7 drag to move" : "Select a tool from the left \u00b7 Ctrl+wheel to zoom \u00b7 Ctrl+drag to pan";
   }
 
   /* ============== Rendering ============== */
@@ -1978,7 +1981,7 @@
           if (moved){
             updateAllReadouts();
             if (isWifiType(m.type)) heatmapDirty(f.currentPage);
-          } else {
+          } else if (!ui.suppressTap) {
             openEditorFor("marker", m.id, wrap);
           }
         }
@@ -2601,6 +2604,96 @@
     e.preventDefault();
     if (ui.activeTool){ setActiveTool(ui.activeTool); showStatus("Tool deselected"); }
   });
+  /* ---- Touch (iPad): two-finger pinch = zoom, two-finger drag = move the plan.
+          One finger on empty space with no tool selected also moves the plan.
+          During a gesture the page is scaled with a CSS transform (instant), then
+          re-rendered sharp at the new zoom when the fingers lift. ---- */
+  var touchPts = {}, tg = null, onePan = null, gestureSeq = false;
+  ui.suppressTap = false;
+  function touchCount(){ return Object.keys(touchPts).length; }
+  function touchMid(){
+    var ids = Object.keys(touchPts), a = touchPts[ids[0]], b = touchPts[ids[1]];
+    return { x:(a.x+b.x)/2, y:(a.y+b.y)/2, d:Math.hypot(a.x-b.x, a.y-b.y) };
+  }
+  function startTouchGesture(){
+    var f = floor(); if (!f || !f.pdfDoc) return;
+    var m = touchMid();
+    var r = el.canvasStage.getBoundingClientRect();
+    tg = { f:f, startMid:m, cur:m, startScale:f.scale, s:1,
+      ratioX:(m.x-r.left)/r.width, ratioY:(m.y-r.top)/r.height };
+    el.canvasStage.style.transformOrigin = (m.x-r.left) + "px " + (m.y-r.top) + "px";
+    el.canvasStage.style.willChange = "transform";
+    onePan = null; gestureSeq = true; ui.suppressTap = true;
+  }
+  function updateTouchGesture(){
+    var m = touchMid(); tg.cur = m;
+    var target = Math.max(0.25, Math.min(3.5, tg.startScale * (m.d / Math.max(1, tg.startMid.d))));
+    tg.s = target / tg.startScale;
+    el.canvasStage.style.transform = "translate(" + (m.x-tg.startMid.x) + "px," + (m.y-tg.startMid.y) + "px) scale(" + tg.s + ")";
+  }
+  function clearStageTransform(){
+    el.canvasStage.style.transform = ""; el.canvasStage.style.transformOrigin = ""; el.canvasStage.style.willChange = "";
+  }
+  function endTouchGesture(){
+    var g = tg; tg = null; if (!g) return;
+    var sr = el.canvasScroll.getBoundingClientRect();
+    var offX = g.cur.x - sr.left, offY = g.cur.y - sr.top;
+    if (Math.abs(g.s - 1) < 0.03){                 // essentially a pan: just scroll, no re-render
+      var sl = el.canvasScroll.scrollLeft - (g.cur.x - g.startMid.x);
+      var st = el.canvasScroll.scrollTop  - (g.cur.y - g.startMid.y);
+      clearStageTransform();
+      el.canvasScroll.scrollLeft = sl; el.canvasScroll.scrollTop = st;
+      return;
+    }
+    g.f.scale = g.startScale * g.s;
+    zoomBusy = true;
+    var p = renderPage(g.f.currentPage);
+    (p && p.then ? p : Promise.resolve()).then(function(){
+      clearStageTransform();
+      var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
+      el.canvasScroll.scrollLeft = el.canvasStage.offsetLeft + g.ratioX*w - offX;
+      el.canvasScroll.scrollTop  = el.canvasStage.offsetTop  + g.ratioY*h - offY;
+    }).then(function(){ zoomBusy = false; }, function(){ clearStageTransform(); zoomBusy = false; });
+  }
+  el.canvasScroll.addEventListener("pointerdown", function(e){
+    if (e.pointerType !== "touch") return;
+    touchPts[e.pointerId] = { x:e.clientX, y:e.clientY };
+    var n = touchCount();
+    if (n === 2 && !zoomBusy){ e.stopPropagation(); e.preventDefault(); startTouchGesture(); return; }
+    if (n > 2 || gestureSeq){ e.stopPropagation(); return; }
+    if (n === 1 && !ui.activeTool && !(e.target.closest && e.target.closest(".marker, .legend-overlay"))){
+      onePan = { x:e.clientX, y:e.clientY, sl:el.canvasScroll.scrollLeft, st:el.canvasScroll.scrollTop };
+    }
+  }, true);
+  window.addEventListener("pointermove", function(e){
+    if (e.pointerType !== "touch" || !touchPts[e.pointerId]) return;
+    touchPts[e.pointerId] = { x:e.clientX, y:e.clientY };
+    if (tg){ e.stopPropagation(); if (touchCount() >= 2) updateTouchGesture(); return; }
+    if (gestureSeq){ e.stopPropagation(); return; }   // leftover finger after a pinch: ignore
+    if (onePan){
+      el.canvasScroll.scrollLeft = onePan.sl - (e.clientX - onePan.x);
+      el.canvasScroll.scrollTop  = onePan.st - (e.clientY - onePan.y);
+      if (Math.hypot(e.clientX-onePan.x, e.clientY-onePan.y) > 6) ui.suppressTap = true;
+    }
+  }, true);
+  function touchEnd(e){
+    if (e.pointerType !== "touch" || !touchPts[e.pointerId]) return;
+    delete touchPts[e.pointerId];
+    if (tg && touchCount() < 2) endTouchGesture();
+    if (touchCount() === 0){
+      onePan = null; gestureSeq = false;
+      if (ui.suppressTap) setTimeout(function(){ ui.suppressTap = false; }, 350);
+    }
+  }
+  window.addEventListener("pointerup", touchEnd, true);
+  window.addEventListener("pointercancel", touchEnd, true);
+  // A gesture must never end up placing a point
+  el.canvasScroll.addEventListener("click", function(e){
+    if (ui.suppressTap){ e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  // Stop iPad Safari zooming the whole app instead of the drawing
+  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
+
   el.fitZoomBtn.addEventListener("click", function(){
     var f = floor(); if (!f || !f.pdfDoc) return;
     var dims = f.nativeDims[f.currentPage];
