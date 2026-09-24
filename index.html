@@ -262,7 +262,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner</div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.2</span></div>
     </div>
 
     <div class="section">
@@ -3171,7 +3171,8 @@
   if (FS_SUPPORTED) idbGet("root").then(function(h){ if (h) fsState.rootDir = h; });
   updateSaveHint();
   if ("serviceWorker" in navigator && location.protocol === "https:"){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
+    navigator.serviceWorker.register("sw.js", { updateViaCache:"none" })
+      .then(function(reg){ reg.update(); }).catch(function(){});
   }
   project.floors.push(makeFloor("Ground Floor"));
   project.activeFloorIndex = 0;
