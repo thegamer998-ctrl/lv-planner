@@ -206,6 +206,11 @@
   .marker svg{ width:34px; height:34px; display:block; }
   .marker .note-dot{ position:absolute; top:-2px; right:-2px; width:7px; height:7px; border-radius:50%; background:#0a1220; border:1.5px solid #fff; }
   .marker:hover svg{ filter:brightness(0.92); }
+  .ap-tag{ position:absolute; transform:translate(-50%,-50%); color:#fff; font-family:Arial, sans-serif; font-weight:700;
+    line-height:1.2; padding:0 0.32em; border-radius:0.35em; border:1px solid #fff; white-space:nowrap; pointer-events:none; letter-spacing:0.02em; }
+  .seg{ display:flex; gap:4px; margin-bottom:10px; }
+  .seg button{ flex:1; height:30px; border-radius:6px; border:1px solid var(--hairline); background:var(--bg-panel); color:var(--text-main); font-size:11.5px; font-weight:600; }
+  .seg button.on{ background:var(--accent); color:#04202f; border-color:var(--accent); }
 
   .empty-state{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
   .empty-card{ text-align:center; max-width:340px; padding:34px 30px; border:1.5px dashed var(--hairline); border-radius:var(--radius-lg); background:rgba(16,28,46,0.5); }
@@ -285,7 +290,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-27.4</span></div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-27.5</span></div>
     </div>
 
     <div class="section">
@@ -852,6 +857,44 @@
 
   function getTypeDef(key){ return BUILTIN_TYPES[key] || project.customTypes[key]; }
   function isWifiType(key){ return key === "wifi" || key === "outdoorwifi"; }
+  /* Access point models: Standard (default, no tag), Pro, LR */
+  var AP_MODELS = { pro:{ label:"Pro", tag:"PRO", color:"#d97706" }, lr:{ label:"LR", tag:"LR", color:"#059669" } };
+  var AP_MODEL_ORDER = [["","Standard"],["pro","Pro"],["lr","LR"]];
+  function apModelOf(m){ return m && isWifiType(m.type) && AP_MODELS[m.apModel] ? m.apModel : ""; }
+  // Legend / summary rows: one per type, with Wi-Fi split into Standard / Pro / LR
+  function legendRows(markers){
+    var rows = [];
+    allTypeKeys().forEach(function(key){
+      var ms = markers.filter(function(m){ return m.type===key; }); if (!ms.length) return;
+      var t = getTypeDef(key);
+      if (!isWifiType(key)){ rows.push({ key:key, model:"", count:ms.length, label:t.label }); return; }
+      AP_MODEL_ORDER.forEach(function(o){
+        var c = ms.filter(function(m){ return apModelOf(m)===o[0]; }).length;
+        if (c) rows.push({ key:key, model:o[0], count:c, label:t.label + (o[0] ? " " + AP_MODELS[o[0]].label : "") });
+      });
+    });
+    return rows;
+  }
+  // r = radius of the icon body; the tag sits on its lower-right edge (same spot on screen and in the PDF)
+  function apTagHtml(model, r){
+    var d = AP_MODELS[model]; if (!d) return "";
+    return '<span class="ap-tag" style="background:'+d.color+';font-size:'+Math.max(6, r*0.62).toFixed(1)+'px;'+
+      'left:calc(50% + '+(r*0.9).toFixed(1)+'px);top:calc(50% + '+(r*0.85).toFixed(1)+'px);">'+d.tag+'</span>';
+  }
+  function drawApTagOnCanvas(ctx, model, cx, cy, r){
+    var d = AP_MODELS[model]; if (!d) return;
+    var fs = Math.max(6, r*0.62);
+    ctx.save();
+    ctx.font = "bold " + fs + "px Arial, sans-serif";
+    var pw = ctx.measureText(d.tag).width + fs*0.64, ph = fs*1.2 + 2;
+    var tx = cx + r*0.9, ty = cy + r*0.85;
+    roundRect(ctx, tx - pw/2, ty - ph/2, pw, ph, fs*0.35);
+    ctx.fillStyle = d.color; ctx.fill();
+    ctx.lineWidth = Math.max(1, fs*0.1); ctx.strokeStyle = "#ffffff"; ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(d.tag, tx, ty + fs*0.04);
+    ctx.restore();
+  }
   function allTypeKeys(){ return BUILTIN_ORDER.concat(Object.keys(project.customTypes)); }
 
   /* ============== Project / floor data model ============== */
@@ -2027,7 +2070,8 @@
       wrap.dataset.id = m.id;
       wrap.innerHTML = typeIconSVG(t, m.rotation||0);
       var svgEl = wrap.querySelector("svg");
-      if (svgEl){ var sz = markerScreenPx(f, m); svgEl.style.width = sz+"px"; svgEl.style.height = sz+"px"; }
+      if (svgEl){ var sz = markerScreenPx(f, m); svgEl.style.width = sz+"px"; svgEl.style.height = sz+"px";
+        if (apModelOf(m)) wrap.insertAdjacentHTML("beforeend", apTagHtml(apModelOf(m), sz*15/46)); }
       if (m.note){ var dot=document.createElement("span"); dot.className="note-dot"; wrap.appendChild(dot); }
       wrap.addEventListener("pointerdown", function(e){
         e.stopPropagation();
@@ -2070,17 +2114,16 @@
     var cfg = getLegendConfig(f, f.currentPage);
     if (!cfg.onScreen){ el.legendOverlay.style.display = "none"; return; }
     var pageMarkers = f.markers.filter(function(m){ return m.page===f.currentPage; });
-    var typesPresent = allTypeKeys().filter(function(key){ return pageMarkers.some(function(m){ return m.type===key; }); });
+    var typesPresent = legendRows(pageMarkers);
 
     var rowsHtml;
     if (!typesPresent.length){
       rowsHtml = '<div class="legend-row" style="color:#7f95ae;">No points on this page yet</div>';
     } else {
-      rowsHtml = typesPresent.map(function(key){
-        var t = getTypeDef(key);
-        var count = pageMarkers.filter(function(m){ return m.type===key; }).length;
-        return '<div class="legend-row"><span class="legend-icon">'+typeIconSVG(t,0)+'</span>'+
-          '<span>'+escapeHtml(t.label.toUpperCase())+' ('+count+')</span></div>';
+      rowsHtml = typesPresent.map(function(row){
+        var t = getTypeDef(row.key);
+        return '<div class="legend-row"><span class="legend-icon" style="position:relative;'+(row.model?'margin-right:9px;':'')+'">'+typeIconSVG(t,0)+apTagHtml(row.model, 5.5)+'</span>'+
+          '<span>'+escapeHtml(row.label.toUpperCase())+' ('+row.count+')</span></div>';
       }).join("");
     }
     el.legendOverlay.style.display = "block";
@@ -2304,6 +2347,7 @@
       xRatio: Math.min(0.97, m.xRatio+0.035), yRatio: Math.min(0.97, m.yRatio+0.035),
       note: m.note, rotation: m.rotation||0, size: m.size||1
     };
+    if (apModelOf(m)) copy.apModel = m.apModel;
     if (isCameraType(m.type)){ copy.fovAngle = m.fovAngle||80; copy.fovRange = m.fovRange||8; }
     if (m.type === "rack"){ copy.rackItems = (m.rackItems||[]).slice(); }
     f.markers.push(copy);
@@ -2391,7 +2435,13 @@
           '<textarea id="popRackItems" placeholder="24-port Patch Panel&#10;PoE Switch&#10;NVR 16ch&#10;UPS">'+escapeHtml(itemsText)+'</textarea>'+
           '<div id="popRackPreview" style="margin:2px 0 10px;"></div>';
       }
-      body = '<label class="popover-hint" style="display:block;margin-bottom:5px;">Rotation</label>'+
+      var modelHtml = "";
+      if (isWifiType(m.type)){
+        modelHtml = '<label class="popover-hint" style="display:block;margin-bottom:5px;">Model</label><div class="seg" id="popApModel">'+
+          AP_MODEL_ORDER.map(function(o){ return '<button type="button" data-model="'+o[0]+'"'+(apModelOf(m)===o[0]?' class="on"':'')+'>'+o[1]+'</button>'; }).join("")+'</div>';
+        if (apModelOf(m)) title = t.label + " \u00b7 " + AP_MODELS[apModelOf(m)].label;
+      }
+      body = modelHtml + '<label class="popover-hint" style="display:block;margin-bottom:5px;">Rotation</label>'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">'+
         '<button type="button" id="popRotCCW" style="width:30px;height:30px;flex-shrink:0;border-radius:6px;border:1px solid var(--hairline);background:var(--bg-panel);color:var(--text-main);font-size:15px;">&#8634;</button>'+
         '<input type="number" id="popRotationInput" value="'+Math.round(m.rotation||0)+'" style="flex:1;text-align:center;margin-bottom:0;">'+
@@ -2495,6 +2545,18 @@
         if (!isNaN(v)) applySize(v);
       });
 
+      var apSeg = document.getElementById("popApModel");
+      if (apSeg) apSeg.querySelectorAll("button").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          var mk = f.markers.find(function(x){ return x.id===id; }); if (!mk) return;
+          var md = btn.getAttribute("data-model");
+          if (md) mk.apModel = md; else delete mk.apModel;
+          apSeg.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b === btn); });
+          var tdef = getTypeDef(mk.type);
+          el.popoverTypeLabel.textContent = tdef.label + (md ? " \u00b7 " + AP_MODELS[md].label : "");
+          renderMarkers();
+        });
+      });
       var dupBtn = document.getElementById("popDuplicateBtn");
       if (dupBtn) dupBtn.addEventListener("click", function(){ duplicateMarker(id); });
 
@@ -3111,6 +3173,7 @@
     var targetSize = Math.max(30, Math.min(w,h)*0.024) * (marker.size||1);
     var scale = targetSize/30;
     drawTypeIconOnCanvas(ctx, t, x, y, scale, marker.rotation||0);
+    if (apModelOf(marker)) drawApTagOnCanvas(ctx, apModelOf(marker), x, y, targetSize/2);
   }
   function drawWallOnCanvas(ctx, wall, w, h){
     var mat = MATERIALS[wall.material] || MATERIALS.drywall;
@@ -3156,7 +3219,7 @@
     ctx.fillText(label, mx, my+1);
   }
   function drawSideLegend(ctx, w, h, pageMarkers, cfg){
-    var typesPresent = allTypeKeys().filter(function(key){ return pageMarkers.some(function(m){ return m.type===key; }); });
+    var typesPresent = legendRows(pageMarkers);
     if (!typesPresent.length) return;
 
     var boxW = Math.max(90, (cfg ? cfg.widthRatio : 0.15) * w);
@@ -3188,9 +3251,9 @@
 
     var divX = bx + iconCol + 8;
     var yStart = by + titleH + padY*0.4;
-    typesPresent.forEach(function(key, i){
-      var t = getTypeDef(key);
-      var count = pageMarkers.filter(function(m){ return m.type===key; }).length;
+    typesPresent.forEach(function(row, i){
+      var t = getTypeDef(row.key);
+      var count = row.count;
       var rowY = yStart + i*rowH;
       if (i > 0){
         ctx.beginPath(); ctx.moveTo(bx+padX*0.5, rowY); ctx.lineTo(bx+boxW-padX*0.5, rowY);
@@ -3199,12 +3262,13 @@
       var iconCy = rowY + rowH/2;
       var iconScale = Math.min(iconCol, rowH*0.85) / 30;
       drawTypeIconOnCanvas(ctx, t, bx+padX*0.5+iconCol/2, iconCy, iconScale, 0);
+      if (row.model) drawApTagOnCanvas(ctx, row.model, bx+padX*0.5+iconCol/2, iconCy, 15*iconScale);
       ctx.beginPath(); ctx.moveTo(divX, rowY+3); ctx.lineTo(divX, rowY+rowH-3);
       ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = "#0f172a";
       ctx.font = Math.max(9.5, boxW*0.055) + "px Arial, sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillText(t.label.toUpperCase() + " (" + count + ")", divX + 8, iconCy);
+      ctx.fillText(row.label.toUpperCase() + " (" + count + ")", divX + 8, iconCy);
     });
     ctx.restore();
   }
@@ -3377,13 +3441,12 @@
     var rowH=34, total=0;
     doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(231,237,245);
     doc.text("Points", 50, y); y += 20;
-    allTypeKeys().forEach(function(key){
-      var t=getTypeDef(key); var count=allMarkers.filter(function(m){return m.type===key;}).length;
-      if (count===0) return;
+    legendRows(allMarkers).forEach(function(row){
+      var t=getTypeDef(row.key); var count=row.count;
       total+=count;
-      var rgb=hexToRgb(t.color);
+      var rgb=hexToRgb(row.model ? AP_MODELS[row.model].color : t.color);
       doc.setFillColor(rgb.r,rgb.g,rgb.b); doc.circle(60,y-5,7,"F");
-      doc.setFont("helvetica","normal"); doc.setFontSize(13); doc.setTextColor(231,237,245); doc.text(t.label, 80, y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(13); doc.setTextColor(231,237,245); doc.text(row.label, 80, y);
       doc.setFont("helvetica","bold"); doc.text(String(count), 500, y, { align:"right" });
       y+=rowH;
     });
