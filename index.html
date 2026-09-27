@@ -264,7 +264,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-24.5</span></div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-27.1</span></div>
     </div>
 
     <div class="section">
@@ -1232,7 +1232,7 @@
   el.projectNameInput.addEventListener("change", function(){
     project.name = el.projectNameInput.value.trim() || "Untitled Project";
     el.projectNameInput.value = project.name;
-    fsState.projectDir = null; ensureProjectDir(); updateSaveHint();
+    fsState.projectFile = null; ensureProjectDir(); updateSaveHint();
   });
 
   /* ============== Revision log ============== */
@@ -1287,14 +1287,14 @@
   }
 
   /* ============== Saving to folders ==============
-     Computer (Chrome/Edge): real folder access - pick your main projects folder, the tool
-       creates/uses a subfolder named after the customer and saves project + PDFs there.
+     Computer (Chrome/Edge): every Save shows the Save dialog - pick/create the client folder;
+       Load and PDF export then open in that same folder.
      iPad/iPhone: web apps can't pick folders, so files go through the share sheet
        (Save to Files -> choose/create the folder).
      Other browsers: normal download. */
   var FS_SUPPORTED = typeof window.showDirectoryPicker === "function" && typeof window.showSaveFilePicker === "function";
   var IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  var fsState = { rootDir:null, projectDir:null };
+  var fsState = { projectFile:null, lastFile:null, loadedHandle:null };
 
   function safeName(s){ return String(s||"").replace(/[\\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim().slice(0,80); }
   function hasCustomerName(){ var n = (project.name||"").trim(); return !!n && !/^untitled project$/i.test(n); }
@@ -1320,40 +1320,31 @@
   }); }).catch(function(){}); }
   function projectKey(){ return "proj:" + safeName(project.name).toLowerCase(); }
 
+  // Remembers the project file you saved/loaded; every save/load/export dialog opens in that folder.
   function ensureProjectDir(){
-    if (!FS_SUPPORTED || fsState.projectDir || !hasCustomerName()) return Promise.resolve();
-    return idbGet(projectKey()).then(function(h){ if (h) fsState.projectDir = h; updateSaveHint(); });
+    if (!FS_SUPPORTED || fsState.projectFile || !hasCustomerName()) return Promise.resolve();
+    return idbGet(projectKey()).then(function(h){ if (h && h.kind === "file") fsState.projectFile = h; updateSaveHint(); });
   }
-  function folderLabel(dir){
-    return (fsState.rootDir && fsState.rootDir.name !== dir.name ? fsState.rootDir.name + " / " : "") + dir.name;
+  function rememberFile(fh, isProject){
+    fsState.lastFile = fh; idbSet("last", fh);
+    if (isProject){ fsState.projectFile = fh; if (hasCustomerName()) idbSet(projectKey(), fh); }
+  }
+  function pickerOpts(o){
+    var start = fsState.projectFile || fsState.lastFile;
+    if (start) o.startIn = start; else { o.id = "lvplanner"; o.startIn = "documents"; }
+    return o;
   }
   function updateSaveHint(){
     if (!el.saveLocationHint) return;
     var t;
-    if (FS_SUPPORTED) t = fsState.projectDir ? ("Saving to: " + folderLabel(fsState.projectDir))
-      : "Save project asks for your main projects folder and creates a customer folder inside it.";
-    else if (IS_IOS) t = "Saves through the share sheet \u2014 tap \u201cSave to Files\u201d and pick the customer folder.";
-    else t = "This browser saves to Downloads. Use Chrome or Edge to choose folders.";
+    if (FS_SUPPORTED) t = fsState.projectFile
+      ? ("Project file: " + fsState.projectFile.name + " — Save, Load and PDF export open in its folder.")
+      : "Save asks where to put the project — pick (or create) the client’s folder. PDFs then save in that same folder.";
+    else if (IS_IOS) t = "Saves through the share sheet — tap “Save to Files” and pick the customer folder.";
+    else t = "This browser saves to Downloads. Open the app in Chrome or Edge to choose folders.";
     el.saveLocationHint.textContent = t;
   }
 
-  function writeFile(dirHandle, filename, blob){
-    return dirHandle.getFileHandle(filename, { create:true }).then(function(fh){
-      return fh.createWritable().then(function(w){ return w.write(blob).then(function(){ return w.close(); }); });
-    });
-  }
-  // Ask for the main folder (Chrome reopens the last one used), then create/open the customer subfolder
-  function chooseProjectFolder(){
-    return window.showDirectoryPicker({ id:"lvplanner-root", mode:"readwrite" }).then(function(root){
-      fsState.rootDir = root; idbSet("root", root);
-      var sub = safeName(project.name);
-      if (root.name === sub) return root;   // they picked the customer folder itself
-      return root.getDirectoryHandle(sub, { create:true });
-    }).then(function(dir){
-      fsState.projectDir = dir; idbSet(projectKey(), dir);
-      return dir;
-    });
-  }
   function plainDownload(blob, filename){
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a"); a.href = url; a.download = filename;
@@ -1373,32 +1364,22 @@
     plainDownload(blob, filename); showStatus("Downloaded " + filename);
     return Promise.resolve(true);
   }
-  // isProject: Save project always asks for the folder. PDFs open the save dialog inside the customer folder.
+  // Every save shows the Save dialog, opened in the client folder you last used (New Folder works there too).
   function saveOutputFile(blob, filename, mime, isProject){
     if (FS_SUPPORTED){
-      var p;
-      if (isProject || !fsState.projectDir){
-        if (!requireCustomerName()) return Promise.resolve(false);
-        p = chooseProjectFolder().then(function(dir){
-          return writeFile(dir, filename, blob).then(function(){ return folderLabel(dir) + " / " + filename; });
-        });
-      } else {
-        p = window.showSaveFilePicker({ suggestedName:filename, startIn:fsState.projectDir,
-            types:[{ description:"PDF document", accept:{ "application/pdf":[".pdf"] } }] })
-          .then(function(fh){
-            return fh.createWritable().then(function(w){ return w.write(blob).then(function(){ return w.close(); }); })
-              .then(function(){ return filename; });
-          });
-      }
-      return p.then(function(where){ showStatus("Saved \u2014 " + where); updateSaveHint(); return true; })
-        .catch(function(err){
-          if (err && err.name === "AbortError"){ showStatus("Save cancelled"); return false; }
-          console.error(err);
-          if (!isProject) fsState.projectDir = null;   // stale/missing folder: next save asks again
-          showStatus("Couldn't save there \u2014 tap Save again to pick the folder");
-          updateSaveHint();
-          return false;
-        });
+      var types = isProject ? [{ description:"LV Planner project", accept:{ "application/json":[".json"] } }]
+                            : [{ description:"PDF document", accept:{ "application/pdf":[".pdf"] } }];
+      return window.showSaveFilePicker(pickerOpts({ suggestedName:filename, types:types })).then(function(fh){
+        return fh.createWritable().then(function(w){ return w.write(blob).then(function(){ return w.close(); }); })
+          .then(function(){ rememberFile(fh, isProject); showStatus("Saved — " + fh.name); updateSaveHint(); return true; });
+      }).catch(function(err){
+        if (err && err.name === "AbortError"){ showStatus("Save cancelled"); return false; }
+        console.error(err);
+        fsState.projectFile = null; fsState.lastFile = null;   // folder moved/deleted: next dialog starts fresh
+        showStatus("Couldn't save there — tap Save again and pick the folder");
+        updateSaveHint();
+        return false;
+      });
     }
     if (IS_IOS) return shareFile(blob, filename, mime);
     plainDownload(blob, filename); showStatus("Downloaded " + filename);
@@ -1418,9 +1399,10 @@
 
   el.loadProjectBtn.addEventListener("click", function(){
     if (typeof window.showOpenFilePicker !== "function"){ el.projectFileInput.click(); return; }
-    var opts = { id:"lvplanner-root", types:[{ description:"LV Planner project", accept:{ "application/json":[".json"] } }] };
-    if (fsState.rootDir) opts.startIn = fsState.rootDir;
-    window.showOpenFilePicker(opts).then(function(hs){ return hs[0].getFile(); }).then(function(file){
+    var opts = pickerOpts({ types:[{ description:"LV Planner project", accept:{ "application/json":[".json"] } }] });
+    var handle = null;
+    window.showOpenFilePicker(opts).then(function(hs){ handle = hs[0]; return handle.getFile(); }).then(function(file){
+      fsState.loadedHandle = handle;
       var dt = new DataTransfer(); dt.items.add(file);
       el.projectFileInput.files = dt.files;
       el.projectFileInput.dispatchEvent(new Event("change"));
@@ -1436,7 +1418,9 @@
       try { parsed = JSON.parse(reader.result); } catch(err){ showStatus("That file doesn't look like a saved project"); return; }
       showStatus("Loading project\u2026");
       project.name = parsed.name || "Untitled Project";
-      fsState.projectDir = null; ensureProjectDir();
+      fsState.projectFile = fsState.loadedHandle || null;
+      if (fsState.loadedHandle) rememberFile(fsState.loadedHandle, true); else ensureProjectDir();
+      fsState.loadedHandle = null; updateSaveHint();
       project.customTypes = parsed.customTypes || {};
       project.typeSizeDefaults = parsed.typeSizeDefaults || {};
       project.revisions = parsed.revisions || [];
@@ -3272,7 +3256,7 @@
   window.addEventListener("resize", function(){ /* no auto-refit on resize to avoid surprising jumps */ });
   rebuildTypeList();
   renderRevisionList();
-  if (FS_SUPPORTED) idbGet("root").then(function(h){ if (h) fsState.rootDir = h; });
+  if (FS_SUPPORTED) idbGet("last").then(function(h){ if (h && h.kind === "file") fsState.lastFile = h; });
   updateSaveHint();
   if ("serviceWorker" in navigator && location.protocol === "https:"){
     navigator.serviceWorker.register("sw.js", { updateViaCache:"none" })
