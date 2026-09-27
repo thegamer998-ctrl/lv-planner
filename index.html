@@ -290,7 +290,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-27.5</span></div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-27.6</span></div>
     </div>
 
     <div class="section">
@@ -2841,9 +2841,19 @@
   el.canvasScroll.addEventListener("click", function(e){ if (e.ctrlKey || e.metaKey){ e.preventDefault(); e.stopPropagation(); } }, true);
 
   /* ---- Right-click on the drawing: deselect the active tool ---- */
+  // If a point's bar/options are open, right-click only closes them (the tool stays selected so you keep marking).
+  // Otherwise right-click deselects the active tool.
+  function editorIsOpen(){ return qb.id != null || el.editorPopover.classList.contains("visible"); }
   el.canvasScroll.addEventListener("contextmenu", function(e){
     e.preventDefault();
+    if (editorIsOpen()){ closeEditor(); return; }
     if (ui.activeTool){ setActiveTool(ui.activeTool); showStatus("Tool deselected"); }
+  });
+  [el.markerQuickBar, el.editorPopover].forEach(function(node){
+    node.addEventListener("contextmenu", function(e){
+      if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;   // keep copy/paste menu in text boxes
+      e.preventDefault(); closeEditor();
+    });
   });
   /* ---- Touch (iPad): two-finger pinch = zoom, two-finger drag = move the plan.
           One finger on empty space with no tool selected also moves the plan.
