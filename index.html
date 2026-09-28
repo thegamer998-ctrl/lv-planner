@@ -8,21 +8,38 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="LV Planner">
-<meta name="theme-color" content="#0a1220">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* Light theme (default) */
   :root{
-    --bg-deep:#0a1220; --bg-panel:#101c2e; --bg-panel-raised:#16263c;
-    --hairline:rgba(148,178,209,0.14); --grid-line:rgba(79,209,255,0.07);
-    --text-main:#e7edf5; --text-muted:#7f95ae; --text-dim:#546980;
-    --accent:#38bdf8; --accent-soft:rgba(56,189,248,0.14);
-    --danger:#f87171; --danger-soft:rgba(248,113,113,0.14);
+    --bg-deep:#eceff3; --bg-panel:#ffffff; --bg-panel-raised:#f5f7fa; --bg-hover:#eef2f7;
+    --hairline:#e2e7ee; --hairline-2:#d3dae3; --grid-dot:#d5dbe3;
+    --text-main:#18212d; --text-muted:#667283; --text-dim:#98a2b0;
+    --accent:#006fff; --accent-soft:#e7f0ff; --on-accent:#ffffff;
+    --danger:#e5484d; --danger-soft:#fdecec;
     --cable:#eab308; --cable-soft:rgba(234,179,8,0.16);
-    --radius-sm:6px; --radius-md:10px; --radius-lg:14px;
-    --font-display:'Space Grotesk', sans-serif; --font-body:'IBM Plex Sans', sans-serif; --font-mono:'IBM Plex Mono', monospace;
+    --shadow:0 1px 2px rgba(16,24,40,.06), 0 4px 14px rgba(16,24,40,.06);
+    --shadow-lg:0 12px 32px rgba(16,24,40,.16);
+    --overlay-bg:rgba(15,23,42,0.35);
+    --radius-sm:7px; --radius-md:10px; --radius-lg:14px;
+    --font-display:-apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", Roboto, sans-serif;
+    --font-body:-apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif;
+    --font-mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme:light;
+  }
+  /* Dark theme */
+  :root[data-theme="dark"]{
+    --bg-deep:#0b0e13; --bg-panel:#151920; --bg-panel-raised:#1b2029; --bg-hover:#232a35;
+    --hairline:#262d38; --hairline-2:#343d4a; --grid-dot:#1d232c;
+    --text-main:#e7ebf1; --text-muted:#8e98a8; --text-dim:#5f6877;
+    --accent:#3b8bff; --accent-soft:rgba(59,139,255,.15); --on-accent:#ffffff;
+    --danger:#f87171; --danger-soft:rgba(248,113,113,0.14);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+    --shadow-lg:0 12px 32px rgba(0,0,0,.55);
+    --overlay-bg:rgba(0,0,0,0.55);
+    color-scheme:dark;
   }
   *{ box-sizing:border-box; }
   html,body{ height:100%; margin:0; }
@@ -50,7 +67,7 @@
   .proj-btn-row{ display:flex; gap:6px; }
   .proj-btn-row button{ flex:1; background:var(--bg-panel-raised); border:1px solid var(--hairline); color:var(--text-main);
     padding:7px 6px; border-radius:var(--radius-sm); font-size:11px; font-weight:500; }
-  .proj-btn-row button:hover{ background:#1b2e47; }
+  .proj-btn-row button:hover{ background:var(--bg-hover); }
 
   .floor-row{ display:flex; align-items:center; gap:5px; background:var(--bg-panel-raised); border:1px solid transparent;
     border-radius:var(--radius-sm); padding:6px 8px; margin-bottom:5px; }
@@ -69,7 +86,7 @@
   .file-meta{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted); }
   .link-btn{ background:none; border:none; color:var(--accent); font-size:11.5px; font-weight:500; padding:0; }
   .link-btn:hover{ text-decoration:underline; }
-  .upload-btn{ width:100%; background:var(--accent); color:#04202f; border:none; border-radius:var(--radius-md);
+  .upload-btn{ width:100%; background:var(--accent); color:var(--on-accent); border:none; border-radius:var(--radius-md);
     padding:10px 12px; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px; }
   .upload-btn:hover{ filter:brightness(1.08); }
 
@@ -77,12 +94,12 @@
   .type-btn{ display:flex; align-items:center; gap:9px; background:var(--bg-panel-raised); border:1px solid transparent;
     border-radius:var(--radius-md); padding:7px 9px; text-align:left; color:var(--text-main); width:100%;
     transition:background .12s ease, border-color .12s ease; position:relative; }
-  .type-btn:hover{ background:#1b2e47; }
+  .type-btn:hover{ background:var(--bg-hover); }
   .type-btn.active{ border-color:var(--type-color); background:color-mix(in srgb, var(--type-color) 16%, var(--bg-panel-raised)); }
   .type-badge{ width:28px; height:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
   .type-badge svg{ width:26px; height:26px; display:block; }
   .type-name{ flex:1; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .type-count{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted); background:rgba(255,255,255,0.05);
+  .type-count{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted); background:var(--bg-panel-raised);
     border-radius:20px; min-width:18px; text-align:center; padding:2px 6px; }
   .type-btn.active .type-count{ color:var(--text-main); }
   .type-del{ background:none; border:none; color:var(--text-dim); font-size:13px; padding:0 2px; flex-shrink:0; }
@@ -92,14 +109,14 @@
   .type-item .type-btn{ margin-bottom:0; }
   .type-expand-btn{ width:24px; flex-shrink:0; background:var(--bg-panel-raised); border:1px solid transparent;
     border-radius:var(--radius-md); color:var(--text-muted); font-size:10px; }
-  .type-expand-btn:hover{ background:#1b2e47; color:var(--text-main); }
+  .type-expand-btn:hover{ background:var(--bg-hover); color:var(--text-main); }
   .type-expand-btn.open{ color:var(--accent); }
   .type-size-panel{ background:var(--bg-panel-raised); border:1px solid var(--hairline); border-radius:var(--radius-md);
     padding:9px 10px; margin-top:-2px; }
   .size-ctrl-row{ display:flex; align-items:center; gap:6px; margin-top:6px; }
   .size-ctrl-btn{ width:27px; height:27px; flex-shrink:0; border-radius:6px; border:1px solid var(--hairline);
     background:var(--bg-panel); color:var(--text-main); font-size:14px; }
-  .size-ctrl-btn:hover{ background:#1b2e47; }
+  .size-ctrl-btn:hover{ background:var(--bg-hover); }
   .size-ctrl-input{ flex:1; text-align:center; background:var(--bg-panel); border:1px solid var(--hairline);
     border-radius:6px; color:var(--text-main); padding:5px; font-size:12px; }
 
@@ -127,23 +144,23 @@
     border:1px solid var(--hairline); border-radius:var(--radius-md); padding:6px 6px; }
   .icon-btn{ background:none; border:none; color:var(--text-main); width:27px; height:27px; border-radius:var(--radius-sm);
     display:flex; align-items:center; justify-content:center; font-size:14px; }
-  .icon-btn:hover:not(:disabled){ background:rgba(255,255,255,0.07); }
+  .icon-btn:hover:not(:disabled){ background:var(--bg-hover); }
   .icon-btn:disabled{ color:var(--text-dim); cursor:not-allowed; }
   .row-readout{ font-family:var(--font-mono); font-size:11px; color:var(--text-muted); }
 
   .action-btn{ width:100%; background:var(--bg-panel-raised); border:1px solid var(--hairline); color:var(--text-main);
     border-radius:var(--radius-md); padding:9px 10px; font-size:12.5px; font-weight:500;
     display:flex; align-items:center; justify-content:center; gap:7px; margin-bottom:8px; }
-  .action-btn:hover:not(:disabled){ background:#1b2e47; }
+  .action-btn:hover:not(:disabled){ background:var(--bg-hover); }
   .action-btn:disabled{ opacity:0.4; cursor:not-allowed; }
   .action-btn.danger{ color:var(--danger); }
-  .action-btn.primary{ background:var(--accent); color:#04202f; border-color:var(--accent); font-weight:600; }
+  .action-btn.primary{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600; }
   .action-btn.primary:hover:not(:disabled){ filter:brightness(1.08); }
   .action-btn.on{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
 
   .unit-toggle{ display:flex; gap:4px; background:var(--bg-panel-raised); border:1px solid var(--hairline); border-radius:20px; padding:2px; }
   .unit-toggle button{ background:none; border:none; color:var(--text-muted); font-size:10px; font-weight:600; padding:3px 8px; border-radius:16px; }
-  .unit-toggle button.active{ background:var(--accent); color:#04202f; }
+  .unit-toggle button.active{ background:var(--accent); color:var(--on-accent); }
 
   .mini-label{ font-size:9.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin:8px 0 4px; display:block; }
   .select-input{ width:100%; background:var(--bg-panel-raised); border:1px solid var(--hairline); color:var(--text-main);
@@ -210,10 +227,10 @@
     line-height:1.2; padding:0 0.32em; border-radius:0.35em; border:1px solid #fff; white-space:nowrap; pointer-events:none; letter-spacing:0.02em; }
   .seg{ display:flex; gap:4px; margin-bottom:10px; }
   .seg button{ flex:1; height:30px; border-radius:6px; border:1px solid var(--hairline); background:var(--bg-panel); color:var(--text-main); font-size:11.5px; font-weight:600; }
-  .seg button.on{ background:var(--accent); color:#04202f; border-color:var(--accent); }
+  .seg button.on{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 
   .empty-state{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
-  .empty-card{ text-align:center; max-width:340px; padding:34px 30px; border:1.5px dashed var(--hairline); border-radius:var(--radius-lg); background:rgba(16,28,46,0.5); }
+  .empty-card{ text-align:center; max-width:360px; padding:34px 30px; border:1px solid var(--hairline); border-radius:18px; background:var(--bg-panel); box-shadow:var(--shadow-lg); }
   .empty-card h2{ font-family:var(--font-display); font-size:17px; margin:14px 0 6px; }
   .empty-card p{ font-size:12.5px; color:var(--text-muted); line-height:1.5; margin:0 0 18px; }
   .empty-card .upload-btn{ padding:10px 20px; width:auto; display:inline-flex; }
@@ -254,11 +271,11 @@
     color:var(--text-main); font-size:12px; padding:7px 8px; margin-bottom:9px; }
   .popover-actions{ display:flex; gap:8px; }
   .popover-actions button{ flex:1; border-radius:var(--radius-sm); padding:7px 0; font-size:11.5px; font-weight:600; border:none; }
-  .btn-save{ background:var(--accent); color:#04202f; }
+  .btn-save{ background:var(--accent); color:var(--on-accent); }
   .btn-delete{ background:var(--danger-soft); color:var(--danger); }
   .popover-hint{ font-size:10.5px; color:var(--text-muted); line-height:1.4; margin:0; }
 
-  .overlay{ position:fixed; inset:0; background:rgba(4,9,16,0.6); display:none; align-items:center; justify-content:center; z-index:60; }
+  .overlay{ position:fixed; inset:0; background:var(--overlay-bg); display:none; align-items:center; justify-content:center; z-index:60; }
   .overlay.visible{ display:flex; }
   .confirm-box{ width:280px; background:var(--bg-panel-raised); border:1px solid var(--hairline); border-radius:var(--radius-lg); padding:18px; }
   .confirm-box p{ font-size:13px; margin:0 0 16px; line-height:1.5; }
@@ -276,7 +293,7 @@
     color:var(--text-main); padding:4px 6px; font-size:11.5px; }
   .confirm-actions{ display:flex; gap:8px; }
   .confirm-actions button{ flex:1; border-radius:var(--radius-sm); padding:8px 0; font-size:12.5px; font-weight:600; border:none; }
-  .btn-cancel{ background:rgba(255,255,255,0.07); color:var(--text-main); }
+  .btn-cancel{ background:var(--bg-hover); color:var(--text-main); }
   .export-box{ width:320px; max-height:88vh; overflow-y:auto; }
   .export-box h4{ margin:0 0 7px; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:600;
     display:flex; align-items:center; justify-content:space-between; }
@@ -288,67 +305,211 @@
   .export-item .ei-count{ margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); }
   .export-seg{ display:flex; gap:4px; margin-bottom:14px; }
   .export-seg button{ flex:1; padding:8px 0; border-radius:7px; border:1px solid var(--hairline); background:var(--bg-panel); color:var(--text-main); font-size:12px; font-weight:600; }
-  .export-seg button.on{ background:var(--accent); color:#04202f; border-color:var(--accent); }
+  .export-seg button.on{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   .btn-confirm{ background:var(--danger); color:#2a0a0a; }
 
   @media (prefers-reduced-motion: reduce){ .marker{ animation:none; } * { transition:none !important; } }
-  @media (max-width:760px){ .sidebar{ width:240px; padding:14px 10px; } }
+  /* ================= New shell layout ================= */
+  #app{ display:grid; grid-template-columns:64px 284px minmax(0,1fr) 288px; grid-template-rows:58px minmax(0,1fr); height:100vh; width:100vw; }
+  #app.panel-collapsed{ grid-template-columns:64px 0 minmax(0,1fr) 288px; }
+  #app.panel-collapsed .side-panel{ display:none; }
+  body{ font-size:13px; -webkit-font-smoothing:antialiased; }
+
+  .appbar{ grid-column:1/-1; display:flex; align-items:center; gap:12px; padding:0 12px; background:var(--bg-panel); border-bottom:1px solid var(--hairline); min-width:0; }
+  .logo{ width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#006fff,#00a3ff); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; flex-shrink:0; }
+  .proj{ display:flex; flex-direction:column; min-width:0; flex-shrink:1; }
+  .proj small{ color:var(--text-muted); font-size:11px; white-space:nowrap; }
+  .proj small .ver{ opacity:.7; }
+  .appbar .proj-name-input{ border:1px solid transparent; background:transparent; font-weight:650; font-size:14.5px; padding:1px 4px; margin:0 0 0 -5px; width:220px; border-radius:6px; }
+  .appbar .proj-name-input:hover{ border-color:var(--hairline); }
+  .appbar .proj-name-input:focus{ border-color:var(--accent); outline:none; background:var(--bg-panel); }
+  .floor-tabs{ display:flex; align-items:center; gap:2px; background:var(--bg-panel-raised); border:1px solid var(--hairline); border-radius:10px; padding:3px; min-width:0; overflow-x:auto; scrollbar-width:none; }
+  .floor-tabs::-webkit-scrollbar{ display:none; }
+  #floorList{ display:flex; gap:2px; }
+  .floor-row{ margin:0; padding:5px 8px 5px 11px; border-radius:7px; background:none; border:none; gap:2px; white-space:nowrap; }
+  .floor-row .fname{ font-weight:600; color:var(--text-muted); font-size:12.5px; }
+  .floor-row.active{ background:var(--bg-panel); box-shadow:var(--shadow); border:none; }
+  .floor-row.active .fname{ color:var(--text-main); }
+  .floor-row:not(.active) .ficon{ display:none; }
+  .floor-row .ficon{ font-size:11px; padding:1px 3px; }
+  .floor-tabs .add-floor-btn{ width:auto; margin:0; border:none; color:var(--accent); font-weight:700; font-size:15px; padding:3px 10px; }
+  .appbar .spacer{ flex:1; min-width:8px; }
+  .tbtn{ height:34px; padding:0 12px; border-radius:9px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main);
+    display:inline-flex; align-items:center; gap:7px; font-weight:600; font-size:12.5px; white-space:nowrap; flex-shrink:0; }
+  .tbtn:hover:not(:disabled){ background:var(--bg-hover); }
+  .tbtn:disabled{ opacity:.45; cursor:not-allowed; }
+  .tbtn svg{ width:16px; height:16px; flex-shrink:0; }
+  .tbtn.icon{ width:34px; padding:0; justify-content:center; }
+  .tbtn.primary{ background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+  .tbtn.primary:hover:not(:disabled){ background:var(--accent); filter:brightness(1.07); }
+  .tbtn.ai{ background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(0,111,255,.12)); border-color:transparent; color:#6d28d9; }
+  :root[data-theme="dark"] .tbtn.ai{ color:#b69cff; }
+  .tsep{ width:1px; height:24px; background:var(--hairline); flex-shrink:0; }
+
+  .rail{ background:var(--bg-panel); border-right:1px solid var(--hairline); display:flex; flex-direction:column; align-items:center; padding:10px 0; gap:3px; overflow-y:auto; }
+  .rail button{ width:54px; padding:8px 0 6px; border:none; background:none; border-radius:10px; color:var(--text-muted); display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10.5px; font-weight:600; }
+  .rail button svg{ width:20px; height:20px; }
+  .rail button:hover{ background:var(--bg-hover); color:var(--text-main); }
+  .rail button.on{ background:var(--accent-soft); color:var(--accent); }
+  .rail .rail-bottom{ margin-top:auto; }
+
+  .side-panel{ background:var(--bg-panel); border-right:1px solid var(--hairline); overflow-y:auto; min-width:0; }
+  .pane{ display:none; padding:16px 14px 20px; }
+  .pane.on{ display:block; }
+  .pane > h2{ font-family:var(--font-display); font-size:15px; font-weight:700; margin:0 0 12px; display:flex; align-items:center; justify-content:space-between; }
+  .pane .section{ margin-bottom:16px; }
+  .pane .section-label{ font-family:var(--font-body); font-size:11px; letter-spacing:.07em; font-weight:650; color:var(--text-dim); }
+  .pane-note{ font-size:12px; color:var(--text-muted); line-height:1.45; margin:0 0 12px; }
+
+  /* Point tiles */
+  #typeList{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #typeList .group-h{ grid-column:1/-1; margin:8px 0 -2px; font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-dim); font-weight:650; }
+  #typeList .group-h:first-child{ margin-top:0; }
+  #typeList .type-item{ position:relative; display:block; }
+  #typeList .type-btn{ flex-direction:column; align-items:flex-start; gap:8px; padding:10px 10px 9px; min-height:88px; height:100%;
+    background:var(--bg-panel); border:1px solid var(--hairline); border-radius:12px; }
+  #typeList .type-btn:hover{ background:var(--bg-panel); border-color:var(--hairline-2); box-shadow:var(--shadow); }
+  #typeList .type-btn.active{ border-color:var(--type-color); box-shadow:0 0 0 3px color-mix(in srgb, var(--type-color) 18%, transparent); background:var(--bg-panel); }
+  #typeList .type-badge{ width:36px; height:36px; border-radius:10px; background:color-mix(in srgb, var(--type-color) 11%, transparent); }
+  #typeList .type-name{ white-space:normal; font-weight:600; font-size:12px; line-height:1.25; padding-right:14px; }
+  #typeList .type-count{ position:absolute; top:9px; right:9px; font-family:var(--font-body); font-weight:700; font-size:11px; }
+  .type-model{ display:inline-flex; align-items:center; gap:3px; margin-top:-5px; padding:2px 7px 2px 8px; border-radius:6px; font-size:11px; font-weight:600;
+    color:var(--text-muted); background:var(--bg-panel-raised); border:1px solid var(--hairline); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .type-model:hover{ color:var(--accent); border-color:var(--accent); }
+  :root:not(.ubnt) .type-model{ display:none; }
+  .mp-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .mp-back{ width:32px; height:32px; border-radius:9px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); display:grid; place-items:center; flex-shrink:0; }
+  .mp-back svg{ width:16px; height:16px; }
+  .mp-ic{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center; flex-shrink:0; }
+  .mp-ic svg{ width:26px; height:26px; }
+  .mp-head b{ display:block; font-size:14px; }
+  .mp-head small{ color:var(--text-muted); font-size:11.5px; }
+  .mp-search{ width:100%; height:34px; border:1px solid var(--hairline-2); border-radius:9px; background:var(--bg-panel-raised); color:var(--text-main); padding:0 10px; font-size:12.5px; margin-bottom:8px; }
+  .mp-chips{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+  .mp-chips button{ border:1px solid var(--hairline-2); background:var(--bg-panel); border-radius:20px; padding:4px 11px; font-size:12px; font-weight:600; color:var(--text-muted); }
+  .mp-chips button.on{ background:var(--text-main); border-color:var(--text-main); color:var(--bg-panel); }
+  .mp-sub{ margin:14px 0 7px; font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-dim); font-weight:650; }
+  .mp-list{ display:flex; flex-direction:column; gap:6px; }
+  .mp-row{ display:flex; align-items:center; gap:10px; text-align:left; border:1px solid var(--hairline); background:var(--bg-panel); color:var(--text-main); border-radius:11px; padding:9px 10px; width:100%; }
+  .mp-row:hover{ border-color:var(--hairline-2); box-shadow:var(--shadow); }
+  .mp-row.on{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .mp-row .mp-dev{ width:38px; height:38px; border-radius:10px; background:var(--bg-panel-raised); display:grid; place-items:center; flex-shrink:0; }
+  .mp-row .mp-dev svg{ width:28px; height:28px; }
+  .mp-row .mp-t{ flex:1; min-width:0; }
+  .mp-row .mp-t b{ display:block; font-size:12.5px; }
+  .mp-row .mp-t small{ display:block; color:var(--text-muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mp-tag{ font:700 9px/1.3 Arial, sans-serif; color:#fff; border-radius:4px; padding:1px 4px; white-space:nowrap; flex-shrink:0; }
+  .mp-count{ font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:10px; padding:1px 7px; flex-shrink:0; }
+  .mp-def{ font-size:10px; font-weight:700; color:var(--text-muted); border:1px solid var(--hairline-2); border-radius:10px; padding:0 6px; flex-shrink:0; }
+  .def-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .def-row span{ width:92px; font-size:12px; color:var(--text-muted); flex-shrink:0; }
+  .def-row select{ margin:0; }
+  .type-count.has{ background:var(--accent-soft); color:var(--accent); }
+  #typeList .type-expand-btn{ position:absolute; right:5px; bottom:5px; width:24px; height:22px; background:none; border:none; font-size:11px; border-radius:6px; }
+  #typeList .type-expand-btn:hover{ background:var(--bg-hover); }
+  #typeList .type-size-panel{ grid-column:1/-1; margin:0; }
+  #typeList .type-del{ position:absolute; top:30px; right:7px; }
+  .type-list:not(#typeList) .type-btn{ background:var(--bg-panel); border:1px solid var(--hairline); padding:9px 10px; }
+  .type-list:not(#typeList) .type-btn.active{ border-color:var(--type-color); box-shadow:0 0 0 3px color-mix(in srgb, var(--type-color) 18%, transparent); }
+
+  .toggle-row .toggle-label{ font-size:13px; }
+  .layer-row{ display:flex; align-items:center; justify-content:space-between; padding:11px 12px; border:1px solid var(--hairline); border-radius:11px; margin-bottom:8px; }
+  .layer-row .lbl{ display:flex; flex-direction:column; }
+  .layer-row .lbl b{ font-size:13px; font-weight:600; }
+  .layer-row .lbl small{ color:var(--text-muted); font-size:11.5px; }
+  .toggle-switch{ background:var(--hairline-2); border-color:transparent; }
+
+  /* Workspace */
+  .workspace{ position:relative; min-width:0; min-height:0; display:block; }
+  .canvas-scroll{ position:absolute; inset:0; background-color:var(--bg-deep); background-image:radial-gradient(var(--grid-dot) 1px, transparent 1px);
+    background-size:18px 18px; padding:64px 36px 100px; }
+  .canvas-stage{ box-shadow:var(--shadow-lg); border-radius:3px; }
+  .hintpill{ position:absolute; left:16px; top:14px; z-index:15; display:flex; align-items:center; gap:8px; max-width:calc(100% - 32px);
+    background:var(--bg-panel); border:1px solid var(--hairline); border-radius:11px; box-shadow:var(--shadow); padding:8px 12px; font-size:12px; color:var(--text-muted); }
+  .hintpill .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+  .status{ position:absolute; left:50%; top:auto; bottom:72px; transform:translateX(-50%); z-index:16; background:#111827; color:#fff; font-family:var(--font-body);
+    font-size:12px; font-weight:600; padding:8px 14px; border-radius:20px; box-shadow:var(--shadow-lg); pointer-events:none; white-space:nowrap; }
+  .dock{ position:absolute; left:50%; bottom:16px; transform:translateX(-50%); z-index:15; display:flex; align-items:center; gap:3px; padding:5px;
+    background:var(--bg-panel); border:1px solid var(--hairline); border-radius:12px; box-shadow:var(--shadow-lg); white-space:nowrap; }
+  .dock .icon-btn, .dock .dbtn{ height:34px; min-width:34px; width:auto; padding:0 8px; border:none; background:none; border-radius:8px; color:var(--text-main);
+    display:inline-flex; align-items:center; justify-content:center; gap:6px; font-weight:600; font-size:12.5px; }
+  .dock .icon-btn:hover:not(:disabled), .dock .dbtn:hover:not(:disabled){ background:var(--bg-hover); }
+  .dock .dbtn.on{ background:var(--accent-soft); color:var(--accent); }
+  .dock .dbtn:disabled{ opacity:.4; cursor:not-allowed; }
+  .dock svg{ width:17px; height:17px; }
+  .dock .row-readout{ font-family:var(--font-body); font-size:12.5px; font-weight:600; color:var(--text-muted); min-width:44px; text-align:center; }
+  .dock .dsep{ width:1px; height:22px; background:var(--hairline); margin:0 3px; }
+
+  /* Summary panel */
+  .summary{ background:var(--bg-panel); border-left:1px solid var(--hairline); overflow-y:auto; min-width:0; }
+  .scard{ padding:16px; border-bottom:1px solid var(--hairline); }
+  .scard h3{ margin:0 0 12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .scard h3 small{ color:var(--text-muted); font-weight:500; font-size:11.5px; }
+  .sbig{ display:flex; align-items:baseline; gap:8px; margin-bottom:12px; }
+  .sbig b{ font-size:32px; font-weight:750; letter-spacing:-.02em; font-family:var(--font-display); }
+  .sbig span{ color:var(--text-muted); }
+  .sbar{ display:flex; height:8px; border-radius:6px; overflow:hidden; background:var(--bg-panel-raised); margin-bottom:10px; }
+  .sbar i{ display:block; height:100%; }
+  .srow{ display:flex; align-items:center; gap:9px; padding:5px 0; font-size:12.5px; }
+  .srow .sdot{ width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+  .srow b{ margin-left:auto; font-variant-numeric:tabular-nums; }
+  .sstat{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sstat div{ background:var(--bg-panel-raised); border-radius:10px; padding:10px 12px; }
+  .sstat small{ color:var(--text-muted); display:block; font-size:11px; }
+  .sstat b{ font-size:17px; }
+  .sempty{ color:var(--text-muted); font-size:12px; margin:0; }
+
+  @media (max-width:1300px){
+    #app{ grid-template-columns:64px 262px minmax(0,1fr) 0; }
+    #app.panel-collapsed{ grid-template-columns:64px 0 minmax(0,1fr) 0; }
+    .summary{ display:none; }
+    #app.show-summary .summary{ display:block; position:fixed; right:0; top:58px; bottom:0; width:288px; z-index:40; box-shadow:var(--shadow-lg); }
+    .appbar .proj-name-input{ width:150px; }
+    .tbtn .tlabel{ display:none; }
+    .tbtn.primary .tlabel, .tbtn.ai .tlabel{ display:inline; }
+  }
+  @media (min-width:1301px){ #summaryToggleBtn{ display:none; } }
+  @media (max-width:900px){
+    .tbtn.ai .tlabel{ display:none; }
+    .proj small{ display:none; }
+  }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="kicker">www.expresskw.com</div>
-      <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-28.1</span></div>
+  <header class="appbar">
+    <div class="logo">ET</div>
+    <div class="proj">
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-28.3</span></small>
+      <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
+    <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
+    <div class="spacer"></div>
+    <button class="tbtn icon" id="undoBtn" disabled title="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+    <span class="tsep"></span>
+    <button class="tbtn ai" id="aiScanBtn" disabled title="Scan drawing with AI"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg><span class="tlabel">AI scan</span></button>
+    <button class="tbtn" id="loadProjectBtn" title="Open project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="tlabel">Open</span></button>
+    <button class="tbtn" id="saveProjectBtn" title="Save project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="tlabel">Save</span></button>
+    <button class="tbtn primary" id="exportBtn" disabled title="Export PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="tlabel">Export PDF</span></button>
+    <button class="tbtn icon" id="summaryToggleBtn" title="Show summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+    <button class="tbtn icon" id="themeToggleBtn" title="Light / dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  </header>
 
-    <div class="section">
-      <p class="section-label">Customer / project</p>
-      <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Used as the customer folder name when saving">
-      <div class="proj-btn-row">
-        <button id="saveProjectBtn">Save project</button>
-        <button id="loadProjectBtn">Load project</button>
-      </div>
-      <p class="popover-hint" id="saveLocationHint" style="margin:7px 0 0;"></p>
-    </div>
+  <nav class="rail" id="rail">
+    <button data-pane="points" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Points</button>
+    <button data-pane="measure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21 21 3M14 3h7v7M3 14v7h7"/></svg>Measure</button>
+    <button data-pane="walls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h9v9"/></svg>Walls</button>
+    <button data-pane="cables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c4 0 4-8 8-8s4-8 8-8"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="4" r="1.5"/></svg>Cables</button>
+    <button data-pane="layers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Layers</button>
+    <button data-pane="drawing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Drawing</button>
+    <button data-pane="revisions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Revisions</button>
+    <button data-pane="settings" class="rail-bottom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+  </nav>
 
-    <div class="section">
-      <div class="section-label-row">
-        <p class="section-label">Revisions</p>
-        <button class="link-btn" id="addRevisionBtn">+ Add</button>
-      </div>
-      <div id="revisionList"></div>
-      <div id="revisionForm" style="display:none;margin-top:6px;">
-        <input type="text" id="revisionNoteInput" placeholder="What changed? (e.g. Added ground floor CCTV)"
-          style="width:100%;background:var(--bg-panel-raised);border:1px solid var(--hairline);border-radius:6px;color:var(--text-main);padding:7px 8px;font-size:12px;margin-bottom:6px;">
-        <div style="display:flex;gap:6px;">
-          <button id="revisionCancelBtn" style="flex:1;border-radius:6px;padding:7px 0;font-size:11.5px;font-weight:600;border:none;background:var(--danger-soft);color:var(--danger);">Cancel</button>
-          <button id="revisionSaveBtn" style="flex:1;border-radius:6px;padding:7px 0;font-size:11.5px;font-weight:600;border:none;background:var(--accent);color:#04202f;">Add</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <p class="section-label">Floors</p>
-      <div id="floorList"></div>
-      <button class="add-floor-btn" id="addFloorBtn">+ Add floor</button>
-    </div>
-
-    <div class="section">
-      <p class="section-label">Drawing (this floor)</p>
-      <div id="noFileBlock"><button class="upload-btn" id="uploadBtnSidebar">Upload villa PDF</button></div>
-      <div id="fileBlock" class="file-block" style="display:none;">
-        <div class="file-name" id="fileNameLabel">&mdash;</div>
-        <div class="file-meta" id="fileMetaLabel">&mdash;</div>
-        <button class="link-btn" id="replaceFileBtn" style="margin-top:8px;">Replace file</button>
-      </div>
-    </div>
-
-    <div class="section">
-      <p class="section-label">Point Types</p>
+  <aside class="side-panel" id="sidePanel">
+    <section class="pane on" data-pane="points">
+      <h2>Points</h2>
       <div class="type-list" id="typeList"></div>
       <button class="add-type-btn" id="addTypeBtn">+ Add custom type</button>
       <div class="type-form" id="typeForm" style="display:none;">
@@ -366,20 +527,28 @@
           <button class="btn-save" id="typeFormAddBtn">Add type</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="section">
-      <div class="section-label-row">
-        <p class="section-label">Measure &amp; Scale</p>
-        <div class="unit-toggle" id="unitToggle"><button data-unit="m" class="active">m</button><button data-unit="ft">ft</button></div>
-      </div>
+    <section class="pane" data-pane="measure">
+      <h2>Measure &amp; scale <span class="unit-toggle" id="unitToggle"><button data-unit="m" class="active">m</button><button data-unit="ft">ft</button></span></h2>
+      <p class="pane-note">Measure one known distance (a door or wall) and type its real length &mdash; that sets the scale for the whole page.</p>
       <div class="type-list" id="measureToolList"></div>
       <div class="scale-readout" id="scaleReadout">Upload a drawing to begin</div>
-    </div>
+    </section>
 
-    <div class="section">
-      <p class="section-label">Cable Routes</p>
-      <label class="mini-label">Cable type (new routes)</label>
+    <section class="pane" data-pane="walls">
+      <h2>Walls &amp; coverage</h2>
+      <p class="pane-note">Trace the main walls so the Wi-Fi heatmap and camera cones know what blocks signal and view.</p>
+      <label class="mini-label" style="margin-top:0;">Wall material</label>
+      <select class="select-input" id="wallMaterialSelect"></select>
+      <div class="type-list" id="wallToolList" style="margin-top:8px;"></div>
+      <div class="layer-row" style="margin-top:14px;"><span class="lbl"><b>Wi-Fi heatmap</b><small>Estimated coverage from placed APs</small></span>
+        <button type="button" class="toggle-switch heatmap-toggle" role="switch" aria-checked="false"><span class="toggle-knob"></span></button></div>
+    </section>
+
+    <section class="pane" data-pane="cables">
+      <h2>Cable routes</h2>
+      <label class="mini-label" style="margin-top:0;">Cable type (new routes)</label>
       <select class="select-input" id="cableTypeSelect">
         <option value="cat6">Cat6</option>
         <option value="cat6a">Cat6A</option>
@@ -390,54 +559,82 @@
         <option value="fiber">Fiber optic</option>
         <option value="power">Power</option>
       </select>
-      <div class="type-list" id="cableToolList" style="margin-top:6px;"></div>
-    </div>
+      <div class="type-list" id="cableToolList" style="margin-top:8px;"></div>
+    </section>
 
-    <div class="section">
-      <p class="section-label">Page</p>
-      <div class="row-controls">
-        <button class="icon-btn" id="prevPageBtn" disabled aria-label="Previous page">&#8249;</button>
-        <span class="row-readout" id="pageReadout">&mdash;</span>
-        <button class="icon-btn" id="nextPageBtn" disabled aria-label="Next page">&#8250;</button>
+    <section class="pane" data-pane="layers">
+      <h2>Layers</h2>
+      <div class="layer-row"><span class="lbl"><b>Legend</b><small>Box listing the points on this page</small></span>
+        <button type="button" class="toggle-switch on" id="legendToggle" role="switch" aria-checked="true" disabled><span class="toggle-knob"></span></button></div>
+      <div class="layer-row"><span class="lbl"><b>Camera cones</b><small>What each camera can see</small></span>
+        <button type="button" class="toggle-switch camera-cone-toggle" role="switch" aria-checked="false"><span class="toggle-knob"></span></button></div>
+      <div class="layer-row"><span class="lbl"><b>Wi-Fi heatmap</b><small>Estimated coverage</small></span>
+        <button type="button" class="toggle-switch heatmap-toggle" role="switch" aria-checked="false"><span class="toggle-knob"></span></button></div>
+      <p class="pane-note" style="margin-top:12px;">To hide one point type, open the &#9662; on its tile in Points.</p>
+    </section>
+
+    <section class="pane" data-pane="drawing">
+      <h2>Drawing</h2>
+      <div class="section">
+        <p class="section-label">This floor&rsquo;s drawing</p>
+        <div id="noFileBlock"><button class="upload-btn" id="uploadBtnSidebar">Upload villa PDF</button></div>
+        <div id="fileBlock" class="file-block" style="display:none;">
+          <div class="file-name" id="fileNameLabel">&mdash;</div>
+          <div class="file-meta" id="fileMetaLabel">&mdash;</div>
+          <button class="link-btn" id="replaceFileBtn" style="margin-top:8px;">Replace file</button>
+        </div>
       </div>
-    </div>
-
-    <div class="section">
-      <p class="section-label">Zoom</p>
-      <div class="row-controls">
-        <button class="icon-btn" id="zoomOutBtn" disabled aria-label="Zoom out">&minus;</button>
-        <span class="row-readout" id="zoomReadout">&mdash;</span>
-        <button class="icon-btn" id="zoomInBtn" disabled aria-label="Zoom in">&plus;</button>
+      <div class="section">
+        <p class="section-label">Tools</p>
+        <button class="action-btn" id="copyFromFloorBtn" disabled>Copy points from another floor</button>
+        <button class="action-btn danger" id="clearPageBtn" disabled>Clear this page</button>
+        <button class="action-btn danger" id="clearAllBtn" disabled>Clear all pages</button>
       </div>
-      <button class="link-btn" id="fitZoomBtn" style="margin-top:6px;">Fit to screen</button>
-    </div>
+    </section>
 
-    <div class="section">
-      <p class="section-label">Actions</p>
-      <button class="action-btn" id="undoBtn" disabled>Undo last action</button>
-      <button class="action-btn" id="copyFromFloorBtn" disabled>Copy from another floor</button>
-      <button class="action-btn" id="aiScanBtn" disabled>Scan drawing with AI</button>
-      <button class="link-btn" id="aiKeyLink" style="margin-top:2px;">AI key&hellip;</button>
-      <button class="action-btn danger" id="clearPageBtn" disabled>Clear this page</button>
-      <button class="action-btn danger" id="clearAllBtn" disabled>Clear all pages</button>
-      <div class="toggle-row" style="margin-top:6px;">
-        <span class="toggle-label">Legend</span>
-        <button type="button" class="toggle-switch on" id="legendToggle" role="switch" aria-checked="true" disabled>
-          <span class="toggle-knob"></span>
-        </button>
+    <section class="pane" data-pane="revisions">
+      <h2>Revisions <button class="link-btn" id="addRevisionBtn">+ Add</button></h2>
+      <div id="revisionList"></div>
+      <div id="revisionForm" style="display:none;margin-top:6px;">
+        <input type="text" id="revisionNoteInput" placeholder="What changed? (e.g. Added ground floor CCTV)"
+          style="width:100%;background:var(--bg-panel-raised);border:1px solid var(--hairline);border-radius:6px;color:var(--text-main);padding:7px 8px;font-size:12px;margin-bottom:6px;">
+        <div style="display:flex;gap:6px;">
+          <button id="revisionCancelBtn" style="flex:1;border-radius:6px;padding:7px 0;font-size:11.5px;font-weight:600;border:none;background:var(--danger-soft);color:var(--danger);">Cancel</button>
+          <button id="revisionSaveBtn" style="flex:1;border-radius:6px;padding:7px 0;font-size:11.5px;font-weight:600;border:none;background:var(--accent);color:var(--on-accent);">Add</button>
+        </div>
       </div>
-      <button class="action-btn primary" id="exportBtn" disabled style="margin-top:6px;">Export PDF</button>
-    </div>
+    </section>
 
-    <div class="sidebar-footer"><span>Total points (this floor)</span><b id="totalCount">0</b></div>
+    <section class="pane" data-pane="models" id="modelPane"></section>
+
+    <section class="pane" data-pane="settings">
+      <h2>Settings</h2>
+      <div class="section">
+        <p class="section-label">Products</p>
+        <div class="layer-row"><span class="lbl"><b>Ubiquiti mode</b><small>Model picker, model tags and UniFi hardware. Off = generic points, no brand names.</small></span>
+          <button type="button" class="toggle-switch" id="ubntToggle" role="switch" aria-checked="true"><span class="toggle-knob"></span></button></div>
+        <div id="defaultModelsBlock">
+          <p class="section-label" style="margin-top:12px;">Default models</p>
+          <div id="defaultModelsList"></div>
+        </div>
+      </div>
+      <div class="section">
+        <p class="section-label">Theme</p>
+        <div class="export-seg" id="themeSeg"><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button></div>
+      </div>
+      <div class="section">
+        <p class="section-label">Saving</p>
+        <p class="popover-hint" id="saveLocationHint" style="margin:0;font-size:12px;"></p>
+      </div>
+      <div class="section">
+        <p class="section-label">AI scan</p>
+        <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
+      </div>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-28.3</p>
+    </section>
   </aside>
 
   <main class="workspace">
-    <div class="topbar">
-      <div class="hint"><span class="dot"></span><span id="hintText">Upload a villa drawing to begin</span></div>
-      <div class="status" id="statusText"></div>
-    </div>
-
     <div class="canvas-scroll" id="canvasScroll">
       <div class="canvas-stage" id="canvasStage" style="display:none;">
         <canvas id="pdfCanvas"></canvas>
@@ -448,14 +645,42 @@
       </div>
       <div class="empty-state" id="emptyState">
         <div class="empty-card">
-          <div class="empty-icon">&#9635;</div>
-          <h2>Plan a villa's low-voltage points</h2>
-          <p>Upload this floor's PDF, mark points, trace walls, measure rooms, route cables and preview Wi-Fi coverage.</p>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3"/></svg></div>
+          <h2>Plan a villa&rsquo;s low-voltage points</h2>
+          <p>Upload this floor&rsquo;s PDF, then place access points, cameras and data points, trace walls, measure rooms and route cables.</p>
           <button class="upload-btn" id="uploadBtnEmpty">Choose PDF file</button>
         </div>
       </div>
     </div>
+    <div class="hintpill"><span class="dot"></span><span id="hintText">Upload a villa drawing to begin</span></div>
+    <div class="status" id="statusText"></div>
+    <div class="dock" id="dock">
+      <button class="icon-btn" id="prevPageBtn" disabled aria-label="Previous page" title="Previous page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+      <span class="row-readout" id="pageReadout">&mdash;</span>
+      <button class="icon-btn" id="nextPageBtn" disabled aria-label="Next page" title="Next page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      <span class="dsep"></span>
+      <button class="icon-btn" id="zoomOutBtn" disabled aria-label="Zoom out" title="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+      <span class="row-readout" id="zoomReadout">&mdash;</span>
+      <button class="icon-btn" id="zoomInBtn" disabled aria-label="Zoom in" title="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="icon-btn" id="fitZoomBtn" title="Fit to screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <span class="dsep"></span>
+      <button class="dbtn camera-cone-toggle" id="dockConesBtn" title="Camera cones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 21 5v14z"/></svg>Cones</button>
+      <button class="dbtn heatmap-toggle" id="dockHeatBtn" title="Wi-Fi heatmap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></svg>Heatmap</button>
+    </div>
   </main>
+
+  <aside class="summary" id="summaryPanel">
+    <div class="scard">
+      <h3><span id="sumFloorName">This floor</span><small id="sumPageInfo"></small></h3>
+      <div class="sbig"><b id="totalCount">0</b><span>points on this floor</span></div>
+      <div class="sbar" id="sumBar"></div>
+      <div id="sumRows"></div>
+    </div>
+    <div class="scard">
+      <h3>Whole villa <small id="sumFloorsInfo"></small></h3>
+      <div class="sstat" id="sumVilla"></div>
+    </div>
+  </aside>
 
 </div>
 
@@ -881,44 +1106,157 @@
 
   function getTypeDef(key){ return BUILTIN_TYPES[key] || project.customTypes[key]; }
   function isWifiType(key){ return key === "wifi" || key === "outdoorwifi"; }
-  /* Access point models: Standard (default, no tag), Pro, LR */
+  /* Access point tiers used in generic mode: Standard (no tag), Pro, LR */
   var AP_MODELS = { pro:{ label:"Pro", tag:"PRO", color:"#d97706" }, lr:{ label:"LR", tag:"LR", color:"#059669" } };
   var AP_MODEL_ORDER = [["","Standard"],["pro","Pro"],["lr","LR"]];
   function apModelOf(m){ return m && isWifiType(m.type) && AP_MODELS[m.apModel] ? m.apModel : ""; }
-  // Legend / summary rows: one per type, with Wi-Fi split into Standard / Pro / LR
+
+  /* ===== Ubiquiti catalogue (store.ui.com, Sep 2026). [sku, name, spec, group, tag] ===== */
+  function catRows(rows){ return rows.map(function(r){ return { sku:r[0], name:r[1], spec:r[2], group:r[3], tag:r[4] }; }); }
+  var CATALOG = {
+    wifi: { groups:["Ceiling","Wall"], items:catRows([
+      ["U7-Lite","U7 Lite","WiFi 7 · 4 streams · compact","Ceiling","LITE"],
+      ["U7-Pro","U7 Pro","WiFi 7 · 6 streams · 2.5GbE","Ceiling","PRO"],
+      ["U7-Pro-Max","U7 Pro Max","WiFi 7 · 8 streams · spectral engine","Ceiling","MAX"],
+      ["U7-Pro-XG","U7 Pro XG","WiFi 7 · 6 streams · 10GbE","Ceiling","XG"],
+      ["U7-Pro-XGS","U7 Pro XGS","WiFi 7 · 8 streams · 10GbE · spectral scan","Ceiling","XGS"],
+      ["U7-LR","U7 Long-Range","WiFi 7 · 5 streams · extended range","Ceiling","LR"],
+      ["E7","E7","WiFi 7 · 10 streams · enterprise","Ceiling","E7"],
+      ["U6-Enterprise","U6 Enterprise","WiFi 6E · 10 streams","Ceiling","U6E"],
+      ["U6-Pro","U6 Pro","WiFi 6 · 6 streams","Ceiling","U6P"],
+      ["U6+","U6+","WiFi 6 · 4 streams","Ceiling","U6+"],
+      ["U7-Pro-Wall","U7 Pro Wall","WiFi 7 · 6 streams · wall mount","Wall","P-WALL"],
+      ["U7-Pro-XG-Wall","U7 Pro XG Wall","WiFi 7 · 6 streams · 10GbE · wall mount","Wall","XG-W"],
+      ["U7-IW","U7 In-Wall","WiFi 7 · 4 streams · built-in switch","Wall","IW"],
+      ["U6-Enterprise-IW","U6 Enterprise In-Wall","WiFi 6E · 10 streams","Wall","U6E-IW"],
+      ["U6-IW","U6 In-Wall","WiFi 6 · 6 streams","Wall","U6-IW"]
+    ])},
+    outdoorwifi: { groups:["Outdoor","Mesh"], items:catRows([
+      ["U7-Outdoor","U7 Outdoor","WiFi 7 · 4 streams · IP67","Outdoor","OUT"],
+      ["U7-Pro-Outdoor","U7 Pro Outdoor","WiFi 7 · 6 streams · IP67","Outdoor","P-OUT"],
+      ["E7-Campus","E7 Campus","WiFi 7 · 10 streams · enterprise outdoor","Outdoor","E7C"],
+      ["U7-Mesh","U7 Mesh","WiFi 7 · omni · mesh","Mesh","MESH7"],
+      ["U6-Mesh","U6 Mesh","WiFi 6 · 6 streams · mesh","Mesh","MESH"],
+      ["U6-Mesh-Pro","U6 Mesh Pro","WiFi 6 · 4 streams · mesh","Mesh","MESHP"]
+    ])},
+    cctv: { groups:["Dome","Turret","360°"], items:catRows([
+      ["UVC-G6-Dome","G6 Dome","4K · 8MP","Dome","G6 D"],
+      ["UVC-G6-Mini-Dome","G6 Mini Dome","4K · 8MP · compact","Dome","G6 MD"],
+      ["UVC-G6-Pro-Dome","G6 Pro Dome","4K · 2.36x optical zoom","Dome","G6P D"],
+      ["UVC-G6-Edge-Dome","G6 Edge Dome","4K · 2.36x optical zoom","Dome","G6E D"],
+      ["UVC-AI-Dome","AI Dome","4K · enhanced AI","Dome","AI D"],
+      ["UVC-G5-Dome","G5 Dome","2K HD","Dome","G5 D"],
+      ["UVC-G5-Dome-Ultra","G5 Dome Ultra","2K HD · compact","Dome","G5 DU"],
+      ["UVC-G6-Turret","G6 Turret","4K · 8MP","Turret","G6 T"],
+      ["UVC-G6-Pro-Turret","G6 Pro Turret","4K · 2.36x optical zoom","Turret","G6P T"],
+      ["UVC-AI-Turret","AI Turret","4K · enhanced AI","Turret","AI T"],
+      ["UVC-G5-Turret-Ultra","G5 Turret Ultra","2K HD","Turret","G5 TU"],
+      ["UVC-G6-Pro-360","G6 Pro 360","12MP · 360°","360°","360"],
+      ["UVC-G6-180","G6 180","16MP · 180°","360°","180"]
+    ])},
+    cctvoutdoor: { groups:["Bullet","PTZ","Flex"], items:catRows([
+      ["UVC-G6-Bullet","G6 Bullet","4K · 8MP","Bullet","G6 B"],
+      ["UVC-G6-Pro-Bullet","G6 Pro Bullet","4K · 2.36x optical zoom","Bullet","G6P B"],
+      ["UVC-G6-Edge-Bullet","G6 Edge Bullet","4K · 2.36x optical zoom","Bullet","G6E B"],
+      ["UVC-G5-Bullet","G5 Bullet","2K HD","Bullet","G5 B"],
+      ["UVC-G5-Pro","G5 Pro","4K · 3x optical zoom","Bullet","G5 PRO"],
+      ["UVC-AI-Pro","AI Pro","4K · 3x optical zoom · AI","Bullet","AI PRO"],
+      ["UVC-AI-LPR","AI LPR","4K · licence plate recognition","Bullet","LPR"],
+      ["UVC-G6-PTZ","G6 PTZ","4K · 10x hybrid zoom","PTZ","PTZ"],
+      ["UVC-G5-PTZ","G5 PTZ","2K HD · PTZ","PTZ","G5 PTZ"],
+      ["UVC-AI-PTZ","AI PTZ Industrial","4K · 22x optical zoom","PTZ","AI PTZ"],
+      ["UVC-G5-Flex","G5 Flex","2K HD · indoor/outdoor","Flex","FLEX"],
+      ["UVC-G6-INS","G6 Instant","4K · WiFi","Flex","INST"]
+    ])},
+    intercom: { groups:["Intercom","Reader"], items:catRows([
+      ["UA-G6-Entry","G6 Entry","Doorbell · Touch Pass","Intercom","ENTRY"],
+      ["UA-Intercom","Intercom","Touch Pass intercom","Intercom","ICOM"],
+      ["UA-Reader-Pro","Reader Pro","Touch Pass · camera","Reader","RDR P"],
+      ["UA-Reader","Reader","Touch Pass · NFC","Reader","RDR"],
+      ["UA-G3-Flex","G3 Reader Flex","NFC reader","Reader","FLEX"],
+      ["UA-G3-Fingerprint","G3 Reader Fingerprint","Fingerprint + NFC","Reader","FP"]
+    ])}
+  };
+  var CAT_DEFAULTS_BUILTIN = { wifi:"U7-Lite", outdoorwifi:"U7-Outdoor", cctv:"UVC-G6-Dome", cctvoutdoor:"UVC-G6-Bullet", intercom:"UA-G6-Entry" };
+  var LEGACY_AP = { pro:"U7-Pro", lr:"U7-LR" };
+  var UBNT = { on:true, defaults:{} };
+  (function(){
+    try {
+      UBNT.on = localStorage.getItem("lvplanner_ubnt") !== "0";
+      UBNT.defaults = JSON.parse(localStorage.getItem("lvplanner_defaults") || "{}") || {};
+    } catch(e){}
+  })();
+  function catItem(type, sku){
+    var c = CATALOG[type]; if (!c || !sku) return null;
+    for (var i=0;i<c.items.length;i++) if (c.items[i].sku === sku) return c.items[i];
+    return null;
+  }
+  function defaultSku(type){ var d = UBNT.defaults[type]; return catItem(type, d) ? d : CAT_DEFAULTS_BUILTIN[type]; }
+  function currentSku(type){ var c = ui && ui.chosenModel && ui.chosenModel[type]; return catItem(type, c) ? c : defaultSku(type); }
+  // The Ubiquiti model of a placed point (old points: Pro/LR map across, others use the default model)
+  function markerSku(m){
+    if (!m || !CATALOG[m.type]) return null;
+    if (catItem(m.type, m.model)) return m.model;
+    if (isWifiType(m.type) && m.type === "wifi" && LEGACY_AP[m.apModel]) return LEGACY_AP[m.apModel];
+    return defaultSku(m.type);
+  }
+  // What to show for a point's model: tag + name + colour, or null (no tag)
+  function markerVariant(m){
+    if (!m) return null;
+    if (UBNT.on){
+      var sku = markerSku(m); if (!sku) return null;
+      var it = catItem(m.type, sku), t = getTypeDef(m.type);
+      return { key:sku, name:it.name, tag:it.tag, color:t.color };
+    }
+    var am = apModelOf(m); if (!am) return null;
+    return { key:am, name:AP_MODELS[am].label, tag:AP_MODELS[am].tag, color:AP_MODELS[am].color, tier:true };
+  }
+  function variantOrder(type, key){
+    if (UBNT.on){ var c = CATALOG[type]; if (!c) return 0; for (var i=0;i<c.items.length;i++) if (c.items[i].sku===key) return i+1; return 999; }
+    for (var j=0;j<AP_MODEL_ORDER.length;j++) if (AP_MODEL_ORDER[j][0]===key) return j; return 99;
+  }
+  // Legend / summary rows: one per type, split by model (Ubiquiti) or Standard / Pro / LR (generic)
   function legendRows(markers){
     var rows = [];
     allTypeKeys().forEach(function(key){
       var ms = markers.filter(function(m){ return m.type===key; }); if (!ms.length) return;
-      var t = getTypeDef(key);
-      if (!isWifiType(key)){ rows.push({ key:key, model:"", count:ms.length, label:t.label }); return; }
-      AP_MODEL_ORDER.forEach(function(o){
-        var c = ms.filter(function(m){ return apModelOf(m)===o[0]; }).length;
-        if (c) rows.push({ key:key, model:o[0], count:c, label:t.label + (o[0] ? " " + AP_MODELS[o[0]].label : "") });
+      var t = getTypeDef(key), groups = {}, order = [];
+      ms.forEach(function(m){
+        var v = markerVariant(m), k = v ? v.key : "";
+        if (!groups[k]){ groups[k] = { v:v, count:0 }; order.push(k); }
+        groups[k].count++;
+      });
+      order.sort(function(a,b){ return variantOrder(key,a) - variantOrder(key,b); });
+      order.forEach(function(k){
+        var g = groups[k], v = g.v;
+        var label = !v ? t.label : (v.tier ? t.label + " " + v.name : v.name);
+        var long = !v ? t.label : (v.tier ? t.label + " " + v.name : t.label + " — " + v.name);
+        rows.push({ key:key, v:v, model:v ? v.key : "", count:g.count, label:label, long:long, color: v && v.tier ? v.color : t.color });
       });
     });
     return rows;
   }
   // r = radius of the icon body; the tag sits on its lower-right edge (same spot on screen and in the PDF)
-  function apTagHtml(model, r){
-    var d = AP_MODELS[model]; if (!d) return "";
-    return '<span class="ap-tag" style="background:'+d.color+';font-size:'+Math.max(6, r*0.62).toFixed(1)+'px;'+
-      'left:calc(50% + '+(r*0.9).toFixed(1)+'px);top:calc(50% + '+(r*0.85).toFixed(1)+'px);">'+d.tag+'</span>';
+  function tagHtml(v, r){
+    if (!v) return "";
+    return '<span class="ap-tag" style="background:'+v.color+';font-size:'+Math.max(6, r*0.62).toFixed(1)+'px;'+
+      'left:calc(50% + '+(r*0.9).toFixed(1)+'px);top:calc(50% + '+(r*0.85).toFixed(1)+'px);">'+escapeHtml(v.tag)+'</span>';
   }
-  function drawApTagOnCanvas(ctx, model, cx, cy, r){
-    var d = AP_MODELS[model]; if (!d) return;
+  function drawTagOnCanvas(ctx, v, cx, cy, r){
+    if (!v) return;
     var fs = Math.max(6, r*0.62);
     ctx.save();
     ctx.font = "bold " + fs + "px Arial, sans-serif";
-    var pw = ctx.measureText(d.tag).width + fs*0.64, ph = fs*1.2 + 2;
+    var pw = ctx.measureText(v.tag).width + fs*0.64, ph = fs*1.2 + 2;
     var tx = cx + r*0.9, ty = cy + r*0.85;
     roundRect(ctx, tx - pw/2, ty - ph/2, pw, ph, fs*0.35);
-    ctx.fillStyle = d.color; ctx.fill();
+    ctx.fillStyle = v.color; ctx.fill();
     ctx.lineWidth = Math.max(1, fs*0.1); ctx.strokeStyle = "#ffffff"; ctx.stroke();
     ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(d.tag, tx, ty + fs*0.04);
+    ctx.fillText(v.tag, tx, ty + fs*0.04);
     ctx.restore();
   }
+
   function allTypeKeys(){ return BUILTIN_ORDER.concat(Object.keys(project.customTypes)); }
 
   /* ============== Project / floor data model ============== */
@@ -970,7 +1308,7 @@
    "multiPageOverlay","multiPageCount","multiPageList","multiPageImportBtn","multiPageCancelBtn","multiPageAllBtn","multiPageNoneBtn","multiPageSelCount",
    "aiScanBtn","aiKeyLink","aiKeyOverlay","aiKeyInput","aiKeySaveBtn","aiKeyForgetBtn","aiKeyCancelBtn","detectPointsOverlay","detectPointsCount","detectPointsList","detectPointsImportBtn","detectPointsCancelBtn",
    "downloadReadyOverlay","downloadReadyLink","downloadReadySummaryLink","downloadReadyCloseBtn",
-   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn",
+   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","modelPane","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
    "addRevisionBtn","revisionList","revisionForm","revisionNoteInput","revisionCancelBtn","revisionSaveBtn"
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
@@ -1024,10 +1362,12 @@
     btn.style.setProperty("--type-color", typeDef.color);
     btn.dataset.tool = key;
     var delHtml = deletable ? '<button class="type-del" data-del="'+key+'" title="Remove type">&times;</button>' : "";
+    var modelChip = (CATALOG[key] && sizable) ? '<span class="type-model" data-model-for="'+key+'" title="Choose model"></span>' : "";
     btn.innerHTML = '<span class="type-badge">'+typeIconSVG(typeDef, 0)+'</span>'+
-      '<span class="type-name">'+escapeHtml(typeDef.label)+'</span><span class="type-count" id="count-'+key+'">0</span>'+delHtml;
+      '<span class="type-name">'+escapeHtml(typeDef.label)+'</span>'+modelChip+'<span class="type-count" id="count-'+key+'">0</span>'+delHtml;
     btn.addEventListener("click", function(e){
       if (e.target.closest(".type-del")) return;
+      if (e.target.closest(".type-model")){ if (ui.activeTool !== key) setActiveTool(key); openModelPicker(key); return; }
       setActiveTool(key);
     });
     wrap.appendChild(btn);
@@ -1117,15 +1457,23 @@
     }
   });
 
+  var TYPE_GROUPS = [["Wi-Fi",["wifi","outdoorwifi"]],["Cameras",["cctv","cctvoutdoor"]],["Network",["network","ipphone","uplink"]],
+    ["TV & audio",["tv","dtv","speaker"]],["Infrastructure",["rack"]],["Access & intercom",["intercom","intercomscreen","smartlock"]]];
   function rebuildTypeList(){
     el.typeList.innerHTML = "";
-    BUILTIN_ORDER.forEach(function(key){
-      createToolButton(el.typeList, key, BUILTIN_TYPES[key], false, true);
+    var done = {};
+    function head(t){ var h = document.createElement("div"); h.className = "group-h"; h.textContent = t; el.typeList.appendChild(h); }
+    TYPE_GROUPS.forEach(function(g){
+      var keys = g[1].filter(function(k){ return BUILTIN_TYPES[k]; }); if (!keys.length) return;
+      head(g[0]);
+      keys.forEach(function(key){ done[key] = true; createToolButton(el.typeList, key, BUILTIN_TYPES[key], false, true); });
     });
-    Object.keys(project.customTypes).forEach(function(key){
-      createToolButton(el.typeList, key, project.customTypes[key], true, true);
-    });
+    var rest = BUILTIN_ORDER.filter(function(k){ return !done[k]; });
+    if (rest.length){ head("Other"); rest.forEach(function(key){ createToolButton(el.typeList, key, BUILTIN_TYPES[key], false, true); }); }
+    var customs = Object.keys(project.customTypes);
+    if (customs.length){ head("Custom"); customs.forEach(function(key){ createToolButton(el.typeList, key, project.customTypes[key], true, true); }); }
     refreshToolButtons();
+    refreshModelChips();
   }
 
   function deleteCustomType(key){
@@ -1141,6 +1489,13 @@
 
   createToolButton(el.measureToolList, "measure", TOOL_ICONS.measure, false, false);
   createToolButton(el.cableToolList, "cable", TOOL_ICONS.cable, false, false);
+  createToolButton(el.wallToolList, "wall", TOOL_ICONS.wall, false, false);
+  Object.keys(MATERIALS).forEach(function(k){
+    var o = document.createElement("option"); o.value = k; o.textContent = MATERIALS[k].label + " (~" + MATERIALS[k].db + " dB)";
+    if (k === ui.wallMaterial) o.selected = true;
+    el.wallMaterialSelect.appendChild(o);
+  });
+  el.wallMaterialSelect.addEventListener("change", function(){ ui.wallMaterial = el.wallMaterialSelect.value; });
 
   function setActiveTool(key){
     ui.activeTool = (ui.activeTool === key) ? null : key;
@@ -1211,7 +1566,7 @@
       var n = f ? f.markers.filter(function(m){ return m.type===key; }).length : 0;
       total += n;
       var elc = document.getElementById("count-"+key);
-      if (elc) elc.textContent = n;
+      if (elc){ elc.textContent = n; elc.classList.toggle("has", n > 0); }
     });
     el.totalCount.textContent = total;
 
@@ -1242,6 +1597,8 @@
       el.legendToggle.setAttribute("aria-checked", "true");
     }
     refreshCameraConeToggles();
+    refreshHeatmapToggles();
+    renderSummary();
 
     if (!f || !f.pdfDoc){ el.scaleReadout.textContent = "Upload a drawing to begin"; }
     else {
@@ -2029,7 +2386,7 @@
 
   function computeFitScale(nativeW, nativeH){
     var availW = Math.max(200, el.canvasScroll.clientWidth - 72);
-    var availH = Math.max(200, el.canvasScroll.clientHeight - 72);
+    var availH = Math.max(200, el.canvasScroll.clientHeight - 164);
     var s = Math.min(availW/nativeW, availH/nativeH);
     return Math.max(0.3, Math.min(3.5, s));
   }
@@ -2041,7 +2398,7 @@
     if (ui.activeTool === "measure") el.hintText.textContent = ui.measureFirstPoint ? "Click the second point to finish the measurement" : "Click two points to measure a distance";
     else if (ui.activeTool === "wall") el.hintText.textContent = ui.wallFirstPoint ? "Click the second point to finish the wall" : "Click two points to draw a wall segment";
     else if (ui.activeTool === "cable") el.hintText.textContent = ui.cableFirstPoint ? "Click the destination point to finish the cable route" : "Click the start, then the destination, to route a cable";
-    else if (ui.activeTool && getTypeDef(ui.activeTool)) el.hintText.textContent = "Tool: " + getTypeDef(ui.activeTool).label + (IS_TOUCH_UI ? " \u2014 tap to place \u00b7 tap the type again to deselect \u00b7 two fingers to move/zoom" : " \u2014 click to place \u00b7 right-click to deselect");
+    else if (ui.activeTool && getTypeDef(ui.activeTool)) el.hintText.textContent = "Placing " + getTypeDef(ui.activeTool).label + (UBNT.on && CATALOG[ui.activeTool] ? " \u00b7 " + catItem(ui.activeTool, currentSku(ui.activeTool)).name : "") + (IS_TOUCH_UI ? " \u2014 tap to place \u00b7 tap the type again to deselect \u00b7 two fingers to move/zoom" : " \u2014 click to place \u00b7 right-click to deselect");
     else el.hintText.textContent = IS_TOUCH_UI ? "Select a tool from the left \u00b7 pinch to zoom \u00b7 drag to move" : "Select a tool from the left \u00b7 Ctrl+wheel to zoom \u00b7 Ctrl+drag to pan";
   }
 
@@ -2096,7 +2453,7 @@
       wrap.innerHTML = typeIconSVG(t, m.rotation||0);
       var svgEl = wrap.querySelector("svg");
       if (svgEl){ var sz = markerScreenPx(f, m); svgEl.style.width = sz+"px"; svgEl.style.height = sz+"px";
-        if (apModelOf(m)) wrap.insertAdjacentHTML("beforeend", apTagHtml(apModelOf(m), sz*15/46)); }
+        var mv = markerVariant(m); if (mv) wrap.insertAdjacentHTML("beforeend", tagHtml(mv, sz*15/46)); }
       if (m.note){ var dot=document.createElement("span"); dot.className="note-dot"; wrap.appendChild(dot); }
       wrap.addEventListener("pointerdown", function(e){
         e.stopPropagation();
@@ -2147,7 +2504,7 @@
     } else {
       rowsHtml = typesPresent.map(function(row){
         var t = getTypeDef(row.key);
-        return '<div class="legend-row"><span class="legend-icon" style="position:relative;'+(row.model?'margin-right:9px;':'')+'">'+typeIconSVG(t,0)+apTagHtml(row.model, 5.5)+'</span>'+
+        return '<div class="legend-row"><span class="legend-icon" style="position:relative;'+(row.v?'margin-right:'+(8+row.v.tag.length*2)+'px;':'')+'">'+typeIconSVG(t,0)+tagHtml(row.v, 5.5)+'</span>'+
           '<span>'+escapeHtml(row.label.toUpperCase())+' ('+row.count+')</span></div>';
       }).join("");
     }
@@ -2224,6 +2581,159 @@
     renderLegendContent();
     updateAllReadouts();
   });
+
+  /* ============== Shell: rail, theme, summary, layer toggles ============== */
+  function showPane(name, force){
+    var app = document.getElementById("app");
+    var paneEl = el.sidePanel.querySelector('.pane[data-pane="'+name+'"]');
+    if (!force && paneEl && paneEl.classList.contains("on") && !app.classList.contains("panel-collapsed")){ app.classList.add("panel-collapsed"); return; }
+    app.classList.remove("panel-collapsed");
+    var railName = name === "models" ? "points" : name;
+    el.rail.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.dataset.pane === railName); });
+    el.sidePanel.querySelectorAll(".pane").forEach(function(p){ p.classList.toggle("on", p.dataset.pane === name); });
+  }
+
+  /* ---------- Ubiquiti model picker ---------- */
+  ui.chosenModel = {};
+  var picker = { type:null, group:"All", q:"" };
+  function refreshModelChips(){
+    document.querySelectorAll("[data-model-for]").forEach(function(chip){
+      var k = chip.getAttribute("data-model-for"), it = catItem(k, currentSku(k));
+      chip.textContent = it ? it.name + " \u203a" : "";
+    });
+  }
+  function openModelPicker(type){
+    picker = { type:type, group:"All", q:"" };
+    renderModelPicker();
+    showPane("models", true);
+  }
+  function renderModelPicker(){
+    var type = picker.type, cat = CATALOG[type]; if (!cat) return;
+    var t = getTypeDef(type), cur = currentSku(type), def = defaultSku(type);
+    var placed = {}; var f = floor();
+    project.floors.forEach(function(fl){ fl.markers.forEach(function(m){ if (m.type===type){ var k = markerSku(m); placed[k] = (placed[k]||0)+1; } }); });
+    var q = picker.q.trim().toLowerCase();
+    var items = cat.items.filter(function(it){
+      return (picker.group==="All" || it.group===picker.group) && (!q || (it.name+" "+it.spec+" "+it.sku).toLowerCase().indexOf(q) > -1);
+    });
+    var groups = picker.group==="All" ? cat.groups : [picker.group];
+    var icon = typeIconSVG(t, 0);
+    el.modelPane.innerHTML =
+      '<div class="mp-head"><button type="button" class="mp-back" id="mpBack" title="Back to points"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg></button>'+
+      '<span class="mp-ic" style="background:color-mix(in srgb, '+t.color+' 11%, transparent)">'+icon+'</span>'+
+      '<div><b>'+escapeHtml(t.label)+'</b><small>'+cat.items.length+' Ubiquiti models</small></div></div>'+
+      '<input type="search" class="mp-search" id="mpSearch" placeholder="Search models (e.g. Pro, G6, PTZ)" value="'+escapeHtml(picker.q)+'">'+
+      '<div class="mp-chips">'+["All"].concat(cat.groups).map(function(g){ return '<button type="button" data-g="'+escapeHtml(g)+'"'+(g===picker.group?' class="on"':'')+'>'+escapeHtml(g)+'</button>'; }).join("")+'</div>'+
+      groups.map(function(g){
+        var rows = items.filter(function(it){ return it.group===g; }); if (!rows.length) return "";
+        return '<div class="mp-sub">'+escapeHtml(g)+'</div><div class="mp-list">'+rows.map(function(it){
+          return '<button type="button" class="mp-row'+(it.sku===cur?' on':'')+'" data-sku="'+escapeHtml(it.sku)+'"><span class="mp-dev">'+icon+'</span>'+
+            '<span class="mp-t"><b>'+escapeHtml(it.name)+'</b><small>'+escapeHtml(it.spec)+'</small></span>'+
+            (it.sku===def?'<span class="mp-def">Default</span>':'')+(placed[it.sku]?'<span class="mp-count">'+placed[it.sku]+'</span>':'')+
+            '<span class="mp-tag" style="background:'+t.color+'">'+escapeHtml(it.tag)+'</span></button>';
+        }).join("")+'</div>';
+      }).join("") + (items.length ? "" : '<p class="pane-note" style="margin-top:12px;">No models match.</p>') +
+      '<p class="pane-note" style="margin-top:14px;">The selected model is what you place next. To change a placed point, tap it, then \u25be. Default models are set in Settings.</p>';
+    document.getElementById("mpBack").onclick = function(){ showPane("points", true); };
+    var search = document.getElementById("mpSearch");
+    search.oninput = function(){ picker.q = search.value; renderModelPicker(); var s2 = document.getElementById("mpSearch"); s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length); };
+    el.modelPane.querySelectorAll(".mp-chips button").forEach(function(b){ b.onclick = function(){ picker.group = b.getAttribute("data-g"); renderModelPicker(); }; });
+    el.modelPane.querySelectorAll(".mp-row").forEach(function(b){ b.onclick = function(){
+      ui.chosenModel[type] = b.getAttribute("data-sku");
+      if (ui.activeTool !== type) setActiveTool(type);
+      refreshModelChips(); updateHint(); renderModelPicker();
+      showStatus(catItem(type, ui.chosenModel[type]).name + " selected \u2014 click the drawing to place");
+    }; });
+  }
+
+  /* ---------- Ubiquiti mode switch + default models ---------- */
+  function renderDefaultModels(){
+    el.defaultModelsList.innerHTML = Object.keys(CATALOG).map(function(type){
+      var cat = CATALOG[type], def = defaultSku(type);
+      return '<div class="def-row"><span>'+escapeHtml(getTypeDef(type).label)+'</span><select class="select-input" data-def-type="'+type+'">'+
+        cat.items.map(function(it){ return '<option value="'+escapeHtml(it.sku)+'"'+(it.sku===def?' selected':'')+'>'+escapeHtml(it.name)+'</option>'; }).join("")+'</select></div>';
+    }).join("");
+    el.defaultModelsList.querySelectorAll("select").forEach(function(sel){
+      sel.addEventListener("change", function(){
+        UBNT.defaults[sel.getAttribute("data-def-type")] = sel.value;
+        try { localStorage.setItem("lvplanner_defaults", JSON.stringify(UBNT.defaults)); } catch(e){}
+        refreshModelChips(); updateHint(); renderMarkers(); updateAllReadouts();
+      });
+    });
+  }
+  function applyUbntMode(){
+    document.documentElement.classList.toggle("ubnt", UBNT.on);
+    el.ubntToggle.classList.toggle("on", UBNT.on);
+    el.ubntToggle.setAttribute("aria-checked", UBNT.on ? "true" : "false");
+    el.defaultModelsBlock.style.display = UBNT.on ? "" : "none";
+    if (!UBNT.on && el.modelPane.classList.contains("on")) showPane("points", true);
+    refreshModelChips(); updateHint();
+    if (floor()){ renderMarkers(); updateAllReadouts(); }
+  }
+  el.ubntToggle.addEventListener("click", function(){
+    UBNT.on = !UBNT.on;
+    try { localStorage.setItem("lvplanner_ubnt", UBNT.on ? "1" : "0"); } catch(e){}
+    closeEditor();
+    applyUbntMode();
+    showStatus(UBNT.on ? "Ubiquiti mode on" : "Generic mode \u2014 no brand names");
+  });
+  renderDefaultModels();
+  applyUbntMode();
+  el.rail.querySelectorAll("button").forEach(function(b){ b.addEventListener("click", function(){ showPane(b.dataset.pane); }); });
+
+  function applyTheme(t){
+    t = t === "dark" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem("lvplanner_theme", t); } catch(e){}
+    var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute("content", t === "dark" ? "#151920" : "#ffffff");
+    document.querySelectorAll("[data-theme-set]").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-theme-set") === t); });
+  }
+  (function(){ var t = "light"; try { t = localStorage.getItem("lvplanner_theme") || "light"; } catch(e){} applyTheme(t); })();
+  el.themeToggleBtn.addEventListener("click", function(){ applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"); });
+  document.querySelectorAll("[data-theme-set]").forEach(function(b){ b.addEventListener("click", function(){ applyTheme(b.getAttribute("data-theme-set")); }); });
+  el.summaryToggleBtn.addEventListener("click", function(){ document.getElementById("app").classList.toggle("show-summary"); });
+
+  function toggleHeatmap(){
+    var f = floor(); if (!f || !f.pdfDoc) return;
+    if (!f.heatmapOn && !f.markers.some(function(m){ return isWifiType(m.type); })){ showStatus("Place Wi-Fi points first to see coverage"); return; }
+    f.heatmapOn = !f.heatmapOn;
+    paintHeatmap(); updateAllReadouts();
+  }
+  function refreshHeatmapToggles(){
+    var f = floor(), on = !!(f && f.heatmapOn);
+    document.querySelectorAll(".heatmap-toggle").forEach(function(btn){
+      btn.disabled = !f || !f.pdfDoc;
+      btn.classList.toggle("on", on); btn.setAttribute("aria-checked", on ? "true" : "false");
+    });
+  }
+  document.querySelectorAll(".heatmap-toggle").forEach(function(btn){ btn.addEventListener("click", function(e){ e.stopPropagation(); toggleHeatmap(); }); });
+  document.querySelectorAll("#dockConesBtn, .layer-row .camera-cone-toggle").forEach(function(btn){ btn.addEventListener("click", function(e){ e.stopPropagation(); toggleCameraCones(); }); });
+
+  var SUM_GROUPS = [
+    ["Access points", function(m){ return isWifiType(m.type); }],
+    ["Cameras", function(m){ return isCameraType(m.type); }],
+    ["Data points", function(m){ return m.type === "network" || m.type === "dtv" || m.type === "uplink" || m.type === "ipphone"; }]
+  ];
+  function renderSummary(){
+    if (!el.sumRows) return;
+    var f = floor();
+    el.sumFloorName.textContent = f ? f.name : "This floor";
+    el.sumPageInfo.textContent = f && f.pdfDoc ? ("Page " + f.currentPage + " of " + f.numPages) : "";
+    var ms = f ? f.markers : [];
+    var rows = legendRows(ms), total = ms.length;
+    el.sumBar.innerHTML = total ? rows.map(function(r){
+      var c = r.color;
+      return '<i style="width:'+(r.count/total*100).toFixed(2)+'%;background:'+c+'"></i>';
+    }).join("") : "";
+    el.sumRows.innerHTML = rows.length ? rows.map(function(r){
+      var c = r.color;
+      return '<div class="srow"><span class="sdot" style="background:'+c+'"></span>'+escapeHtml(r.label)+'<b>'+r.count+'</b></div>';
+    }).join("") : '<p class="sempty">No points on this floor yet. Pick a point type on the left and click the drawing.</p>';
+    var all = []; project.floors.forEach(function(x){ all = all.concat(x.markers); });
+    el.sumFloorsInfo.textContent = project.floors.length + (project.floors.length === 1 ? " floor" : " floors");
+    el.sumVilla.innerHTML = SUM_GROUPS.map(function(g){ return '<div><small>'+g[0]+'</small><b>'+all.filter(g[1]).length+'</b></div>'; }).join("") +
+      '<div><small>All points</small><b>'+all.length+'</b></div>';
+  }
 
   function toggleCameraCones(){
     var f = floor(); if (!f) return;
@@ -2358,6 +2868,7 @@
     var marker = { id:"pt"+Date.now()+Math.random().toString(16).slice(2), type:type, page:f.currentPage, xRatio:xRatio, yRatio:yRatio, note:"", rotation:0, size:getTypeSizeDefault(type) };
     if (isCameraType(type)){ marker.fovAngle = 80; marker.fovRange = 8; }
     if (type === "rack"){ marker.rackItems = []; }
+    if (UBNT.on && CATALOG[type]) marker.model = currentSku(type);
     f.markers.push(marker);
     f.undoStack.push({ action:"add", kind:"marker", item:marker });
     renderMarkers(); updateAllReadouts();
@@ -2373,6 +2884,7 @@
       note: m.note, rotation: m.rotation||0, size: m.size||1
     };
     if (apModelOf(m)) copy.apModel = m.apModel;
+    if (m.model) copy.model = m.model;
     if (isCameraType(m.type)){ copy.fovAngle = m.fovAngle||80; copy.fovRange = m.fovRange||8; }
     if (m.type === "rack"){ copy.rackItems = (m.rackItems||[]).slice(); }
     f.markers.push(copy);
@@ -2461,7 +2973,13 @@
           '<div id="popRackPreview" style="margin:2px 0 10px;"></div>';
       }
       var modelHtml = "";
-      if (isWifiType(m.type)){
+      if (UBNT.on && CATALOG[m.type]){
+        var curSku = markerSku(m), cat = CATALOG[m.type];
+        modelHtml = '<label class="popover-hint" style="display:block;margin-bottom:5px;">Model</label><select id="popModelSelect">'+
+          cat.groups.map(function(g){ return '<optgroup label="'+escapeHtml(g)+'">'+cat.items.filter(function(it){ return it.group===g; }).map(function(it){
+            return '<option value="'+escapeHtml(it.sku)+'"'+(it.sku===curSku?' selected':'')+'>'+escapeHtml(it.name)+'</option>'; }).join("")+'</optgroup>'; }).join("")+'</select>';
+        title = t.label + " \u00b7 " + catItem(m.type, curSku).name;
+      } else if (isWifiType(m.type)){
         modelHtml = '<label class="popover-hint" style="display:block;margin-bottom:5px;">Model</label><div class="seg" id="popApModel">'+
           AP_MODEL_ORDER.map(function(o){ return '<button type="button" data-model="'+o[0]+'"'+(apModelOf(m)===o[0]?' class="on"':'')+'>'+o[1]+'</button>'; }).join("")+'</div>';
         if (apModelOf(m)) title = t.label + " \u00b7 " + AP_MODELS[apModelOf(m)].label;
@@ -2513,7 +3031,7 @@
     var left = Math.min(window.innerWidth-popW-16, Math.max(16, rect.left + (rect.width||0)/2 - popW/2));
     var top = Math.min(window.innerHeight-220, rect.bottom+8);
     el.editorPopover.style.left = left+"px"; el.editorPopover.style.top = top+"px";
-    el.editorPopover.style.maxHeight = Math.max(160, window.innerHeight - top - 12) + "px";
+    el.editorPopover.style.maxHeight = Math.max(160, popBottomLimit() - top) + "px";
     el.editorPopover.classList.add("visible");
 
     var saveBtn = document.getElementById("popSaveBtn"); var deleteBtn = document.getElementById("popDeleteBtn");
@@ -2570,6 +3088,13 @@
         if (!isNaN(v)) applySize(v);
       });
 
+      var modelSel = document.getElementById("popModelSelect");
+      if (modelSel) modelSel.addEventListener("change", function(){
+        var mk = f.markers.find(function(x){ return x.id===id; }); if (!mk) return;
+        mk.model = modelSel.value;
+        el.popoverTypeLabel.textContent = getTypeDef(mk.type).label + " \u00b7 " + catItem(mk.type, mk.model).name;
+        renderMarkers(); updateAllReadouts();
+      });
       var apSeg = document.getElementById("popApModel");
       if (apSeg) apSeg.querySelectorAll("button").forEach(function(btn){
         btn.addEventListener("click", function(){
@@ -2678,14 +3203,15 @@
     bar.style.left = left + "px"; bar.style.top = top + "px";
 
     var pop = el.editorPopover;
+    var floorY = popBottomLimit();
     if (qb.expanded && pop.classList.contains("visible")){
       pop.style.visibility = inView ? "visible" : "hidden";
       var pw = pop.offsetWidth;
       var pl = Math.min(window.innerWidth - pw - 8, Math.max(8, cx - pw/2));
       var pt, maxH;
-      if (barBelow){ pt = top + bh + 6; maxH = window.innerHeight - pt - 8; }
+      if (barBelow){ pt = top + bh + 6; maxH = floorY - pt; }
       else {
-        var spaceBelow = window.innerHeight - ir.bottom - 16, spaceAbove = top - 14;
+        var spaceBelow = floorY - ir.bottom - 8, spaceAbove = top - 14;
         if (spaceBelow >= 300 || spaceBelow >= spaceAbove){ pt = ir.bottom + 8; maxH = spaceBelow; }
         else { maxH = spaceAbove; pt = top - 6 - Math.min(pop.scrollHeight, maxH); }
       }
@@ -2693,6 +3219,12 @@
       pop.style.left = pl + "px"; pop.style.top = Math.max(8, pt) + "px";
     }
     qb.raf = requestAnimationFrame(qbTick);
+  }
+  // Lowest point a floating panel may reach: just above the zoom/page bar
+  function popBottomLimit(){
+    var d = document.getElementById("dock");
+    var r = d && d.offsetParent ? d.getBoundingClientRect() : null;
+    return (r && r.height ? r.top : window.innerHeight) - 8;
   }
   function qbRotate(delta){
     var mk = qbMarker(); if (!mk) return;
@@ -3279,7 +3811,7 @@
     var targetSize = Math.max(30, Math.min(w,h)*0.024) * (marker.size||1);
     var scale = targetSize/30;
     drawTypeIconOnCanvas(ctx, t, x, y, scale, marker.rotation||0);
-    if (apModelOf(marker)) drawApTagOnCanvas(ctx, apModelOf(marker), x, y, targetSize/2);
+    drawTagOnCanvas(ctx, markerVariant(marker), x, y, targetSize/2);
   }
   function drawWallOnCanvas(ctx, wall, w, h){
     var mat = MATERIALS[wall.material] || MATERIALS.drywall;
@@ -3368,7 +3900,7 @@
       var iconCy = rowY + rowH/2;
       var iconScale = Math.min(iconCol, rowH*0.85) / 30;
       drawTypeIconOnCanvas(ctx, t, bx+padX*0.5+iconCol/2, iconCy, iconScale, 0);
-      if (row.model) drawApTagOnCanvas(ctx, row.model, bx+padX*0.5+iconCol/2, iconCy, 15*iconScale);
+      if (row.v) drawTagOnCanvas(ctx, row.v, bx+padX*0.5+iconCol/2, iconCy, 15*iconScale);
       ctx.beginPath(); ctx.moveTo(divX, rowY+3); ctx.lineTo(divX, rowY+rowH-3);
       ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = "#0f172a";
@@ -3556,9 +4088,9 @@
     legendRows(allMarkers).forEach(function(row){
       var t=getTypeDef(row.key); var count=row.count;
       total+=count;
-      var rgb=hexToRgb(row.model ? AP_MODELS[row.model].color : t.color);
+      var rgb=hexToRgb(row.color);
       doc.setFillColor(rgb.r,rgb.g,rgb.b); doc.circle(60,y-5,7,"F");
-      doc.setFont("helvetica","normal"); doc.setFontSize(13); doc.setTextColor(231,237,245); doc.text(row.label, 80, y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(13); doc.setTextColor(231,237,245); doc.text(row.long, 80, y);
       doc.setFont("helvetica","bold"); doc.text(String(count), 500, y, { align:"right" });
       y+=rowH;
     });
