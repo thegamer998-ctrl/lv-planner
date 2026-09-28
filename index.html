@@ -353,7 +353,15 @@
   .rail button.on{ background:var(--accent-soft); color:var(--accent); }
   .rail .rail-bottom{ margin-top:auto; }
 
-  .side-panel{ background:var(--bg-panel); border-right:1px solid var(--hairline); overflow-y:auto; min-width:0; }
+  .side-panel{ background:var(--bg-panel); border-right:1px solid var(--hairline); overflow-y:auto; overflow-x:hidden; min-width:0; overscroll-behavior:contain; }
+  #app, .appbar, .rail, .summary{ overflow-x:hidden; }
+  html, body{ overscroll-behavior:none; }
+  .pane{ min-width:0; max-width:100%; }
+  .pane *{ min-width:0; max-width:100%; }
+  .pane .toggle-switch{ flex-shrink:0; }
+  .layer-row .lbl{ min-width:0; padding-right:10px; }
+  .def-row select{ flex:1; width:auto; min-width:0; }
+  .def-row span{ width:86px; }
   .pane{ display:none; padding:16px 14px 20px; }
   .pane.on{ display:block; }
   .pane > h2{ font-family:var(--font-display); font-size:15px; font-weight:700; margin:0 0 12px; display:flex; align-items:center; justify-content:space-between; }
@@ -404,6 +412,51 @@
   .def-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
   .def-row span{ width:92px; font-size:12px; color:var(--text-muted); flex-shrink:0; }
   .def-row select{ margin:0; }
+  /* Rack builder */
+  .rk-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .rk-tabs button{ border:1px solid var(--hairline-2); background:var(--bg-panel); border-radius:20px; padding:5px 12px; font-size:12px; font-weight:600; color:var(--text-muted); }
+  .rk-tabs button.on{ background:var(--text-main); border-color:var(--text-main); color:var(--bg-panel); }
+  .rk-tabs .rk-add{ color:var(--accent); border-style:dashed; }
+  .rk-name{ width:100%; height:34px; border:1px solid var(--hairline-2); border-radius:9px; background:var(--bg-panel-raised); color:var(--text-main); padding:0 10px; font-size:13px; font-weight:650; margin-bottom:10px; }
+  .rk-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px; }
+  .rk-grid label{ font-size:10.5px; color:var(--text-dim); font-weight:650; text-transform:uppercase; letter-spacing:.05em; display:block; }
+  .rk-grid select{ width:100%; margin:3px 0 0; padding:6px 5px; }
+  .rk-floors{ display:flex; gap:5px; flex-wrap:wrap; margin:4px 0 10px; }
+  .rk-floors button{ border:1px solid var(--hairline-2); background:var(--bg-panel); border-radius:14px; padding:3px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); }
+  .rk-floors button.on{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+  .rk-floors button:disabled{ opacity:.45; cursor:not-allowed; }
+  .rk-use{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-muted); margin-bottom:8px; }
+  .rk-use .trk{ flex:1; height:7px; border-radius:5px; background:var(--bg-panel-raised); overflow:hidden; }
+  .rk-use .trk i{ display:block; height:100%; background:var(--accent); }
+  .rk-use.over .trk i{ background:var(--danger); }
+  .rk-warn{ font-size:11.5px; color:var(--danger); background:var(--danger-soft); border-radius:8px; padding:7px 9px; margin:0 0 8px; }
+  .rk-actions{ display:flex; gap:6px; margin-bottom:12px; }
+  .rk-actions button{ flex:1; }
+  .rk-actions .action-btn{ margin:0; padding:8px 6px; font-size:12px; }
+  .rk-elev{ position:relative; border:2px solid #334155; border-radius:6px; background:#1e252f; margin-bottom:12px; touch-action:none; user-select:none; -webkit-user-select:none; }
+  .rk-slot{ height:30px; border-bottom:1px solid #2c3542; display:flex; align-items:center; padding-left:6px; color:#6b7788; font-size:10px; font-family:var(--font-mono); }
+  .rk-slot:last-child{ border-bottom:none; }
+  .rk-item{ position:absolute; left:28px; right:3px; border-radius:5px; background:#3b4656; color:#f1f5f9; display:flex; align-items:center; gap:3px; padding:0 4px 0 8px;
+    font-size:11.5px; font-weight:600; cursor:grab; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); touch-action:none; }
+  .rk-item .led{ width:6px; height:6px; border-radius:50%; background:#22c55e; flex-shrink:0; }
+  .rk-item .nm{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rk-item .nm small{ color:#9aa6b6; font-weight:500; margin-left:5px; }
+  .rk-item button{ width:18px; height:20px; font-size:9.5px !important; border:none; background:rgba(255,255,255,.08); color:#e2e8f0; border-radius:5px; font-size:11px; padding:0; flex-shrink:0; }
+  .rk-item button:hover{ background:rgba(255,255,255,.18); }
+  .rk-item.k-gw{ background:#0f4fb3; } .rk-item.k-sw{ background:#1d5fd1; } .rk-item.k-nvr{ background:#27477a; }
+  .rk-item.k-pp{ background:#475569; } .rk-item.k-ups{ background:#374151; } .rk-item.k-acc{ background:#3f4a5a; }
+  .rk-item.over{ background:var(--danger); }
+  .rk-item.dragging{ opacity:.35; }
+  .rk-ghost{ position:absolute; left:28px; right:3px; border:2px dashed #22c55e; border-radius:5px; background:rgba(34,197,94,.14); pointer-events:none; }
+  .rk-ghost.bad{ border-color:#ef4444; background:rgba(239,68,68,.14); }
+  .rk-cat{ margin-top:6px; }
+  .rk-cat .mp-sub{ margin-top:10px; }
+  .rk-cat .chips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .rk-cat .chips button{ border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); border-radius:8px; padding:5px 8px; font-size:11.5px; font-weight:600; text-align:left; }
+  .rk-cat .chips button small{ color:var(--text-muted); font-weight:500; margin-left:4px; }
+  .rk-cat .chips button:hover{ border-color:var(--accent); color:var(--accent); }
+  .hw-list .srow{ font-size:12px; }
+  .hw-list .hw-h{ font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); font-weight:650; margin:10px 0 2px; }
   .type-count.has{ background:var(--accent-soft); color:var(--accent); }
   #typeList .type-expand-btn{ position:absolute; right:5px; bottom:5px; width:24px; height:22px; background:none; border:none; font-size:11px; border-radius:6px; }
   #typeList .type-expand-btn:hover{ background:var(--bg-hover); }
@@ -481,7 +534,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-28.3</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-28.5</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -501,6 +554,7 @@
     <button data-pane="measure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21 21 3M14 3h7v7M3 14v7h7"/></svg>Measure</button>
     <button data-pane="walls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h9v9"/></svg>Walls</button>
     <button data-pane="cables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c4 0 4-8 8-8s4-8 8-8"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="4" r="1.5"/></svg>Cables</button>
+    <button data-pane="racks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h8"/></svg>Racks</button>
     <button data-pane="layers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Layers</button>
     <button data-pane="drawing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Drawing</button>
     <button data-pane="revisions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Revisions</button>
@@ -560,6 +614,12 @@
         <option value="power">Power</option>
       </select>
       <div class="type-list" id="cableToolList" style="margin-top:8px;"></div>
+    </section>
+
+    <section class="pane" data-pane="racks">
+      <h2>Racks</h2>
+      <div class="rk-tabs" id="rackTabs"></div>
+      <div id="rackEditor"></div>
     </section>
 
     <section class="pane" data-pane="layers">
@@ -630,7 +690,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-28.3</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-28.5</p>
     </section>
   </aside>
 
@@ -679,6 +739,10 @@
     <div class="scard">
       <h3>Whole villa <small id="sumFloorsInfo"></small></h3>
       <div class="sstat" id="sumVilla"></div>
+    </div>
+    <div class="scard">
+      <h3>Hardware list <button class="link-btn" id="hwCsvBtn" title="Spreadsheet (CSV) for Zoho Books">Export CSV</button></h3>
+      <div class="hw-list" id="hwList"></div>
     </div>
   </aside>
 
@@ -1260,7 +1324,7 @@
   function allTypeKeys(){ return BUILTIN_ORDER.concat(Object.keys(project.customTypes)); }
 
   /* ============== Project / floor data model ============== */
-  var project = { name:"Untitled Project", customTypes:{}, nextColorIndex:14, typeSizeDefaults:{}, revisions:[], floors:[], activeFloorIndex:-1 };
+  var project = { name:"Untitled Project", customTypes:{}, nextColorIndex:14, typeSizeDefaults:{}, revisions:[], floors:[], activeFloorIndex:-1, racks:[] };
   function getTypeSizeDefault(key){ return project.typeSizeDefaults[key] || 0.8; }
   function setTypeSizeDefault(key, size, applyToFloor){
     size = Math.max(0.4, Math.min(2.5, size));
@@ -1308,7 +1372,7 @@
    "multiPageOverlay","multiPageCount","multiPageList","multiPageImportBtn","multiPageCancelBtn","multiPageAllBtn","multiPageNoneBtn","multiPageSelCount",
    "aiScanBtn","aiKeyLink","aiKeyOverlay","aiKeyInput","aiKeySaveBtn","aiKeyForgetBtn","aiKeyCancelBtn","detectPointsOverlay","detectPointsCount","detectPointsList","detectPointsImportBtn","detectPointsCancelBtn",
    "downloadReadyOverlay","downloadReadyLink","downloadReadySummaryLink","downloadReadyCloseBtn",
-   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","modelPane","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
+   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","modelPane","rackTabs","rackEditor","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
    "addRevisionBtn","revisionList","revisionForm","revisionNoteInput","revisionCancelBtn","revisionSaveBtn"
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
@@ -1848,8 +1912,8 @@
   }
 
   function projectJsonBlob(){
-    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, floors: project.floors.map(function(f){
-      return { name:f.name, fileName:f.fileName, pdfBase64:f.pdfBase64, currentPage:f.currentPage,
+    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, floors: project.floors.map(function(f){
+      return { id:f.id, name:f.name, fileName:f.fileName, pdfBase64:f.pdfBase64, currentPage:f.currentPage,
         markers:f.markers, walls:f.walls, measurements:f.measurements, cableRoutes:f.cableRoutes,
         scaleByPage:f.scaleByPage, heatmapOn:f.heatmapOn, environment:f.environment, legendByPage:f.legendByPage, showCameraCones:f.showCameraCones };
     }) };
@@ -1924,6 +1988,7 @@
       project.customTypes = parsed.customTypes || {};
       project.typeSizeDefaults = parsed.typeSizeDefaults || {};
       project.revisions = parsed.revisions || [];
+      project.racks = Array.isArray(parsed.racks) ? parsed.racks : [];
       renderRevisionList();
       el.projectNameInput.value = project.name;
       project.nextColorIndex = 14 + Object.keys(project.customTypes).length;
@@ -1931,6 +1996,7 @@
 
       var floorPromises = (parsed.floors||[]).map(function(pf){
         var nf = makeFloor(pf.name || "Floor");
+        if (pf.id) nf.id = pf.id;
         nf.fileName = pf.fileName || ""; nf.pdfBase64 = pf.pdfBase64 || null;
         nf.markers = pf.markers || []; nf.walls = pf.walls || []; nf.measurements = pf.measurements || [];
         nf.cableRoutes = pf.cableRoutes || []; nf.scaleByPage = pf.scaleByPage || {};
@@ -2591,6 +2657,7 @@
     var railName = name === "models" ? "points" : name;
     el.rail.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.dataset.pane === railName); });
     el.sidePanel.querySelectorAll(".pane").forEach(function(p){ p.classList.toggle("on", p.dataset.pane === name); });
+    if (name === "racks" && typeof renderRacks === "function") renderRacks();
   }
 
   /* ---------- Ubiquiti model picker ---------- */
@@ -2669,6 +2736,7 @@
     if (!UBNT.on && el.modelPane.classList.contains("on")) showPane("points", true);
     refreshModelChips(); updateHint();
     if (floor()){ renderMarkers(); updateAllReadouts(); }
+    if (typeof renderHardwareList === "function"){ renderHardwareList(); if (el.sidePanel.querySelector('.pane[data-pane="racks"]').classList.contains("on")) renderRacks(); }
   }
   el.ubntToggle.addEventListener("click", function(){
     UBNT.on = !UBNT.on;
@@ -2679,7 +2747,13 @@
   });
   renderDefaultModels();
   applyUbntMode();
-  el.rail.querySelectorAll("button").forEach(function(b){ b.addEventListener("click", function(){ showPane(b.dataset.pane); }); });
+  el.rail.querySelectorAll("button").forEach(function(b){ b.addEventListener("click", function(){ showPane(b.dataset.pane); resetSideways(); }); });
+  // The layout never scrolls sideways; if a browser nudges it (focus, trackpad swipe), put it straight back.
+  function resetSideways(){
+    [document.documentElement, document.body, document.getElementById("app"), el.sidePanel, el.rail].forEach(function(n){ if (n && n.scrollLeft) n.scrollLeft = 0; });
+    if (window.scrollX) window.scrollTo(0, window.scrollY);
+  }
+  [window, document.getElementById("app"), el.sidePanel].forEach(function(n){ n.addEventListener("scroll", function(){ if ((n === window ? window.scrollX : n.scrollLeft)) resetSideways(); }, { passive:true }); });
 
   function applyTheme(t){
     t = t === "dark" ? "dark" : "light";
@@ -2731,6 +2805,8 @@
     }).join("") : '<p class="sempty">No points on this floor yet. Pick a point type on the left and click the drawing.</p>';
     var all = []; project.floors.forEach(function(x){ all = all.concat(x.markers); });
     el.sumFloorsInfo.textContent = project.floors.length + (project.floors.length === 1 ? " floor" : " floors");
+    renderHardwareList();
+    if (el.rackEditor && el.sidePanel.querySelector('.pane[data-pane="racks"]').classList.contains("on")) renderRacks();
     el.sumVilla.innerHTML = SUM_GROUPS.map(function(g){ return '<div><small>'+g[0]+'</small><b>'+all.filter(g[1]).length+'</b></div>'; }).join("") +
       '<div><small>All points</small><b>'+all.length+'</b></div>';
   }
@@ -4033,6 +4109,7 @@
       var plainBlob = doc.output("blob");
       // Same document plus one combined summary page at the very end
       addCombinedSummaryPage(doc, floorsToExport);
+      if (scope === "all" || project.floors.filter(function(x){ return x.pdfDoc; }).length <= 1) addRackPage(doc);
       var withName = base + suffix + "-with-summary.pdf";
       var withBlob = doc.output("blob");
       ui.pendingPdf = { plain:{ blob:plainBlob, name:plainName }, summary:{ blob:withBlob, name:withName } };
@@ -4141,6 +4218,339 @@
         y += boxH + 24;
       });
     }
+  }
+
+
+  /* ================= Racks ================= */
+  var RACK_HEIGHTS = [4,6,9,12,18,21,32,42];
+  var RACK_SIZES = ["60×60","60×80","80×80","60×100","100×100"];
+  // [sku, Ubiquiti name, generic name, kind, U, ports, PoE budget W, cameras it can record]
+  var EQUIP = [
+    ["UDM-Pro-Max","UDM Pro Max","Gateway / firewall + NVR","gw",1,8,0,20],
+    ["UDM-Pro","UDM Pro","Gateway / firewall + NVR","gw",1,8,0,15],
+    ["UDM-SE","UDM SE","Gateway / firewall + NVR (8 PoE)","gw",1,8,180,15],
+    ["UDM-Beast","UDM Beast","Gateway / firewall (high throughput)","gw",1,8,0,20],
+    ["EFG","Enterprise Firewall","Enterprise firewall","gw",1,8,0,0],
+    ["UCG-Fiber","UCG Fiber (on shelf)","Gateway (desktop, on shelf)","gw",1,5,0,4],
+    ["UCG-Max","UCG Max (on shelf)","Gateway (desktop, on shelf)","gw",1,5,0,4],
+    ["UCG-Ultra","UCG Ultra (on shelf)","Gateway (desktop, on shelf)","gw",1,5,0,0],
+    ["USW-Pro-Max-48-PoE","USW Pro Max 48 PoE","48-port PoE switch","sw",1,48,720,0],
+    ["USW-Pro-Max-24-PoE","USW Pro Max 24 PoE","24-port PoE switch","sw",1,24,400,0],
+    ["USW-Pro-Max-16-PoE","USW Pro Max 16 PoE","16-port PoE switch","sw",1,16,180,0],
+    ["USW-Pro-HD-24-PoE","USW Pro HD 24 PoE","24-port PoE switch (2.5G/10G)","sw",1,24,600,0],
+    ["USW-Pro-XG-24-PoE","USW Pro XG 24 PoE","24-port 10G PoE switch","sw",1,24,720,0],
+    ["USW-Pro-XG-48-PoE","USW Pro XG 48 PoE","48-port 10G PoE switch","sw",1,48,1080,0],
+    ["USW-Pro-Max-48","USW Pro Max 48","48-port switch","sw",1,48,0,0],
+    ["USW-Pro-Max-24","USW Pro Max 24","24-port switch","sw",1,24,0,0],
+    ["USW-Lite-16-PoE","USW Lite 16 PoE","16-port PoE switch (compact)","sw",1,16,45,0],
+    ["USW-Lite-8-PoE","USW Lite 8 PoE (on shelf)","8-port PoE switch (on shelf)","sw",1,8,52,0],
+    ["USW-Aggregation","USW Aggregation","10G aggregation switch","sw",1,8,0,0],
+    ["UNVR","UNVR","NVR 4-bay","nvr",1,0,0,18],
+    ["UNVR-Pro","UNVR Pro","NVR 7-bay","nvr",2,0,0,24],
+    ["UNVR-G2","UNVR G2","NVR 4-bay","nvr",1,0,0,30],
+    ["UNVR-G2-Pro","UNVR G2 Pro","NVR 7-bay","nvr",2,0,0,50],
+    ["ENVR","Enterprise NVR","Enterprise NVR","nvr",2,0,0,70],
+    ["PP-24","Patch panel 24-port","Patch panel 24-port","pp",1,24,0,0],
+    ["PP-48","Patch panel 48-port","Patch panel 48-port","pp",2,48,0,0],
+    ["CM-1U","Cable manager 1U","Cable manager 1U","acc",1,0,0,0],
+    ["SHELF-1U","Rack shelf 1U","Rack shelf 1U","acc",1,0,0,0],
+    ["USP-PDU-Pro","PDU Pro","Power distribution unit (PDU)","acc",1,0,0,0],
+    ["BLANK-1U","Blank panel 1U","Blank panel 1U","acc",1,0,0,0],
+    ["UPS-2U","UPS","UPS","ups",2,0,0,0],
+    ["UPS-1U","UPS (compact)","UPS (compact)","ups",1,0,0,0]
+  ].map(function(r){ return { sku:r[0], name:r[1], generic:r[2], kind:r[3], u:r[4], ports:r[5], poeW:r[6], cams:r[7] }; });
+  var EQUIP_BY_SKU = {}; EQUIP.forEach(function(e){ EQUIP_BY_SKU[e.sku] = e; });
+  var EQUIP_CATS = [["gw","Gateways"],["sw","Switches"],["nvr","NVRs"],["pp","Patch panels"],["ups","Power"],["acc","Accessories"]];
+  function equipName(e){ return UBNT.on ? e.name : e.generic; }
+  function rackId(){ return "rk" + Date.now() + Math.random().toString(16).slice(2,6); }
+  function newRack(name, main){ return { id:rackId(), name:name, main:!!main, floors:[], height:12, size:"60×60", mount:"wall", items:[] }; }
+  function ensureRacks(){ if (!project.racks.length) project.racks.push(newRack("Main rack", true)); }
+  var rackUi = { id:null, cat:"sw", drag:null };
+  function curRack(){ ensureRacks(); var r = project.racks.find(function(x){ return x.id === rackUi.id; }); if (!r){ r = project.racks[0]; rackUi.id = r.id; } return r; }
+  // Which floors a rack serves: the main rack takes every floor no other rack has claimed
+  function rackFloors(rack){
+    if (!rack.main) return project.floors.filter(function(f){ return rack.floors.indexOf(f.id) > -1; });
+    var claimed = {}; project.racks.forEach(function(r){ if (!r.main) r.floors.forEach(function(id){ claimed[id] = true; }); });
+    return project.floors.filter(function(f){ return !claimed[f.id]; });
+  }
+  function rackUsed(rack){ return rack.items.reduce(function(a,it){ var e = EQUIP_BY_SKU[it.sku]; return a + (e ? e.u : 1); }, 0); }
+  function itemU(it){ var e = EQUIP_BY_SKU[it.sku]; return e ? e.u : 1; }
+  function fits(rack, pos, u, ignoreUid){
+    if (pos < 1 || pos + u - 1 > rack.height) return false;
+    return !rack.items.some(function(o){ if (o.uid === ignoreUid) return false; var ou = itemU(o); return pos <= o.pos + ou - 1 && o.pos <= pos + u - 1; });
+  }
+  function firstFree(rack, u){ for (var p=1; p<=rack.height-u+1; p++) if (fits(rack, p, u)) return p; return 0; }
+  function addEquip(rack, sku, pos){
+    var e = EQUIP_BY_SKU[sku]; if (!e) return false;
+    var p = pos || firstFree(rack, e.u);
+    if (!p){ showStatus("No room for " + equipName(e) + " — choose a taller rack"); return false; }
+    rack.items.push({ uid:"it"+Date.now()+Math.random().toString(16).slice(2,6), sku:sku, pos:p });
+    return true;
+  }
+  function pointCounts(floors){
+    var c = { ap:0, cam:0, phone:0, icom:0, data:0 };
+    floors.forEach(function(f){ f.markers.forEach(function(m){
+      if (isWifiType(m.type)) c.ap++;
+      else if (isCameraType(m.type)) c.cam++;
+      else if (m.type === "ipphone") c.phone++;
+      else if (m.type === "intercom" || m.type === "intercomscreen" || m.type === "smartlock") c.icom++;
+      else if (m.type === "network" || m.type === "dtv" || m.type === "uplink") c.data++;
+    }); });
+    c.poe = c.ap + c.cam + c.phone + c.icom;
+    c.total = c.poe + c.data;
+    c.watts = c.ap*21 + c.cam*10 + c.phone*6 + c.icom*10;
+    return c;
+  }
+  function pickHeight(u){ for (var i=0;i<RACK_HEIGHTS.length;i++) if (RACK_HEIGHTS[i] >= u) return RACK_HEIGHTS[i]; return 42; }
+  // Build a starting rack from the points on the floors it serves
+  function suggestRack(rack){
+    var c = pointCounts(rackFloors(rack));
+    var list = [];
+    if (rack.main) list.push(c.cam > 0 ? "UDM-Pro-Max" : "UDM-Pro");
+    // switches: enough ports (+15% spare, +1 uplink) and PoE budget
+    var need = c.total ? Math.ceil(c.total * 1.15) + 1 : 0, watts = c.watts * 1.2, sw = [];
+    while (need > 0){
+      var pick = need > 24 ? "USW-Pro-Max-48-PoE" : need > 16 ? "USW-Pro-Max-24-PoE" : "USW-Pro-Max-16-PoE";
+      sw.push(pick); need -= EQUIP_BY_SKU[pick].ports;
+    }
+    var budget = function(){ return sw.reduce(function(a,k){ return a + EQUIP_BY_SKU[k].poeW; }, 0); };
+    var up = { "USW-Pro-Max-16-PoE":"USW-Pro-Max-24-PoE", "USW-Pro-Max-24-PoE":"USW-Pro-Max-48-PoE" };
+    for (var guard=0; guard<6 && budget() < watts; guard++){
+      var idx = sw.findIndex(function(k){ return up[k]; });
+      if (idx < 0){ sw.push("USW-Pro-Max-24-PoE"); } else sw[idx] = up[sw[idx]];
+    }
+    var panels = Math.ceil(c.total / 24);
+    for (var i=0; i<Math.max(panels, sw.length); i++){
+      if (i < panels) list.push("PP-24");
+      if (i < sw.length) list.push(sw[i]);
+    }
+    if (rack.main){
+      var gwCams = EQUIP_BY_SKU[list[0]].cams;
+      if (c.cam > gwCams || c.cam > 10){
+        var nvr = c.cam <= 18 ? "UNVR" : c.cam <= 24 ? "UNVR-Pro" : c.cam <= 30 ? "UNVR-G2" : c.cam <= 50 ? "UNVR-G2-Pro" : "ENVR";
+        list.push(nvr);
+      }
+    }
+    var ups = "UPS-2U";
+    var used = list.reduce(function(a,k){ return a + EQUIP_BY_SKU[k].u; }, 0) + EQUIP_BY_SKU[ups].u;
+    rack.height = pickHeight(used + Math.max(2, Math.ceil(used * 0.25)));
+    rack.mount = rack.height <= 12 ? "wall" : "floor";
+    rack.size = rack.height <= 12 ? "60×60" : rack.height <= 32 ? "60×80" : "60×100";
+    rack.items = [];
+    var pos = 1;
+    list.forEach(function(k){ addEquip(rack, k, pos); pos += EQUIP_BY_SKU[k].u; });
+    addEquip(rack, ups, rack.height - EQUIP_BY_SKU[ups].u + 1);
+    return c;
+  }
+  function moveItem(rack, it, dir){
+    var u = itemU(it), target = it.pos + dir;
+    if (fits(rack, target, u, it.uid)){ it.pos = target; return; }
+    // swap with the neighbour it bumps into
+    var nb = rack.items.find(function(o){ return o.uid !== it.uid && (dir < 0 ? (o.pos + itemU(o) - 1 === it.pos - 1) : (o.pos === it.pos + u)); });
+    if (!nb) return;
+    var nu = itemU(nb);
+    if (dir < 0){ var np = nb.pos; nb.pos = np + u; it.pos = np; }
+    else { var p0 = it.pos; nb.pos = p0; it.pos = p0 + nu; }
+  }
+
+  function renderRacks(){
+    if (!el.rackEditor) return;
+    var rack = curRack();
+    el.rackTabs.innerHTML = project.racks.map(function(r){ return '<button type="button" data-rk="'+r.id+'"'+(r.id===rack.id?' class="on"':'')+'>'+escapeHtml(r.name)+'</button>'; }).join("") +
+      '<button type="button" class="rk-add" id="rkAdd">+ Add rack</button>';
+    var served = rackFloors(rack), used = rackUsed(rack), over = used > rack.height || rack.items.some(function(it){ return it.pos + itemU(it) - 1 > rack.height; });
+    var c = pointCounts(served);
+    var swPorts = rack.items.reduce(function(a,it){ var e = EQUIP_BY_SKU[it.sku]; return a + (e && e.kind==="sw" ? e.ports : 0); }, 0);
+    var swW = rack.items.reduce(function(a,it){ var e = EQUIP_BY_SKU[it.sku]; return a + (e && e.kind==="sw" ? e.poeW : 0); }, 0);
+    var warns = [];
+    if (over) warns.push("Equipment needs " + used + "U but the rack is " + rack.height + "U — use " + pickHeight(used) + "U or larger.");
+    if (c.total && swPorts < c.total + 1) warns.push("Switch ports: " + swPorts + " for " + c.total + " cable runs on " + (served.length ? served.map(function(f){ return f.name; }).join(", ") : "no floors") + " (+1 uplink).");
+    if (c.watts && swW && swW < c.watts) warns.push("PoE budget " + swW + " W is below the estimated " + c.watts + " W.");
+    var floorsHtml = rack.main
+      ? '<div class="rk-floors">'+(served.length ? served.map(function(f){ return '<button type="button" class="on" disabled>'+escapeHtml(f.name)+'</button>'; }).join("") : '<span class="pane-note" style="margin:0">No floors — every floor has its own rack.</span>')+'</div>'
+      : '<div class="rk-floors">'+project.floors.map(function(f){ return '<button type="button" data-fl="'+f.id+'"'+(rack.floors.indexOf(f.id)>-1?' class="on"':'')+'>'+escapeHtml(f.name)+'</button>'; }).join("")+'</div>';
+    var H = rack.height, rowH = 30, slots = "";
+    for (var u=1; u<=H; u++) slots += '<div class="rk-slot">U'+u+'</div>';
+    var items = rack.items.slice().sort(function(a,b){ return a.pos-b.pos; }).map(function(it){
+      var e = EQUIP_BY_SKU[it.sku] || { name:it.sku, generic:it.sku, kind:"acc", u:1 };
+      var iu = e.u, isOver = it.pos + iu - 1 > H;
+      var top = Math.min(it.pos-1, Math.max(0, H - iu)) * rowH;
+      return '<div class="rk-item k-'+e.kind+(isOver?' over':'')+'" data-uid="'+it.uid+'" style="top:'+(top+1)+'px;height:'+(iu*rowH-3)+'px;">'+
+        '<span class="led"></span><span class="nm">'+escapeHtml(equipName(e))+(iu>1?'<small>'+iu+'U</small>':'')+'</span>'+
+        '<button type="button" data-act="up" title="Move up">▲</button><button type="button" data-act="down" title="Move down">▼</button><button type="button" data-act="del" title="Remove">✕</button></div>';
+    }).join("");
+    el.rackEditor.innerHTML =
+      '<input class="rk-name" id="rkName" value="'+escapeHtml(rack.name)+'" aria-label="Rack name">'+
+      '<p class="section-label" style="margin:0">'+(rack.main ? "Serves (every floor without its own rack)" : "Serves floors")+'</p>'+floorsHtml+
+      '<div class="rk-grid"><div><label>Height</label><select class="select-input" id="rkH">'+RACK_HEIGHTS.map(function(h){ return '<option'+(h===H?' selected':'')+' value="'+h+'">'+h+'U</option>'; }).join("")+'</select></div>'+
+      '<div><label>Size (cm)</label><select class="select-input" id="rkS">'+RACK_SIZES.map(function(z){ return '<option'+(z===rack.size?' selected':'')+'>'+z+'</option>'; }).join("")+'</select></div>'+
+      '<div><label>Mount</label><select class="select-input" id="rkM"><option value="wall"'+(rack.mount==="wall"?' selected':'')+'>Wall</option><option value="floor"'+(rack.mount==="floor"?' selected':'')+'>Floor</option></select></div></div>'+
+      '<div class="rk-use'+(over?' over':'')+'"><span class="trk"><i style="width:'+Math.min(100, Math.round(used/H*100))+'%"></i></span>'+used+' of '+H+'U used</div>'+
+      warns.map(function(w){ return '<p class="rk-warn">'+escapeHtml(w)+'</p>'; }).join("")+
+      '<div class="rk-actions"><button type="button" class="action-btn primary" id="rkSuggest">Suggest from points</button><button type="button" class="action-btn" id="rkClear">Clear</button></div>'+
+      '<div class="rk-elev" id="rkElev">'+slots+items+'</div>'+
+      '<p class="pane-note">Drag a device to any free U, or use ▲▼. Tap a device below to add it to the first free space.</p>'+
+      '<div class="rk-cat"><div class="mp-chips">'+EQUIP_CATS.map(function(k){ return '<button type="button" data-cat="'+k[0]+'"'+(k[0]===rackUi.cat?' class="on"':'')+'>'+k[1]+'</button>'; }).join("")+'</div>'+
+      '<div class="chips" style="margin-top:8px;">'+EQUIP.filter(function(e){ return e.kind===rackUi.cat; }).filter(function(e, i, arr){
+          if (UBNT.on) return true; // generic: one chip per generic name
+          return arr.findIndex(function(x){ return x.generic===e.generic; }) === i;
+        }).map(function(e){ return '<button type="button" data-add="'+e.sku+'">'+escapeHtml(equipName(e))+'<small>'+e.u+'U'+(e.ports&&e.kind!=="pp"?' · '+e.ports+'p':'')+(e.poeW?' · '+e.poeW+'W':'')+'</small></button>'; }).join("")+'</div></div>'+
+      (rack.main ? '' : '<button type="button" class="action-btn danger" id="rkDel" style="margin-top:14px;">Delete this rack</button>');
+
+    // wiring
+    el.rackTabs.querySelectorAll("[data-rk]").forEach(function(b){ b.onclick = function(){ rackUi.id = b.getAttribute("data-rk"); renderRacks(); }; });
+    document.getElementById("rkAdd").onclick = function(){
+      var r = newRack("Rack " + (project.racks.length+1), false);
+      var f = floor(); if (f){ r.floors = [f.id]; r.name = f.name + " rack"; }
+      r.height = 9; project.racks.push(r); rackUi.id = r.id; renderRacks(); updateAllReadouts();
+    };
+    document.getElementById("rkName").onchange = function(){ rack.name = this.value.trim() || rack.name; renderRacks(); renderHardwareList(); };
+    el.rackEditor.querySelectorAll("[data-fl]").forEach(function(b){ b.onclick = function(){
+      var id = b.getAttribute("data-fl"), i = rack.floors.indexOf(id);
+      if (i > -1) rack.floors.splice(i,1); else {
+        project.racks.forEach(function(r){ if (!r.main){ var j = r.floors.indexOf(id); if (j > -1) r.floors.splice(j,1); } });
+        rack.floors.push(id);
+      }
+      renderRacks(); renderHardwareList();
+    }; });
+    document.getElementById("rkH").onchange = function(){ rack.height = parseInt(this.value,10); if (rack.height <= 12 && rack.mount !== "wall") rack.mount = "wall"; if (rack.height >= 18) rack.mount = "floor"; renderRacks(); renderHardwareList(); };
+    document.getElementById("rkS").onchange = function(){ rack.size = this.value; renderHardwareList(); };
+    document.getElementById("rkM").onchange = function(){ rack.mount = this.value; renderHardwareList(); };
+    document.getElementById("rkSuggest").onclick = function(){
+      var run = function(){ var c = suggestRack(rack); renderRacks(); renderHardwareList();
+        showStatus("Suggested for " + c.total + " cable runs (" + c.ap + " APs, " + c.cam + " cameras) — adjust as needed"); };
+      if (rack.items.length) askConfirm("Replace the equipment in “" + rack.name + "” with a new suggestion?", run); else run();
+    };
+    document.getElementById("rkClear").onclick = function(){ if (!rack.items.length) return; askConfirm("Remove all equipment from “" + rack.name + "”?", function(){ rack.items = []; renderRacks(); renderHardwareList(); }); };
+    var del = document.getElementById("rkDel");
+    if (del) del.onclick = function(){ askConfirm("Delete “" + rack.name + "”? Its floors go back to the main rack.", function(){
+      project.racks = project.racks.filter(function(r){ return r.id !== rack.id; }); rackUi.id = null; renderRacks(); renderHardwareList(); }); };
+    el.rackEditor.querySelectorAll("[data-cat]").forEach(function(b){ b.onclick = function(){ rackUi.cat = b.getAttribute("data-cat"); renderRacks(); }; });
+    el.rackEditor.querySelectorAll("[data-add]").forEach(function(b){ b.onclick = function(){ if (addEquip(rack, b.getAttribute("data-add"))){ renderRacks(); renderHardwareList(); } }; });
+    var elev = document.getElementById("rkElev");
+    elev.querySelectorAll(".rk-item").forEach(function(node){
+      var it = rack.items.find(function(x){ return x.uid === node.getAttribute("data-uid"); }); if (!it) return;
+      node.querySelectorAll("button").forEach(function(b){
+        b.addEventListener("pointerdown", function(e){ e.stopPropagation(); });
+        b.onclick = function(e){
+          e.stopPropagation();
+          var act = b.getAttribute("data-act");
+          if (act === "del"){ rack.items = rack.items.filter(function(x){ return x.uid !== it.uid; }); }
+          else moveItem(rack, it, act === "up" ? -1 : 1);
+          renderRacks(); renderHardwareList();
+        };
+      });
+      node.addEventListener("pointerdown", function(e){
+        if (e.button !== undefined && e.button !== 0) return;
+        e.preventDefault();
+        var er = elev.getBoundingClientRect(), nr = node.getBoundingClientRect(), u = itemU(it);
+        var grab = Math.floor((e.clientY - nr.top) / rowH);
+        var ghost = document.createElement("div"); ghost.className = "rk-ghost"; ghost.style.height = (u*rowH-3)+"px"; elev.appendChild(ghost);
+        node.classList.add("dragging"); node.setPointerCapture(e.pointerId);
+        var target = it.pos;
+        function mv(ev){
+          var y = ev.clientY - er.top;
+          target = Math.max(1, Math.min(rack.height - u + 1, Math.floor(y / rowH) + 1 - grab));
+          ghost.style.top = ((target-1)*rowH + 1) + "px";
+          ghost.classList.toggle("bad", !fits(rack, target, u, it.uid));
+        }
+        function upH(){
+          node.removeEventListener("pointermove", mv); node.removeEventListener("pointerup", upH); node.removeEventListener("pointercancel", upH);
+          ghost.remove(); node.classList.remove("dragging");
+          if (target !== it.pos && fits(rack, target, u, it.uid)) it.pos = target;
+          else if (target !== it.pos) showStatus("That space is taken — move the other device first");
+          renderRacks(); renderHardwareList();
+        }
+        mv(e);
+        node.addEventListener("pointermove", mv); node.addEventListener("pointerup", upH); node.addEventListener("pointercancel", upH);
+      });
+    });
+  }
+
+  /* ---------- Hardware list (summary panel + CSV for Zoho Books) ---------- */
+  function hardwareItems(){
+    var rows = {}, order = [];
+    function add(key, name, sku, where, n){
+      if (!rows[key]){ rows[key] = { name:name, sku:sku, qty:0, where:{} }; order.push(key); }
+      rows[key].qty += n; rows[key].where[where] = (rows[key].where[where]||0) + n;
+    }
+    project.floors.forEach(function(f){
+      f.markers.forEach(function(m){
+        var t = getTypeDef(m.type); if (!t) return;
+        var v = markerVariant(m);
+        if (UBNT.on && v && !v.tier) add(v.key, v.name, v.key, f.name, 1);
+        else add(m.type + (v ? ":"+v.key : ""), v ? t.label + " " + v.name : t.label, "", f.name, 1);
+      });
+    });
+    project.racks.forEach(function(r){
+      if (!r.items.length) return;
+      add("rack:"+r.height+":"+r.size+":"+r.mount, "Rack " + r.height + "U " + r.size + " cm " + (r.mount==="wall"?"wall-mount":"floor-standing"), "", r.name, 1);
+      r.items.forEach(function(it){ var e = EQUIP_BY_SKU[it.sku]; if (!e) return;
+        if (UBNT.on) add(e.sku, e.name, e.sku.indexOf("PP-")===0||e.sku==="CM-1U"||e.sku==="SHELF-1U"||e.sku==="BLANK-1U"||e.sku.indexOf("UPS-")===0 ? "" : e.sku, r.name, 1);
+        else add("g:"+e.generic, e.generic, "", r.name, 1);
+      });
+    });
+    return order.map(function(k){ return rows[k]; });
+  }
+  function renderHardwareList(){
+    if (!el.hwList) return;
+    var items = hardwareItems();
+    el.hwList.innerHTML = items.length ? items.map(function(r){
+      return '<div class="srow"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(r.name)+'</span><b>'+r.qty+'</b></div>';
+    }).join("") : '<p class="sempty">Place points and build a rack to see the hardware list.</p>';
+  }
+  function csvCell(v){ v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v; }
+  el.hwCsvBtn.addEventListener("click", function(){
+    var items = hardwareItems();
+    if (!items.length){ showStatus("Nothing to export yet"); return; }
+    var lines = [["Item Name","SKU","Quantity","Location"].join(",")].concat(items.map(function(r){
+      var where = Object.keys(r.where).map(function(w){ return w + " ×" + r.where[w]; }).join("; ");
+      return [csvCell(r.name), csvCell(r.sku), r.qty, csvCell(where)].join(",");
+    }));
+    var blob = new Blob(["﻿" + lines.join("\r\n")], { type:"text/csv" });
+    saveOutputFile(blob, safeName(project.name) + " - hardware list.csv", "text/csv", false);
+  });
+
+  /* ---------- Rack layout page in the PDF ---------- */
+  function addRackPage(doc){
+    var racks = project.racks.filter(function(r){ return r.items.length; });
+    if (!racks.length) return;
+    var W=850, H=1150; doc.addPage([W,H],"p");
+    doc.setFillColor(10,18,32); doc.rect(0,0,W,H,"F");
+    doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.setFontSize(20);
+    doc.text("Rack layout", 50, 60);
+    doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(127,149,174);
+    doc.text(project.name + "  ·  " + new Date().toLocaleDateString(), 50, 82);
+    var colW = 240, gap = 25, x0 = 50, y0 = 115, col = 0, yRow = y0, rowMax = 0;
+    racks.forEach(function(r){
+      var uh = Math.min(22, Math.max(12, 640 / r.height)), bh = r.height * uh;
+      if (col === 3){ col = 0; yRow += rowMax + 70; rowMax = 0; }
+      var x = x0 + col*(colW+gap), y = yRow;
+      doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(231,237,245); doc.text(r.name, x, y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(127,149,174);
+      doc.text(r.height + "U · " + r.size + " cm · " + (r.mount==="wall"?"wall-mount":"floor-standing") + " · " + rackUsed(r) + "U used", x, y+14);
+      var fl = rackFloors(r).map(function(f){ return f.name; }).join(", ");
+      if (fl) doc.text("Serves: " + fl, x, y+27, { maxWidth: colW });
+      var by = y + 38;
+      doc.setFillColor(30,37,47); doc.setDrawColor(71,85,105); doc.setLineWidth(1.5); doc.rect(x, by, colW, bh, "FD");
+      doc.setFontSize(7.5); doc.setTextColor(107,119,136);
+      for (var u=1; u<=r.height; u++){
+        var yy = by + (u-1)*uh;
+        if (u>1){ doc.setDrawColor(44,53,66); doc.setLineWidth(0.5); doc.line(x, yy, x+colW, yy); }
+        doc.text("U"+u, x+4, yy + uh/2 + 2.5);
+      }
+      r.items.forEach(function(it){
+        var e = EQUIP_BY_SKU[it.sku]; if (!e || it.pos + e.u - 1 > r.height) return;
+        var yy = by + (it.pos-1)*uh + 1.5;
+        var colr = { gw:[15,79,179], sw:[29,95,209], nvr:[39,71,122], pp:[71,85,105], ups:[55,65,81], acc:[63,74,90] }[e.kind] || [63,74,90];
+        doc.setFillColor(colr[0],colr[1],colr[2]); doc.roundedRect(x+24, yy, colW-28, e.u*uh-3, 2, 2, "F");
+        doc.setTextColor(241,245,249); doc.setFont("helvetica","bold"); doc.setFontSize(Math.min(9.5, uh*0.5));
+        doc.text(equipName(e), x+30, yy + (e.u*uh-3)/2 + 3, { maxWidth: colW-36 });
+        doc.setFont("helvetica","normal");
+      });
+      rowMax = Math.max(rowMax, 38 + bh);
+      col++;
+    });
   }
 
   /* ============== Init ============== */
