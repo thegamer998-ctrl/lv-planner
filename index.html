@@ -412,6 +412,55 @@
   .def-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
   .def-row span{ width:92px; font-size:12px; color:var(--text-muted); flex-shrink:0; }
   .def-row select{ margin:0; }
+  /* Network view */
+  .netview{ position:absolute; inset:0; z-index:30; overflow:auto; background:var(--bg-deep); background-image:radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size:18px 18px; padding:20px 24px 40px; display:none; }
+  .netview.on{ display:block; }
+  .nv-tabs{ display:inline-flex; gap:2px; background:var(--bg-panel); border:1px solid var(--hairline); border-radius:10px; padding:3px; margin-bottom:16px; box-shadow:var(--shadow); }
+  .nv-tabs button{ border:none; background:none; padding:7px 14px; border-radius:7px; font-weight:600; color:var(--text-muted); font-size:12.5px; }
+  .nv-tabs button.on{ background:var(--accent); color:var(--on-accent); }
+  .nv-card{ background:var(--bg-panel); border:1px solid var(--hairline); border-radius:14px; box-shadow:var(--shadow); padding:16px 18px; margin-bottom:16px; }
+  .nv-card h3{ margin:0 0 4px; font-size:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .nv-card h3 small{ color:var(--text-muted); font-weight:500; font-size:12px; }
+  .nv-rack{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); font-weight:700; margin:6px 0 10px; }
+  .nv-budget{ display:flex; align-items:center; gap:12px; margin:10px 0 14px; font-size:12px; color:var(--text-muted); }
+  .nv-budget .trk{ flex:1; max-width:340px; height:8px; border-radius:6px; background:var(--bg-panel-raised); overflow:hidden; }
+  .nv-budget .trk i{ display:block; height:100%; background:linear-gradient(90deg,#12a150,#84cc16); border-radius:6px; }
+  .nv-budget.hot .trk i{ background:linear-gradient(90deg,#f59e0b,#ef4444); }
+  .nv-budget b{ color:var(--text-main); }
+  .faceplate{ display:flex; align-items:center; gap:14px; background:#1e252f; border-radius:10px; padding:12px 14px; width:max-content; max-width:100%; overflow-x:auto; }
+  .faceplate .fp-brand{ color:#9aa4b2; font:600 10px/1.25 var(--font-body); width:70px; flex-shrink:0; }
+  .faceplate .fp-brand b{ color:#fff; display:block; font-size:11px; }
+  .pgrid{ display:grid; grid-template-rows:repeat(2,34px); grid-auto-flow:column; grid-auto-columns:34px; gap:5px; }
+  .fport{ border-radius:5px; background:#0f141b; border:1.5px solid #394252; color:#cfd6df; font:700 10px/1 Arial, sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; padding:0; }
+  .fport small{ font-size:7.5px; font-weight:600; opacity:.9; }
+  .fport.pp{ box-shadow:inset 0 -3px 0 #f59e0b; }
+  .fport.used{ border-color:transparent; color:#fff; }
+  .fport.up{ background:#475569; border-color:transparent; color:#fff; }
+  .fport.sel{ outline:2px solid #fff; outline-offset:1px; }
+  .fport.sfp{ width:44px; height:34px; border-style:dashed; }
+  .sfps{ display:grid; grid-template-rows:repeat(2,34px); grid-auto-flow:column; gap:5px; }
+  .ptable{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
+  .ptable th{ text-align:left; color:var(--text-dim); font-weight:650; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; padding:6px 8px; border-bottom:1px solid var(--hairline); white-space:nowrap; }
+  .ptable td{ padding:6px 8px; border-bottom:1px solid var(--hairline); vertical-align:middle; }
+  .ptable tr.sel td{ background:var(--accent-soft); }
+  .ptable .sw{ display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:7px; vertical-align:-1px; }
+  .ptable td.num{ font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ptable select{ background:var(--bg-panel-raised); border:1px solid var(--hairline); border-radius:6px; color:var(--text-main); font-size:11.5px; padding:3px 4px; max-width:190px; }
+  .ptable .loc{ border:none; background:none; color:var(--accent); font-size:11.5px; font-weight:600; padding:0; }
+  .nv-warn{ font-size:12px; color:var(--danger); background:var(--danger-soft); border-radius:9px; padding:9px 12px; margin:0 0 12px; }
+  .nv-note{ font-size:12px; color:var(--text-muted); margin:4px 0 0; }
+  .nv-topo{ background:var(--bg-panel); border:1px solid var(--hairline); border-radius:14px; box-shadow:var(--shadow); padding:12px; overflow-x:auto; }
+  .nv-topo svg{ display:block; }
+  .nv-topo text{ font-family:var(--font-body); }
+  .hwf .fl{ border:1px solid var(--hairline); border-radius:12px; margin-bottom:10px; overflow:hidden; }
+  .hwf .fh{ display:flex; justify-content:space-between; padding:9px 12px; background:var(--bg-panel-raised); font-weight:650; font-size:12.5px; }
+  .hwf .fh small{ color:var(--text-muted); font-weight:500; }
+  .hwf .fr{ display:flex; justify-content:space-between; gap:8px; padding:6px 12px; border-top:1px solid var(--hairline); font-size:12px; }
+  .hwf .fr span{ color:var(--text-muted); flex-shrink:0; }
+  #app.net-on .hintpill, #app.net-on .dock, #app.net-on .legend-overlay{ display:none; }
+  #app.net-on{ grid-template-columns:64px 284px minmax(0,1fr) 0; }
+  #app.net-on.panel-collapsed{ grid-template-columns:64px 0 minmax(0,1fr) 0; }
+  #app.net-on .summary{ display:none !important; }
   /* Rack builder */
   .rk-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
   .rk-tabs button{ border:1px solid var(--hairline-2); background:var(--bg-panel); border-radius:20px; padding:5px 12px; font-size:12px; font-weight:600; color:var(--text-muted); }
@@ -534,7 +583,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-28.5</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-28.6</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -555,6 +604,7 @@
     <button data-pane="walls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h9v9"/></svg>Walls</button>
     <button data-pane="cables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c4 0 4-8 8-8s4-8 8-8"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="4" r="1.5"/></svg>Cables</button>
     <button data-pane="racks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h8M8 18h8"/></svg>Racks</button>
+    <button data-pane="network"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M5 17v-5h14v5"/></svg>Network</button>
     <button data-pane="layers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Layers</button>
     <button data-pane="drawing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Drawing</button>
     <button data-pane="revisions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Revisions</button>
@@ -620,6 +670,11 @@
       <h2>Racks</h2>
       <div class="rk-tabs" id="rackTabs"></div>
       <div id="rackEditor"></div>
+    </section>
+
+    <section class="pane" data-pane="network">
+      <h2>Hardware by floor</h2>
+      <div class="hwf" id="hwFloors"></div>
     </section>
 
     <section class="pane" data-pane="layers">
@@ -690,7 +745,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-28.5</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-28.6</p>
     </section>
   </aside>
 
@@ -711,6 +766,10 @@
           <button class="upload-btn" id="uploadBtnEmpty">Choose PDF file</button>
         </div>
       </div>
+    </div>
+    <div class="netview" id="netView">
+      <div class="nv-tabs"><button type="button" data-nv="ports" class="on">Ports</button><button type="button" data-nv="topo">Topology</button></div>
+      <div id="netBody"></div>
     </div>
     <div class="hintpill"><span class="dot"></span><span id="hintText">Upload a villa drawing to begin</span></div>
     <div class="status" id="statusText"></div>
@@ -1233,15 +1292,15 @@
       ["UVC-G6-INS","G6 Instant","4K · WiFi","Flex","INST"]
     ])},
     intercom: { groups:["Intercom","Reader"], items:catRows([
-      ["UA-G6-Entry","G6 Entry","Doorbell · Touch Pass","Intercom","ENTRY"],
+      ["UVC-G6-Entry","G6 Entry","Doorbell · Touch Pass","Intercom","ENTRY"],
       ["UA-Intercom","Intercom","Touch Pass intercom","Intercom","ICOM"],
-      ["UA-Reader-Pro","Reader Pro","Touch Pass · camera","Reader","RDR P"],
-      ["UA-Reader","Reader","Touch Pass · NFC","Reader","RDR"],
+      ["UA-G3-Pro","G3 Reader Pro","Touch Pass · camera","Reader","RDR P"],
+      ["UA-G3","G3 Reader","Touch Pass · NFC","Reader","RDR"],
       ["UA-G3-Flex","G3 Reader Flex","NFC reader","Reader","FLEX"],
       ["UA-G3-Fingerprint","G3 Reader Fingerprint","Fingerprint + NFC","Reader","FP"]
     ])}
   };
-  var CAT_DEFAULTS_BUILTIN = { wifi:"U7-Lite", outdoorwifi:"U7-Outdoor", cctv:"UVC-G6-Dome", cctvoutdoor:"UVC-G6-Bullet", intercom:"UA-G6-Entry" };
+  var CAT_DEFAULTS_BUILTIN = { wifi:"U7-Lite", outdoorwifi:"U7-Outdoor", cctv:"UVC-G6-Dome", cctvoutdoor:"UVC-G6-Bullet", intercom:"UVC-G6-Entry" };
   var LEGACY_AP = { pro:"U7-Pro", lr:"U7-LR" };
   var UBNT = { on:true, defaults:{} };
   (function(){
@@ -1250,17 +1309,19 @@
       UBNT.defaults = JSON.parse(localStorage.getItem("lvplanner_defaults") || "{}") || {};
     } catch(e){}
   })();
+  var SKU_ALIAS = { "UA-G6-Entry":"UVC-G6-Entry", "UA-Reader-Pro":"UA-G3-Pro", "UA-Reader":"UA-G3" };
   function catItem(type, sku){
     var c = CATALOG[type]; if (!c || !sku) return null;
+    if (SKU_ALIAS[sku]) sku = SKU_ALIAS[sku];
     for (var i=0;i<c.items.length;i++) if (c.items[i].sku === sku) return c.items[i];
     return null;
   }
-  function defaultSku(type){ var d = UBNT.defaults[type]; return catItem(type, d) ? d : CAT_DEFAULTS_BUILTIN[type]; }
+  function defaultSku(type){ var d = UBNT.defaults[type]; return catItem(type, d) ? (SKU_ALIAS[d] || d) : CAT_DEFAULTS_BUILTIN[type]; }
   function currentSku(type){ var c = ui && ui.chosenModel && ui.chosenModel[type]; return catItem(type, c) ? c : defaultSku(type); }
   // The Ubiquiti model of a placed point (old points: Pro/LR map across, others use the default model)
   function markerSku(m){
     if (!m || !CATALOG[m.type]) return null;
-    if (catItem(m.type, m.model)) return m.model;
+    if (catItem(m.type, m.model)) return SKU_ALIAS[m.model] || m.model;
     if (isWifiType(m.type) && m.type === "wifi" && LEGACY_AP[m.apModel]) return LEGACY_AP[m.apModel];
     return defaultSku(m.type);
   }
@@ -1372,7 +1433,7 @@
    "multiPageOverlay","multiPageCount","multiPageList","multiPageImportBtn","multiPageCancelBtn","multiPageAllBtn","multiPageNoneBtn","multiPageSelCount",
    "aiScanBtn","aiKeyLink","aiKeyOverlay","aiKeyInput","aiKeySaveBtn","aiKeyForgetBtn","aiKeyCancelBtn","detectPointsOverlay","detectPointsCount","detectPointsList","detectPointsImportBtn","detectPointsCancelBtn",
    "downloadReadyOverlay","downloadReadyLink","downloadReadySummaryLink","downloadReadyCloseBtn",
-   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","modelPane","rackTabs","rackEditor","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
+   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","modelPane","rackTabs","rackEditor","netView","netBody","hwFloors","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
    "addRevisionBtn","revisionList","revisionForm","revisionNoteInput","revisionCancelBtn","revisionSaveBtn"
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
@@ -2652,12 +2713,20 @@
   function showPane(name, force){
     var app = document.getElementById("app");
     var paneEl = el.sidePanel.querySelector('.pane[data-pane="'+name+'"]');
-    if (!force && paneEl && paneEl.classList.contains("on") && !app.classList.contains("panel-collapsed")){ app.classList.add("panel-collapsed"); return; }
+    if (!force && paneEl && paneEl.classList.contains("on") && !app.classList.contains("panel-collapsed")){
+      app.classList.add("panel-collapsed");
+      if (name === "network"){ app.classList.remove("net-on"); el.netView.classList.remove("on"); paneEl.classList.remove("on"); el.rail.querySelectorAll("button").forEach(function(b){ b.classList.remove("on"); }); }
+      return;
+    }
     app.classList.remove("panel-collapsed");
     var railName = name === "models" ? "points" : name;
     el.rail.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.dataset.pane === railName); });
     el.sidePanel.querySelectorAll(".pane").forEach(function(p){ p.classList.toggle("on", p.dataset.pane === name); });
     if (name === "racks" && typeof renderRacks === "function") renderRacks();
+    var netOn = name === "network";
+    app.classList.toggle("net-on", netOn);
+    if (el.netView){ el.netView.classList.toggle("on", netOn); if (netOn) renderNetwork(); }
+    if (netOn) closeEditor();
   }
 
   /* ---------- Ubiquiti model picker ---------- */
@@ -2806,6 +2875,7 @@
     var all = []; project.floors.forEach(function(x){ all = all.concat(x.markers); });
     el.sumFloorsInfo.textContent = project.floors.length + (project.floors.length === 1 ? " floor" : " floors");
     renderHardwareList();
+    if (el.netView && el.netView.classList.contains("on")) renderNetwork();
     if (el.rackEditor && el.sidePanel.querySelector('.pane[data-pane="racks"]').classList.contains("on")) renderRacks();
     el.sumVilla.innerHTML = SUM_GROUPS.map(function(g){ return '<div><small>'+g[0]+'</small><b>'+all.filter(g[1]).length+'</b></div>'; }).join("") +
       '<div><small>All points</small><b>'+all.length+'</b></div>';
@@ -4109,7 +4179,7 @@
       var plainBlob = doc.output("blob");
       // Same document plus one combined summary page at the very end
       addCombinedSummaryPage(doc, floorsToExport);
-      if (scope === "all" || project.floors.filter(function(x){ return x.pdfDoc; }).length <= 1) addRackPage(doc);
+      if (scope === "all" || project.floors.filter(function(x){ return x.pdfDoc; }).length <= 1){ addRackPage(doc); addNetworkPages(doc); }
       var withName = base + suffix + "-with-summary.pdf";
       var withBlob = doc.output("blob");
       ui.pendingPdf = { plain:{ blob:plainBlob, name:plainName }, summary:{ blob:withBlob, name:withName } };
@@ -4242,14 +4312,14 @@
     ["USW-Pro-XG-48-PoE","USW Pro XG 48 PoE","48-port 10G PoE switch","sw",1,48,1080,0],
     ["USW-Pro-Max-48","USW Pro Max 48","48-port switch","sw",1,48,0,0],
     ["USW-Pro-Max-24","USW Pro Max 24","24-port switch","sw",1,24,0,0],
-    ["USW-Lite-16-PoE","USW Lite 16 PoE","16-port PoE switch (compact)","sw",1,16,45,0],
-    ["USW-Lite-8-PoE","USW Lite 8 PoE (on shelf)","8-port PoE switch (on shelf)","sw",1,8,52,0],
+    ["USW-Lite-16-PoE","USW Lite 16 PoE (on shelf)","16-port switch, 8 PoE (on shelf)","sw",1,16,45,0],
+    ["USW-Lite-8-PoE","USW Lite 8 PoE (on shelf)","8-port switch, 4 PoE (on shelf)","sw",1,8,52,0],
     ["USW-Aggregation","USW Aggregation","10G aggregation switch","sw",1,8,0,0],
     ["UNVR","UNVR","NVR 4-bay","nvr",1,0,0,18],
     ["UNVR-Pro","UNVR Pro","NVR 7-bay","nvr",2,0,0,24],
     ["UNVR-G2","UNVR G2","NVR 4-bay","nvr",1,0,0,30],
     ["UNVR-G2-Pro","UNVR G2 Pro","NVR 7-bay","nvr",2,0,0,50],
-    ["ENVR","Enterprise NVR","Enterprise NVR","nvr",2,0,0,70],
+    ["ENVR","Enterprise NVR","Enterprise NVR","nvr",3,0,0,70],
     ["PP-24","Patch panel 24-port","Patch panel 24-port","pp",1,24,0,0],
     ["PP-48","Patch panel 48-port","Patch panel 48-port","pp",2,48,0,0],
     ["CM-1U","Cable manager 1U","Cable manager 1U","acc",1,0,0,0],
@@ -4288,8 +4358,10 @@
     return true;
   }
   function pointCounts(floors){
-    var c = { ap:0, cam:0, phone:0, icom:0, data:0 };
+    var c = { ap:0, cam:0, phone:0, icom:0, data:0, realW:0 };
     floors.forEach(function(f){ f.markers.forEach(function(m){
+      var pw = devicePower(m); if (!pw.port) return;
+      c.realW += pw.w;
       if (isWifiType(m.type)) c.ap++;
       else if (isCameraType(m.type)) c.cam++;
       else if (m.type === "ipphone") c.phone++;
@@ -4298,7 +4370,7 @@
     }); });
     c.poe = c.ap + c.cam + c.phone + c.icom;
     c.total = c.poe + c.data;
-    c.watts = c.ap*21 + c.cam*10 + c.phone*6 + c.icom*10;
+    c.watts = Math.round(c.realW);
     return c;
   }
   function pickHeight(u){ for (var i=0;i<RACK_HEIGHTS.length;i++) if (RACK_HEIGHTS[i] >= u) return RACK_HEIGHTS[i]; return 42; }
@@ -4365,7 +4437,7 @@
     var warns = [];
     if (over) warns.push("Equipment needs " + used + "U but the rack is " + rack.height + "U — use " + pickHeight(used) + "U or larger.");
     if (c.total && swPorts < c.total + 1) warns.push("Switch ports: " + swPorts + " for " + c.total + " cable runs on " + (served.length ? served.map(function(f){ return f.name; }).join(", ") : "no floors") + " (+1 uplink).");
-    if (c.watts && swW && swW < c.watts) warns.push("PoE budget " + swW + " W is below the estimated " + c.watts + " W.");
+    if (c.watts && swW && swW < c.watts) warns.push("PoE budget " + swW + " W is below the " + c.watts + " W these devices can draw.");
     var floorsHtml = rack.main
       ? '<div class="rk-floors">'+(served.length ? served.map(function(f){ return '<button type="button" class="on" disabled>'+escapeHtml(f.name)+'</button>'; }).join("") : '<span class="pane-note" style="margin:0">No floors — every floor has its own rack.</span>')+'</div>'
       : '<div class="rk-floors">'+project.floors.map(function(f){ return '<button type="button" data-fl="'+f.id+'"'+(rack.floors.indexOf(f.id)>-1?' class="on"':'')+'>'+escapeHtml(f.name)+'</button>'; }).join("")+'</div>';
@@ -4510,6 +4582,390 @@
     var blob = new Blob(["﻿" + lines.join("\r\n")], { type:"text/csv" });
     saveOutputFile(blob, safeName(project.name) + " - hardware list.csv", "text/csv", false);
   });
+
+
+  /* ================= Network: power, ports, topology ================= */
+  // From techspecs.ui.com: [max watts, PoE class, uplink speed]
+  var DEVICE_POWER = {
+    "U7-Lite":[13,"PoE","2.5G"],"U7-Pro":[21,"PoE+","2.5G"],"U7-Pro-Max":[25,"PoE+","2.5G"],"U7-Pro-XG":[22,"PoE+","10G"],"U7-Pro-XGS":[29,"PoE++","10G"],
+    "U7-LR":[14,"PoE","2.5G"],"E7":[43,"PoE++","10G"],"U6-Enterprise":[22,"PoE+","2.5G"],"U6-Pro":[13,"PoE","1G"],"U6+":[9,"PoE","1G"],
+    "U7-Pro-Wall":[22,"PoE+","2.5G"],"U7-Pro-XG-Wall":[22,"PoE+","10G"],"U7-IW":[13,"PoE","2.5G"],"U6-Enterprise-IW":[21,"PoE+","2.5G"],"U6-IW":[13,"PoE","1G"],
+    "U7-Outdoor":[19,"PoE+","2.5G"],"U7-Pro-Outdoor":[21,"PoE+","2.5G"],"E7-Campus":[44,"PoE++","10G"],"U7-Mesh":[13,"PoE","2.5G"],"U6-Mesh":[13,"PoE","1G"],"U6-Mesh-Pro":[9,"PoE","1G"],
+    "UVC-G6-Dome":[9.25,"PoE","1G"],"UVC-G6-Mini-Dome":[9,"PoE","1G"],"UVC-G6-Pro-Dome":[15,"PoE+","1G"],"UVC-G6-Edge-Dome":[15,"PoE+","1G"],"UVC-AI-Dome":[10,"PoE","1G"],
+    "UVC-G5-Dome":[5,"PoE","1G"],"UVC-G5-Dome-Ultra":[4.2,"PoE","1G"],"UVC-G6-Turret":[12.5,"PoE","1G"],"UVC-G6-Pro-Turret":[15,"PoE+","1G"],"UVC-AI-Turret":[20,"PoE+","1G"],
+    "UVC-G5-Turret-Ultra":[4,"PoE","1G"],"UVC-G6-Pro-360":[13.5,"PoE+","1G"],"UVC-G6-180":[15,"PoE+","1G"],"UVC-G6-Bullet":[9.9,"PoE","1G"],"UVC-G6-Pro-Bullet":[15,"PoE+","1G"],
+    "UVC-G6-Edge-Bullet":[25,"PoE+","1G"],"UVC-G5-Bullet":[4,"PoE","1G"],"UVC-G5-Pro":[12.95,"PoE","1G"],"UVC-AI-Pro":[22,"PoE+","1G"],"UVC-AI-LPR":[25.5,"PoE+","1G"],
+    "UVC-G6-PTZ":[24.5,"PoE+","1G"],"UVC-G5-PTZ":[14,"PoE+","1G"],"UVC-AI-PTZ":[51,"PoE++","1G"],"UVC-G5-Flex":[4,"PoE","1G"],"UVC-G6-INS":[7,"wifi","WiFi"],
+    "UVC-G6-Entry":[16,"PoE+","1G"],"UA-Intercom":[13,"PoE","1G"],"UA-G3-Pro":[6,"PoE","1G"],"UA-G3":[5,"PoE","1G"],"UA-G3-Flex":[5,"PoE","1G"],"UA-G3-Fingerprint":[5,"PoE","1G"],"UA-Intercom-Viewer":[5,"PoE","1G"]
+  };
+  // Generic estimates when no model is known
+  var TYPE_POWER = { wifi:[21,"PoE+","2.5G"], outdoorwifi:[19,"PoE+","2.5G"], cctv:[10,"PoE","1G"], cctvoutdoor:[10,"PoE","1G"], ipphone:[6,"PoE","1G"],
+    intercom:[13,"PoE","1G"], intercomscreen:[5,"PoE","1G"], network:[0,"","1G"], dtv:[0,"","1G"], uplink:[0,"","1G"] };
+  var POE_RANK = { "":0, "PoE":1, "PoE+":2, "PoE++":3 };
+  var SPEED_RANK = { "100M":1, "1G":1, "2.5G":2, "10G":3, "25G":4 };
+  function devicePower(m){
+    var tp = TYPE_POWER[m.type];
+    if (!tp) return { port:false, w:0, poe:"", speed:"1G" };
+    var sku = UBNT.on ? markerSku(m) : null, d = sku && DEVICE_POWER[sku];
+    if (d && d[1] === "wifi") return { port:false, w:0, poe:"", speed:"WiFi", wifiOnly:true };
+    var r = d || tp;
+    return { port:true, w:r[0], poe:r[1], speed:r[2] };
+  }
+  // Switch port layouts (techspecs.ui.com). Groups in port order: [count, speed, PoE class]
+  var SW_LAYOUT = {
+    "USW-Pro-Max-16-PoE":{ rj:[[12,"1G","PoE+"],[4,"2.5G","PoE++"]], sfp:[2,"10G"] },
+    "USW-Pro-Max-24-PoE":{ rj:[[8,"1G","PoE+"],[8,"1G","PoE++"],[8,"2.5G","PoE++"]], sfp:[2,"10G"] },
+    "USW-Pro-Max-48-PoE":{ rj:[[24,"1G","PoE+"],[8,"1G","PoE++"],[8,"2.5G","PoE+"],[8,"2.5G","PoE++"]], sfp:[4,"10G"] },
+    "USW-Pro-Max-24":{ rj:[[16,"1G",""],[8,"2.5G",""]], sfp:[2,"10G"] },
+    "USW-Pro-Max-48":{ rj:[[32,"1G",""],[16,"2.5G",""]], sfp:[4,"10G"] },
+    "USW-Pro-HD-24-PoE":{ rj:[[22,"2.5G","PoE++"],[2,"10G","PoE++"]], sfp:[4,"10G"] },
+    "USW-Pro-XG-24-PoE":{ rj:[[8,"2.5G","PoE++"],[16,"10G","PoE++"]], sfp:[2,"25G"] },
+    "USW-Pro-XG-48-PoE":{ rj:[[16,"2.5G","PoE++"],[32,"10G","PoE++"]], sfp:[4,"25G"] },
+    "USW-Lite-16-PoE":{ rj:[[8,"1G","PoE+"],[8,"1G",""]], sfp:[0,""] },
+    "USW-Lite-8-PoE":{ rj:[[4,"1G","PoE+"],[4,"1G",""]], sfp:[0,""] },
+    "USW-Aggregation":{ rj:[], sfp:[8,"10G"] },
+    "UDM-SE":{ rj:[[6,"1G","PoE"],[2,"1G","PoE+"]], sfp:[1,"10G"] }
+  };
+  function devLabel(m){
+    var t = getTypeDef(m.type), v = markerVariant(m);
+    if (v && !v.tier) return v.name;
+    return v ? t.label + " " + v.name : t.label;
+  }
+  function rackDevices(rack){
+    var out = [];
+    rackFloors(rack).forEach(function(f){
+      var n = {};
+      f.markers.forEach(function(m){
+        var pw = devicePower(m); if (!pw.port) return;
+        var lbl = devLabel(m); n[lbl] = (n[lbl]||0) + 1;
+        out.push({ id:m.id, floorId:f.id, floor:f.name, m:m, label:lbl, num:n[lbl], note:m.note||"", w:pw.w, poe:pw.poe, speed:pw.speed, color:getTypeDef(m.type).color });
+      });
+    });
+    return out;
+  }
+  function rackSwitches(rack){
+    return rack.items.filter(function(it){ return SW_LAYOUT[it.sku] && it.pos + itemU(it) - 1 <= rack.height; })
+      .sort(function(a,b){ return (a.sku==="UDM-SE") - (b.sku==="UDM-SE") || a.pos - b.pos; });
+  }
+  function mainRack(){ ensureRacks(); return project.racks.find(function(r){ return r.main; }) || project.racks[0]; }
+  function rackGateway(rack){ var it = rack.items.find(function(i){ var e = EQUIP_BY_SKU[i.sku]; return e && e.kind==="gw"; }); return it ? EQUIP_BY_SKU[it.sku] : null; }
+
+  // Builds every rack's switch ports: uplinks first, then devices (manual choices, then automatic)
+  function buildNetworkPlan(){
+    ensureRacks();
+    var plan = { racks:[], warnings:[] };
+    var swByUid = {};
+    project.racks.forEach(function(rack){
+      var sws = rackSwitches(rack).map(function(it){
+        var e = EQUIP_BY_SKU[it.sku], lay = SW_LAYOUT[it.sku], ports = [], n = 1;
+        lay.rj.forEach(function(g){ for (var i=0;i<g[0];i++){ ports.push({ n:n++, speed:g[1], poe:g[2], dev:null, up:null }); } });
+        var sfp = []; for (var k=0;k<lay.sfp[0];k++) sfp.push({ n:k+1, speed:lay.sfp[1], up:null });
+        var sw = { rack:rack, item:it, e:e, name:equipName(e), ports:ports, sfp:sfp, budget:e.poeW, usedW:0 };
+        swByUid[it.uid] = sw; return sw;
+      });
+      plan.racks.push({ rack:rack, switches:sws, devices:rackDevices(rack), unassigned:[] });
+    });
+    // ---- uplinks: gateway -> core switch -> other switches / floor racks
+    var main = plan.racks.find(function(r){ return r.rack.main; }) || plan.racks[0];
+    function takeUplink(sw, label){ // the switch's own uplink port
+      var s = sw.sfp.find(function(x){ return !x.up; });
+      if (s){ s.up = label; return "SFP+ " + s.n; }
+      for (var i=sw.ports.length-1;i>=0;i--) if (!sw.ports[i].up && !sw.ports[i].dev){ sw.ports[i].up = label; return "Port " + sw.ports[i].n; }
+      return null;
+    }
+    var gw = main ? rackGateway(main.rack) : null;
+    var core = main && main.switches.filter(function(s){ return s.item.sku !== "UDM-SE"; });
+    var agg = core && core.find(function(s){ return s.item.sku === "USW-Aggregation"; });
+    var coreSw = agg || (core && core[0]) || null;
+    if (coreSw){
+      var up = takeUplink(coreSw, "↑ " + (gw ? equipName(gw) : "Gateway / router"));
+      coreSw.uplinkTo = gw ? equipName(gw) : "Gateway";
+      coreSw.isCore = true;
+    }
+    var others = [];
+    plan.racks.forEach(function(r){ r.switches.forEach(function(sw){ if (sw !== coreSw && sw.item.sku !== "UDM-SE") others.push(sw); }); });
+    others.forEach(function(sw){
+      var parent = coreSw;
+      if (!parent){ sw.uplinkTo = gw ? equipName(gw) : "Gateway"; takeUplink(sw, "↑ " + sw.uplinkTo); return; }
+      var viaFibre = sw.rack !== parent.rack;
+      var p = takeUplink(parent, "↓ " + sw.name + (viaFibre ? " · " + sw.rack.name : ""));
+      if (!p){ plan.warnings.push(parent.name + " has no free port for the uplink to " + sw.name + " (" + sw.rack.name + ")."); }
+      takeUplink(sw, "↑ " + parent.name + (viaFibre ? " · " + parent.rack.name + " (fibre)" : ""));
+      sw.uplinkTo = parent.name; sw.parentPort = p; sw.fibre = viaFibre;
+    });
+    // ---- devices
+    plan.racks.forEach(function(r){
+      var rack = r.rack; rack.portMap = rack.portMap || {};
+      var free = function(sw, pt, d){
+        if (pt.dev || pt.up) return false;
+        if (POE_RANK[pt.poe] < POE_RANK[d.poe]) return false;
+        if (d.w && sw.usedW + d.w > sw.budget + 0.01) return false;
+        return true;
+      };
+      var place = function(sw, pt, d){ pt.dev = d; sw.usedW += d.w; d.sw = sw; d.port = pt; };
+      // manual choices first
+      r.devices.forEach(function(d){
+        var want = rack.portMap[d.id]; if (!want) return;
+        var parts = want.split(":"), sw = swByUid[parts[0]];
+        if (!sw || sw.rack !== rack) return;
+        var pt = sw.ports[parseInt(parts[1],10)-1];
+        if (pt && free(sw, pt, d)){ place(sw, pt, d); d.manual = true; }
+      });
+      var todo = r.devices.filter(function(d){ return !d.sw; }).sort(function(a,b){
+        return POE_RANK[b.poe] - POE_RANK[a.poe] || b.w - a.w || (a.floor > b.floor ? 1 : a.floor < b.floor ? -1 : 0);
+      });
+      todo.forEach(function(d){
+        var best = null, bestScore = 1e9;
+        r.switches.forEach(function(sw, si){
+          sw.ports.forEach(function(pt){
+            if (!free(sw, pt, d)) return;
+            var waste = POE_RANK[pt.poe] - POE_RANK[d.poe];
+            var ds = SPEED_RANK[d.speed] || 1, ps = SPEED_RANK[pt.speed] || 1;
+            var sp = ps < ds ? (ds - ps) + 2 : (ps - ds);   // too slow is worse than wasting a faster port
+            var score = waste*4 + sp*6 + si*0.5 + pt.n*0.001;
+            if (score < bestScore){ bestScore = score; best = [sw, pt]; }
+          });
+        });
+        if (best) place(best[0], best[1], d); else r.unassigned.push(d);
+      });
+      if (r.unassigned.length){
+        var needW = r.unassigned.reduce(function(a,d){ return a + d.w; }, 0);
+        plan.warnings.push(rack.name + ": " + r.unassigned.length + " device(s) without a switch port" + (needW ? " (" + Math.round(needW) + " W more PoE needed)" : "") + " — add a switch or pick a bigger one in Racks.");
+      }
+    });
+    return plan;
+  }
+
+  var nv = { tab:"ports", sel:null };
+  function fmtW(w){ return (Math.round(w*10)/10).toString().replace(/\.0$/,"") + " W"; }
+  function renderNetwork(){
+    if (!el.netView || !el.netView.classList.contains("on")) return;
+    renderHardwareByFloor();
+    el.netView.querySelectorAll("[data-nv]").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-nv") === nv.tab); });
+    var plan = buildNetworkPlan();
+    var anyDev = plan.racks.some(function(r){ return r.devices.length; });
+    var anySw = plan.racks.some(function(r){ return r.switches.length; });
+    if (!anyDev && !anySw){ el.netBody.innerHTML = '<div class="nv-card"><h3>Nothing to connect yet</h3><p class="nv-note">Place access points, cameras and data points on the drawing, then open <b>Racks</b> and press <b>Suggest from points</b>. Ports and the topology are built from those.</p></div>'; return; }
+    el.netBody.innerHTML = (plan.warnings.length ? plan.warnings.map(function(w){ return '<p class="nv-warn">'+escapeHtml(w)+'</p>'; }).join("") : "") +
+      (nv.tab === "ports" ? portsHtml(plan) : topologyHtml(plan));
+    wireNetwork(plan);
+  }
+  function portsHtml(plan){
+    var html = "";
+    plan.racks.forEach(function(r, ri){
+      if (!r.switches.length && !r.devices.length) return;
+      html += '<div class="nv-rack">' + escapeHtml(r.rack.name) + ' · serves ' + escapeHtml(rackFloors(r.rack).map(function(f){ return f.name; }).join(", ") || "no floors") + '</div>';
+      if (!r.switches.length){
+        html += '<div class="nv-card"><h3>No switch in this rack</h3><p class="nv-note">' + r.devices.length + ' devices need a port. Open <b>Racks</b> and add a switch, or press <b>Suggest from points</b>.</p></div>';
+        return;
+      }
+      r.switches.forEach(function(sw, si){
+        var used = sw.ports.filter(function(p){ return p.dev; }).length;
+        var pct = sw.budget ? Math.round(sw.usedW / sw.budget * 100) : 0;
+        var cells = sw.ports.map(function(pt){
+          var d = pt.dev, sel = nv.sel && d && nv.sel === d.id;
+          var st = d ? 'background:'+d.color : '';
+          return '<button type="button" class="fport'+(d?' used':'')+(pt.up?' up':'')+(pt.poe==="PoE++"?' pp':'')+(sel?' sel':'')+'" data-dev="'+(d?d.id:'')+'" style="'+st+'" title="Port '+pt.n+' · '+pt.speed+(pt.poe?' · '+pt.poe:'')+(d?' — '+escapeHtml(d.label)+' ('+escapeHtml(d.floor)+')':pt.up?' — '+escapeHtml(pt.up):' — free')+'">'+pt.n+(d&&d.w?'<small>'+Math.round(d.w)+'W</small>':pt.up?'<small>UP</small>':'')+'</button>';
+        }).join("");
+        var sfps = sw.sfp.map(function(x){ return '<button type="button" class="fport sfp'+(x.up?' up':'')+'" title="SFP+ '+x.n+' · '+x.speed+(x.up?' — '+escapeHtml(x.up):' — free')+'">S'+x.n+'</button>'; }).join("");
+        var rows = sw.ports.filter(function(pt){ return pt.dev || pt.up; }).map(function(pt){
+          var d = pt.dev;
+          if (!d) return '<tr><td class="num">'+pt.n+'</td><td><span class="sw" style="background:#475569"></span>'+escapeHtml(pt.up)+'</td><td>Uplink</td><td>—</td><td>—</td><td></td></tr>';
+          return '<tr'+(nv.sel===d.id?' class="sel"':'')+' data-row="'+d.id+'"><td class="num">'+pt.n+'</td><td><span class="sw" style="background:'+d.color+'"></span>'+escapeHtml(d.label)+' #'+d.num+(d.note?' <span style="color:var(--text-muted)">· '+escapeHtml(d.note)+'</span>':'')+'</td>'+
+            '<td>'+escapeHtml(d.floor)+' <button type="button" class="loc" data-loc="'+d.id+'" data-fl="'+d.floorId+'" title="Show on the drawing">⌖</button></td>'+
+            '<td>'+(d.poe||"—")+'</td><td class="num">'+(d.w?fmtW(d.w):"—")+'</td>'+
+            '<td>'+moveSelectHtml(r, d)+'</td></tr>';
+        }).join("") + sw.sfp.filter(function(x){ return x.up; }).map(function(x){
+          return '<tr><td class="num">SFP+ '+x.n+'</td><td><span class="sw" style="background:#475569"></span>'+escapeHtml(x.up)+'</td><td>Uplink</td><td>'+x.speed+'</td><td>—</td><td></td></tr>';
+        }).join("");
+        html += '<div class="nv-card"><h3>'+escapeHtml(sw.name)+'<small>'+escapeHtml(r.rack.name)+' · U'+sw.item.pos+' · '+used+' of '+sw.ports.length+' ports used</small></h3>'+
+          (sw.budget ? '<div class="nv-budget'+(pct>85?' hot':'')+'">PoE <span class="trk"><i style="width:'+Math.min(100,pct)+'%"></i></span><b>'+fmtW(sw.usedW)+'</b> of '+sw.budget+' W</div>' : '<p class="nv-note">No PoE on this switch.</p>')+
+          '<div class="faceplate"><div class="fp-brand"><b>'+(UBNT.on?'UniFi':'Switch')+'</b>'+escapeHtml(sw.name.replace(/^USW /,""))+'</div><div class="pgrid">'+cells+'</div>'+(sfps?'<div class="sfps">'+sfps+'</div>':'')+'</div>'+
+          '<table class="ptable"><thead><tr><th>Port</th><th>Device</th><th>Floor</th><th>PoE</th><th>Power</th><th>Move to</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      });
+      if (r.unassigned.length){
+        html += '<div class="nv-card"><h3>Not connected <small>'+r.unassigned.length+' device(s)</small></h3><table class="ptable"><tbody>'+
+          r.unassigned.map(function(d){ return '<tr><td><span class="sw" style="background:'+d.color+'"></span>'+escapeHtml(d.label)+' #'+d.num+'</td><td>'+escapeHtml(d.floor)+'</td><td>'+(d.poe||"—")+'</td><td class="num">'+(d.w?fmtW(d.w):"")+'</td></tr>'; }).join("")+'</tbody></table></div>';
+      }
+      if (Object.keys(r.rack.portMap||{}).length) html += '<p class="nv-note" style="margin:-6px 0 16px;"><button type="button" class="link-btn" data-reset="'+r.rack.id+'">Reset '+escapeHtml(r.rack.name)+' ports to automatic</button></p>';
+    });
+    return html + '<p class="nv-note">Ports are filled in automatically from the points you placed (PoE++ devices get PoE++ ports, faster APs get 2.5G ports). Use <b>Move to</b> to change one. ⌖ shows the point on the drawing. Power figures are Ubiquiti’s maximum ratings.</p>';
+  }
+  function moveSelectHtml(r, d){
+    var opts = ['<option value="">'+(d.manual?'Manual':'Auto')+' — port '+d.port.n+'</option>'];
+    r.switches.forEach(function(sw){
+      sw.ports.forEach(function(pt){
+        if (pt.dev || pt.up || POE_RANK[pt.poe] < POE_RANK[d.poe]) return;
+        if (d.w && sw !== d.sw && sw.usedW + d.w > sw.budget) return;
+        opts.push('<option value="'+sw.item.uid+':'+pt.n+'">'+escapeHtml((r.switches.length>1?sw.name+' · ':'')+'Port '+pt.n+' ('+pt.speed+(pt.poe?' '+pt.poe:'')+')')+'</option>');
+      });
+    });
+    if (d.manual) opts.push('<option value="auto">Back to automatic</option>');
+    return '<select data-move="'+d.id+'" data-rack="'+r.rack.id+'">'+opts.join("")+'</select>';
+  }
+  function deviceGroups(sw){
+    var groups = {}, order = [];
+    sw.ports.forEach(function(pt){
+      var d = pt.dev; if (!d) return;
+      var cat = isWifiType(d.m.type) ? "Access points" : isCameraType(d.m.type) ? "Cameras" : (d.m.type==="ipphone" ? "IP phones" : (d.m.type.indexOf("intercom")===0 ? "Access / intercom" : "Data points"));
+      var key = d.floor + "|" + cat;
+      if (!groups[key]){ groups[key] = { floor:d.floor, cat:cat, n:0, models:{}, color:d.color }; order.push(key); }
+      groups[key].n++; groups[key].models[d.label] = (groups[key].models[d.label]||0) + 1;
+    });
+    var CAT_RANK = { "Access points":0, "Cameras":1, "Access / intercom":2, "IP phones":3, "Data points":4 };
+    order.sort(function(a,b){ var ga = groups[a], gb = groups[b]; return (ga.floor < gb.floor ? -1 : ga.floor > gb.floor ? 1 : 0) || CAT_RANK[ga.cat] - CAT_RANK[gb.cat]; });
+    return order.map(function(k){ var g = groups[k]; g.sub = Object.keys(g.models).map(function(mn){ return (g.models[mn]>1 ? g.models[mn]+"× " : "") + mn; }).join(", "); return g; });
+  }
+  function topologyLayout(plan){
+    var sws = []; plan.racks.forEach(function(r){ r.switches.forEach(function(sw){ sws.push(sw); }); });
+    var core = sws.find(function(s){ return s.isCore; });
+    if (core){ sws = [core].concat(sws.filter(function(s){ return s !== core; })); }
+    var colW = 170, nodeW = 150, x = 20, cols = [];
+    sws.forEach(function(sw){
+      var gs = deviceGroups(sw), w = Math.max(1, gs.length) * colW;
+      cols.push({ sw:sw, groups:gs, x:x, w:w, cx:x + w/2 }); x += w + 30;
+    });
+    var width = Math.max(x, 700), mid = width/2;
+    var main = plan.racks.find(function(r){ return r.rack.main; });
+    var gw = main ? rackGateway(main.rack) : null;
+    return { cols:cols, width:width, mid:mid, gw:gw, nodeW:nodeW, colW:colW };
+  }
+  function topologyHtml(plan){
+    var L = topologyLayout(plan), H = 520;
+    if (!L.cols.length) return '<div class="nv-card"><h3>No switches yet</h3><p class="nv-note">Build a rack first (Racks → Suggest from points).</p></div>';
+    var s = '<svg width="'+L.width+'" height="'+H+'" viewBox="0 0 '+L.width+' '+H+'">';
+    function node(cx, cy, w, t1, t2, col){
+      return '<rect x="'+(cx-w/2)+'" y="'+(cy-28)+'" width="'+w+'" height="56" rx="11" fill="var(--bg-panel)" stroke="'+(col||'var(--hairline-2)')+'" stroke-width="2"/>'+
+        '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--text-main)">'+escapeHtml(t1)+'</text>'+
+        (t2?'<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" font-size="11" fill="var(--text-muted)">'+escapeHtml(t2.length>30?t2.slice(0,29)+"…":t2)+'</text>':'');
+    }
+    function edge(x1,y1,x2,y2,dash){ var my=(y1+y2)/2; return '<path d="M'+x1+' '+y1+' C'+x1+' '+my+' '+x2+' '+my+' '+x2+' '+y2+'" fill="none" stroke="var(--hairline-2)" stroke-width="2.2"'+(dash?' stroke-dasharray="6 5"':'')+'/>'; }
+    var core = L.cols[0];
+    s += edge(L.mid, 78, L.mid, 150) + edge(L.mid, 206, core.cx, 262);
+    L.cols.slice(1).forEach(function(c){ s += edge(core.cx, 318, c.cx, 262 + 0, c.sw.fibre); });
+    L.cols.forEach(function(c){ c.groups.forEach(function(g, gi){ var gx = c.x + L.colW*gi + L.colW/2; s += edge(c.cx, 318, gx, 402); }); });
+    s += node(L.mid, 50, 170, "Internet", "ISP · fibre / 5G", "#94a3b8");
+    s += node(L.mid, 178, 240, L.gw ? equipName(L.gw) : "Gateway / router", mainRack().name, "#006fff");
+    L.cols.forEach(function(c){
+      var used = c.sw.ports.filter(function(p){ return p.dev; }).length;
+      s += node(c.cx, 290, 230, c.sw.name, c.sw.rack.name + " · " + used + " ports" + (c.sw.budget ? " · " + Math.round(c.sw.usedW) + " W" : ""), "#006fff");
+      c.groups.forEach(function(g, gi){
+        var gx = c.x + L.colW*gi + L.colW/2;
+        s += node(gx, 430, L.nodeW, g.n + " " + (g.n===1 ? g.cat.replace(/s$/,"").replace("Access / intercom","Access device") : g.cat), g.sub, g.color);
+        s += '<text x="'+gx+'" y="478" text-anchor="middle" font-size="10.5" font-weight="700" letter-spacing=".5" fill="var(--text-dim)">'+escapeHtml(g.floor.toUpperCase())+'</text>';
+      });
+    });
+    return '<div class="nv-topo">'+s+'</svg></div><p class="nv-note" style="margin-top:12px;">Built from your racks and the points you placed. Dashed lines are fibre links between racks.</p>';
+  }
+  function wireNetwork(plan){
+    el.netBody.querySelectorAll("[data-dev]").forEach(function(b){ b.onclick = function(){ var id = b.getAttribute("data-dev"); if (id){ nv.sel = id; renderNetwork(); } }; });
+    el.netBody.querySelectorAll("tr[data-row]").forEach(function(tr){ tr.onclick = function(e){ if (e.target.closest("select,button")) return; nv.sel = tr.getAttribute("data-row"); renderNetwork(); }; });
+    el.netBody.querySelectorAll("select[data-move]").forEach(function(sel){ sel.onchange = function(){
+      var rack = project.racks.find(function(r){ return r.id === sel.getAttribute("data-rack"); }); if (!rack) return;
+      rack.portMap = rack.portMap || {};
+      var id = sel.getAttribute("data-move");
+      if (sel.value === "auto") delete rack.portMap[id]; else if (sel.value) rack.portMap[id] = sel.value;
+      nv.sel = id; renderNetwork();
+    }; });
+    el.netBody.querySelectorAll("[data-reset]").forEach(function(b){ b.onclick = function(){ var rack = project.racks.find(function(r){ return r.id === b.getAttribute("data-reset"); }); if (rack){ rack.portMap = {}; renderNetwork(); } }; });
+    el.netBody.querySelectorAll("[data-loc]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); locateMarker(b.getAttribute("data-fl"), b.getAttribute("data-loc")); }; });
+  }
+  el.netView.querySelectorAll("[data-nv]").forEach(function(b){ b.onclick = function(){ nv.tab = b.getAttribute("data-nv"); renderNetwork(); }; });
+  function locateMarker(floorId, markerId){
+    var idx = project.floors.findIndex(function(f){ return f.id === floorId; }); if (idx < 0) return;
+    showPane("points", true);
+    var go = function(){
+      var f = floor(); var m = f && f.markers.find(function(x){ return x.id === markerId; }); if (!m) return;
+      var after = function(){ setTimeout(function(){
+        var w = markerWrapEl(markerId);
+        if (w){ var r = w.getBoundingClientRect(), sr = el.canvasScroll.getBoundingClientRect();
+          el.canvasScroll.scrollLeft += (r.left + r.width/2) - (sr.left + sr.width/2);
+          el.canvasScroll.scrollTop += (r.top + r.height/2) - (sr.top + sr.height/2); }
+        openQuickBar(markerId);
+      }, 80); };
+      if (f.currentPage !== m.page){ var pr = renderPage(m.page); (pr && pr.then ? pr : Promise.resolve()).then(after); } else after();
+    };
+    if (idx !== project.activeFloorIndex){ switchFloor(idx); setTimeout(go, 900); } else go();
+  }
+  function renderHardwareByFloor(){
+    if (!el.hwFloors) return;
+    var html = project.floors.map(function(f){
+      var rows = legendRows(f.markers);
+      var tot = f.markers.length;
+      return '<div class="fl"><div class="fh">'+escapeHtml(f.name)+'<small>'+tot+' point'+(tot===1?'':'s')+'</small></div>'+
+        (rows.length ? rows.map(function(r){ return '<div class="fr">'+escapeHtml(r.label)+'<span>× '+r.count+'</span></div>'; }).join("") : '<div class="fr" style="color:var(--text-muted)">No points yet</div>')+'</div>';
+    }).join("") + project.racks.filter(function(r){ return r.items.length; }).map(function(r){
+      var c = {}, ord = [];
+      r.items.forEach(function(it){ var e = EQUIP_BY_SKU[it.sku]; if (!e) return; var n = equipName(e); if (!c[n]){ c[n]=0; ord.push(n); } c[n]++; });
+      return '<div class="fl"><div class="fh">'+escapeHtml(r.name)+'<small>'+r.height+'U · '+r.size+'</small></div>'+ord.map(function(n){ return '<div class="fr">'+escapeHtml(n)+'<span>× '+c[n]+'</span></div>'; }).join("")+'</div>';
+    }).join("");
+    el.hwFloors.innerHTML = html + '<button type="button" class="action-btn" id="hwCsvBtn2" style="margin-top:4px;">Export hardware list (CSV)</button>';
+    document.getElementById("hwCsvBtn2").onclick = function(){ el.hwCsvBtn.click(); };
+  }
+
+  /* ---------- PDF: switch ports + topology pages ---------- */
+  function addNetworkPages(doc){
+    var plan = buildNetworkPlan();
+    var sws = []; plan.racks.forEach(function(r){ r.switches.forEach(function(sw){ sws.push(sw); }); });
+    if (!sws.length) return;
+    var W=850, H=1150, y=0;
+    function page(title){
+      doc.addPage([W,H],"p"); doc.setFillColor(10,18,32); doc.rect(0,0,W,H,"F");
+      doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.text(title, 50, 60);
+      doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(127,149,174);
+      doc.text(project.name + "  ·  " + new Date().toLocaleDateString(), 50, 82); y = 115;
+    }
+    page("Switch ports");
+    plan.warnings.forEach(function(w){ doc.setFontSize(10); doc.setTextColor(248,113,113); doc.text(w, 50, y, { maxWidth:750 }); y += 16; });
+    sws.forEach(function(sw){
+      var rows = sw.ports.filter(function(p){ return p.dev || p.up; }).map(function(p){
+        return p.dev ? [String(p.n), p.dev.label + " #" + p.dev.num + (p.dev.note ? " · " + p.dev.note : ""), p.dev.floor, p.dev.poe || "-", p.dev.w ? fmtW(p.dev.w) : "-"]
+                     : [String(p.n), p.up, "Uplink", "-", "-"];
+      }).concat(sw.sfp.filter(function(x){ return x.up; }).map(function(x){ return ["SFP+ " + x.n, x.up, "Uplink", x.speed, "-"]; }));
+      var need = 60 + rows.length * 17;
+      if (y + need > H - 40){ page("Switch ports (continued)"); }
+      doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(231,237,245);
+      doc.text(sw.name + "  —  " + sw.rack.name, 50, y); y += 16;
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(127,149,174);
+      doc.text(sw.ports.filter(function(p){ return p.dev; }).length + " of " + sw.ports.length + " ports used" + (sw.budget ? "  ·  PoE " + fmtW(sw.usedW) + " of " + sw.budget + " W" : ""), 50, y); y += 18;
+      var cx = [50, 110, 470, 620, 700];
+      doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(127,149,174);
+      ["PORT","DEVICE","FLOOR","POE","POWER"].forEach(function(h,i){ doc.text(h, cx[i], y); }); y += 6;
+      doc.setDrawColor(45,60,80); doc.setLineWidth(0.8); doc.line(50, y, 800, y); y += 12;
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(220,230,240);
+      rows.forEach(function(r){
+        if (y > H - 40){ page("Switch ports (continued)"); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(220,230,240); }
+        r.forEach(function(v,i){ doc.text(String(v), cx[i], y, { maxWidth: (cx[i+1]||800) - cx[i] - 8 }); }); y += 17;
+      });
+      y += 20;
+    });
+    // topology page, drawn with boxes and lines
+    var L = topologyLayout(plan);
+    doc.addPage([W,H],"p"); doc.setFillColor(10,18,32); doc.rect(0,0,W,H,"F");
+    doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.text("Network topology", 50, 60);
+    doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(127,149,174); doc.text(project.name, 50, 82);
+    var sc = Math.min(1, 750 / L.width), ox = 50 + (750 - L.width*sc)/2, oy = 130;
+    function X(v){ return ox + v*sc; } function Y(v){ return oy + v*sc; }
+    function box(cx, cy, w, t1, t2, rgb){
+      doc.setFillColor(22,38,60); doc.setDrawColor(rgb[0],rgb[1],rgb[2]); doc.setLineWidth(1.5);
+      doc.roundedRect(X(cx-w/2), Y(cy-28), w*sc, 56*sc, 6, 6, "FD");
+      doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.setFontSize(Math.max(7, 12*sc)); doc.text(t1, X(cx), Y(cy-3), { align:"center" });
+      if (t2){ doc.setFont("helvetica","normal"); doc.setFontSize(Math.max(6, 9*sc)); doc.setTextColor(150,170,190); doc.text(t2.length>34?t2.slice(0,33)+"…":t2, X(cx), Y(cy+14), { align:"center" }); }
+    }
+    function ln(x1,y1,x2,y2){ doc.setDrawColor(90,105,125); doc.setLineWidth(1.2); var my=(y1+y2)/2; doc.line(X(x1),Y(y1),X(x1),Y(my)); doc.line(X(x1),Y(my),X(x2),Y(my)); doc.line(X(x2),Y(my),X(x2),Y(y2)); }
+    var core = L.cols[0];
+    ln(L.mid,78,L.mid,150); ln(L.mid,206,core.cx,262);
+    L.cols.slice(1).forEach(function(c){ ln(core.cx,318,c.cx,262); });
+    L.cols.forEach(function(c){ c.groups.forEach(function(g,gi){ ln(c.cx,318,c.x+L.colW*gi+L.colW/2,402); }); });
+    box(L.mid,50,170,"Internet","ISP",[148,163,184]);
+    box(L.mid,178,240,L.gw?equipName(L.gw):"Gateway / router",mainRack().name,[0,111,255]);
+    L.cols.forEach(function(c){
+      box(c.cx,290,230,c.sw.name,c.sw.rack.name+" · "+c.sw.ports.filter(function(p){return p.dev;}).length+" ports",[0,111,255]);
+      c.groups.forEach(function(g,gi){ var gx=c.x+L.colW*gi+L.colW/2; var rgb=hexToRgb(g.color);
+        box(gx,430,L.nodeW,g.n+" "+g.cat,g.sub,[rgb.r,rgb.g,rgb.b]);
+        doc.setFont("helvetica","bold"); doc.setFontSize(Math.max(6,8.5*sc)); doc.setTextColor(127,149,174); doc.text(g.floor.toUpperCase(), X(gx), Y(478), { align:"center" }); });
+    });
+  }
 
   /* ---------- Rack layout page in the PDF ---------- */
   function addRackPage(doc){
