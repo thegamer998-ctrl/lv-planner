@@ -412,6 +412,30 @@
   .def-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
   .def-row span{ width:92px; font-size:12px; color:var(--text-muted); flex-shrink:0; }
   .def-row select{ margin:0; }
+  /* Unsaved dot, restore card, shortcuts */
+  #saveProjectBtn{ position:relative; }
+  #saveProjectBtn.dirty::after{ content:""; position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:#f59e0b; border:2px solid var(--bg-panel); }
+  .restore-card{ position:absolute; left:50%; bottom:76px; transform:translateX(-50%); z-index:40; display:none; align-items:center; gap:10px;
+    background:var(--bg-panel); border:1px solid var(--hairline); border-radius:14px; box-shadow:var(--shadow-lg); padding:12px 12px 12px 16px; max-width:calc(100% - 32px); }
+  .restore-card.on{ display:flex; }
+  .restore-card b{ display:block; font-size:13px; }
+  .restore-card small{ display:block; color:var(--text-muted); font-size:12px; }
+  .kb-list{ display:grid; grid-template-columns:auto 1fr; gap:7px 14px; font-size:12.5px; align-items:center; }
+  .kb-list kbd{ font-family:var(--font-body); font-size:11.5px; font-weight:700; border:1px solid var(--hairline-2); border-bottom-width:2px; border-radius:6px; padding:1px 7px; background:var(--bg-panel-raised); white-space:nowrap; justify-self:start; }
+  .kb-list span{ color:var(--text-muted); }
+  /* Bigger touch targets on iPad / touch screens */
+  @media (pointer:coarse){
+    .rk-item button{ width:28px; height:26px; }
+    .rk-slot{ height:36px; }
+    .quickbar button{ width:44px; height:44px; }
+    .ptable select{ font-size:14px; padding:6px; }
+    .ptable td{ padding:9px 8px; }
+    .tbtn{ height:40px; }
+    .tbtn.icon{ width:40px; }
+    .dock .icon-btn, .dock .dbtn{ height:40px; min-width:40px; }
+    .mp-row{ padding:11px 10px; }
+    .rk-cat .chips button, .mp-chips button, .rk-floors button{ padding:8px 12px; }
+  }
   /* Network view */
   .netview{ position:absolute; inset:0; z-index:30; overflow:auto; background:var(--bg-deep); background-image:radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size:18px 18px; padding:20px 24px 40px; display:none; }
   .netview.on{ display:block; }
@@ -583,12 +607,13 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-28.6</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-28.7</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
     <div class="spacer"></div>
-    <button class="tbtn icon" id="undoBtn" disabled title="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+    <button class="tbtn icon" id="undoBtn" disabled title="Undo (Cmd/Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+    <button class="tbtn icon" id="redoBtn" disabled title="Redo (Cmd/Ctrl+Shift+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
     <span class="tsep"></span>
     <button class="tbtn ai" id="aiScanBtn" disabled title="Scan drawing with AI"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg><span class="tlabel">AI scan</span></button>
     <button class="tbtn" id="loadProjectBtn" title="Open project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="tlabel">Open</span></button>
@@ -742,10 +767,14 @@
         <p class="popover-hint" id="saveLocationHint" style="margin:0;font-size:12px;"></p>
       </div>
       <div class="section">
+        <p class="section-label">Help</p>
+        <button class="action-btn" id="shortcutsBtn">Keyboard shortcuts <span style="opacity:.6">(?)</span></button>
+      </div>
+      <div class="section">
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-28.6</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-28.7</p>
     </section>
   </aside>
 
@@ -773,6 +802,11 @@
     </div>
     <div class="hintpill"><span class="dot"></span><span id="hintText">Upload a villa drawing to begin</span></div>
     <div class="status" id="statusText"></div>
+    <div class="restore-card" id="restoreCard">
+      <div><b>Unsaved work found</b><small id="restoreInfo"></small></div>
+      <button type="button" class="tbtn" id="restoreDiscardBtn">Discard</button>
+      <button type="button" class="tbtn primary" id="restoreBtn">Restore</button>
+    </div>
     <div class="dock" id="dock">
       <button class="icon-btn" id="prevPageBtn" disabled aria-label="Previous page" title="Previous page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
       <span class="row-readout" id="pageReadout">&mdash;</span>
@@ -840,6 +874,14 @@
       <button class="btn-cancel" id="confirmCancelBtn">Cancel</button>
       <button class="btn-confirm" id="confirmOkBtn">Confirm</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="shortcutsOverlay">
+  <div class="confirm-box" style="width:360px;">
+    <p style="font-weight:700;margin-bottom:10px;">Keyboard shortcuts</p>
+    <div class="kb-list" id="kbList"></div>
+    <div class="confirm-actions" style="margin-top:14px;"><button class="btn-save" id="shortcutsCloseBtn">Close</button></div>
   </div>
 </div>
 
@@ -1433,7 +1475,7 @@
    "multiPageOverlay","multiPageCount","multiPageList","multiPageImportBtn","multiPageCancelBtn","multiPageAllBtn","multiPageNoneBtn","multiPageSelCount",
    "aiScanBtn","aiKeyLink","aiKeyOverlay","aiKeyInput","aiKeySaveBtn","aiKeyForgetBtn","aiKeyCancelBtn","detectPointsOverlay","detectPointsCount","detectPointsList","detectPointsImportBtn","detectPointsCancelBtn",
    "downloadReadyOverlay","downloadReadyLink","downloadReadySummaryLink","downloadReadyCloseBtn",
-   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","modelPane","rackTabs","rackEditor","netView","netBody","hwFloors","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
+   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","redoBtn","restoreCard","restoreInfo","restoreBtn","restoreDiscardBtn","shortcutsOverlay","kbList","shortcutsCloseBtn","shortcutsBtn","modelPane","rackTabs","rackEditor","netView","netBody","hwFloors","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
    "addRevisionBtn","revisionList","revisionForm","revisionNoteInput","revisionCancelBtn","revisionSaveBtn"
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
@@ -1699,7 +1741,7 @@
     var wlCountEl = document.getElementById("count-wall"); if (wlCountEl) wlCountEl.textContent = f ? f.walls.length : 0;
     var cbCountEl = document.getElementById("count-cable"); if (cbCountEl) cbCountEl.textContent = f ? f.cableRoutes.length : 0;
 
-    el.undoBtn.disabled = !f || f.undoStack.length === 0;
+    refreshUndoButtons();
     var anyOnPage = !!f && (f.markers.some(function(m){ return m.page===f.currentPage; }) ||
       f.walls.some(function(w){ return w.page===f.currentPage; }) ||
       f.measurements.some(function(m){ return m.page===f.currentPage; }) ||
@@ -1770,6 +1812,7 @@
     var f = project.floors[idx];
     var hasWork = f.markers.length || f.walls.length || f.measurements.length || f.cableRoutes.length || f.pdfDoc;
     var doDelete = function(){
+      setTimeout(histReset, 0);
       project.floors.splice(idx,1);
       if (project.activeFloorIndex >= project.floors.length) project.activeFloorIndex = project.floors.length-1;
       else if (idx < project.activeFloorIndex) project.activeFloorIndex--;
@@ -1781,6 +1824,7 @@
   el.addFloorBtn.addEventListener("click", function(){
     var nf = makeFloor("Floor " + (project.floors.length+1));
     project.floors.push(nf);
+    setTimeout(histReset, 0);
     project.activeFloorIndex = project.floors.length-1;
     loadActiveFloorIntoView();
     setTimeout(function(){
@@ -1972,17 +2016,19 @@
     return Promise.resolve(true);
   }
 
-  function projectJsonBlob(){
+  function projectJsonBlob(){ return new Blob([JSON.stringify(projectObject(true))], { type:"application/json" }); }
+  function projectObject(withPdf){
     var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, floors: project.floors.map(function(f){
-      return { id:f.id, name:f.name, fileName:f.fileName, pdfBase64:f.pdfBase64, currentPage:f.currentPage,
+      return { id:f.id, name:f.name, fileName:f.fileName, pdfBase64:withPdf ? f.pdfBase64 : null, currentPage:f.currentPage,
         markers:f.markers, walls:f.walls, measurements:f.measurements, cableRoutes:f.cableRoutes,
         scaleByPage:f.scaleByPage, heatmapOn:f.heatmapOn, environment:f.environment, legendByPage:f.legendByPage, showCameraCones:f.showCameraCones };
     }) };
-    return new Blob([JSON.stringify(out)], { type:"application/json" });
+    return out;
   }
   function saveProjectAs(){
     if (!requireCustomerName()) return;
-    saveOutputFile(projectJsonBlob(), safeName(project.name) + ".json", "application/json", true);
+    var sig = stateSig();
+    saveOutputFile(projectJsonBlob(), safeName(project.name) + ".json", "application/json", true).then(function(ok){ if (ok) markSaved(sig); });
   }
   // Overwrite the project file this project was last saved to / loaded from - no dialog.
   function saveProjectReplace(){
@@ -1996,7 +2042,7 @@
       if (state && state !== "granted") throw Object.assign(new Error("denied"), { name:"NotAllowedError" });
       return fh.createWritable();
     }).then(function(w){ return w.write(blob).then(function(){ return w.close(); }); })
-      .then(function(){ rememberFile(fh, true); showStatus("Saved & replaced \u2014 " + fh.name); updateSaveHint(); })
+      .then(function(){ rememberFile(fh, true); markSaved(); showStatus("Saved & replaced \u2014 " + fh.name); updateSaveHint(); })
       .catch(function(err){
         console.error(err);
         if (err && err.name === "NotAllowedError") showStatus("Permission not given \u2014 use Save as new file instead");
@@ -2041,11 +2087,19 @@
     reader.onload = function(){
       var parsed;
       try { parsed = JSON.parse(reader.result); } catch(err){ showStatus("That file doesn't look like a saved project"); return; }
+      fsState.projectFile = fsState.loadedHandle || null;
+      if (fsState.loadedHandle) rememberFile(fsState.loadedHandle, true);
+      fsState.loadedHandle = null;
+      loadProjectObject(parsed, false);
+    };
+    reader.readAsText(file);
+  });
+  // Shared by "Open project" and "Restore unsaved work"
+  function loadProjectObject(parsed, fromAutosave){
       showStatus("Loading project\u2026");
       project.name = parsed.name || "Untitled Project";
-      fsState.projectFile = fsState.loadedHandle || null;
-      if (fsState.loadedHandle) rememberFile(fsState.loadedHandle, true); else ensureProjectDir();
-      fsState.loadedHandle = null; updateSaveHint();
+      if (!fromAutosave && !fsState.projectFile) ensureProjectDir();
+      updateSaveHint();
       project.customTypes = parsed.customTypes || {};
       project.typeSizeDefaults = parsed.typeSizeDefaults || {};
       project.revisions = parsed.revisions || [];
@@ -2081,11 +2135,12 @@
         project.floors = floors.length ? floors : [makeFloor("Ground Floor")];
         project.activeFloorIndex = 0;
         loadActiveFloorIntoView();
-        showStatus("Project loaded");
+        histReset();
+        if (fromAutosave){ AUTOSAVE.savedSig = null; showStatus("Unsaved work restored \u2014 press Save to keep it"); }
+        else { markSaved(); showStatus("Project loaded"); }
+        updateDirtyDot();
       });
-    };
-    reader.readAsText(file);
-  });
+  }
 
   /* ============== File loading (per floor) ============== */
   function triggerUpload(){ el.fileInput.click(); }
@@ -3465,7 +3520,9 @@
   }
 
   /* ============== Undo / clear ============== */
-  el.undoBtn.addEventListener("click", function(){
+  el.undoBtn.addEventListener("click", function(){ histUndo(); });
+  el.redoBtn.addEventListener("click", function(){ histRedo(); });
+  function legacyUndo(){
     var f = floor(); if (!f) return;
     var last = f.undoStack.pop(); if (!last) return;
     var arr = last.kind==="marker"?f.markers : last.kind==="wall"?f.walls : last.kind==="cable"?f.cableRoutes : f.measurements;
@@ -3473,7 +3530,7 @@
     else if (last.action==="delete"){ arr.push(last.item); }
     renderMarkers(); renderOverlay(); updateAllReadouts();
     if (last.kind==="wall" || (last.kind==="marker" && isWifiType(last.item.type))) heatmapDirty(last.item.page);
-  });
+  }
   el.clearPageBtn.addEventListener("click", function(){
     var f = floor(); if (!f) return;
     askConfirm("Clear all points, walls, measurements and cable routes on page "+f.currentPage+"?", function(){
@@ -5009,12 +5066,172 @@
     });
   }
 
+
+  /* ================= Undo / redo history (every change) ================= */
+  var hist = { undo:[], redo:[], last:null, restoring:false, timer:null };
+  function stateSig(){
+    return JSON.stringify({ f:project.floors.map(function(f){ return { id:f.id, m:f.markers, w:f.walls, ms:f.measurements, c:f.cableRoutes, s:f.scaleByPage }; }),
+      r:project.racks, n:project.name, rev:project.revisions, ct:project.customTypes });
+  }
+  function histReset(){ hist.undo = []; hist.redo = []; hist.last = stateSig(); refreshUndoButtons(); }
+  function histCheck(){
+    if (hist.restoring) return;
+    var s = stateSig();
+    if (hist.last === null){ hist.last = s; return; }
+    if (s !== hist.last){
+      hist.undo.push(hist.last); if (hist.undo.length > 150) hist.undo.shift();
+      hist.redo = []; hist.last = s; refreshUndoButtons();
+    }
+    updateDirtyDot();
+  }
+  function histSoon(){ clearTimeout(hist.timer); hist.timer = setTimeout(histCheck, 40); }
+  ["pointerup","keyup","change","click"].forEach(function(ev){ document.addEventListener(ev, histSoon, true); });
+  function refreshUndoButtons(){
+    if (!el.undoBtn || !hist) return;
+    el.undoBtn.disabled = !hist.undo.length; el.redoBtn.disabled = !hist.redo.length;
+  }
+  function applyState(str){
+    hist.restoring = true;
+    var st = JSON.parse(str);
+    st.f.forEach(function(sf){
+      var f = project.floors.find(function(x){ return x.id === sf.id; }); if (!f) return;
+      f.markers = sf.m; f.walls = sf.w; f.measurements = sf.ms; f.cableRoutes = sf.c; f.scaleByPage = sf.s || {}; f.heatmapCache = {};
+    });
+    project.racks = st.r || []; project.name = st.n; project.revisions = st.rev || []; project.customTypes = st.ct || {};
+    el.projectNameInput.value = project.name;
+    closeEditor(); rebuildTypeList(); renderRevisionList(); renderMarkers(); renderOverlay(); paintHeatmap(); updateAllReadouts();
+    if (el.sidePanel.querySelector('.pane[data-pane="racks"]').classList.contains("on")) renderRacks();
+    renderNetwork();
+    hist.last = stateSig(); hist.restoring = false; refreshUndoButtons(); updateDirtyDot();
+  }
+  function histUndo(){
+    histCheck();
+    if (!hist.undo.length){ showStatus("Nothing to undo"); return; }
+    hist.redo.push(hist.last); applyState(hist.undo.pop()); showStatus("Undone");
+  }
+  function histRedo(){
+    if (!hist.redo.length){ showStatus("Nothing to redo"); return; }
+    hist.undo.push(hist.last); applyState(hist.redo.pop()); showStatus("Redone");
+  }
+
+  /* ================= Autosave + restore ================= */
+  var AUTOSAVE = { lastSig:null, savedSig:null, pdfSaved:{} };
+  function hasContent(){ return project.floors.some(function(f){ return f.pdfBase64 || f.markers.length; }); }
+  function isDirty(){ return hasContent() && AUTOSAVE.savedSig !== stateSig(); }
+  function markSaved(sig){ AUTOSAVE.savedSig = sig || stateSig(); AUTOSAVE.lastSig = null; autosaveTick(); updateDirtyDot(); }
+  function updateDirtyDot(){ if (AUTOSAVE && el.saveProjectBtn) el.saveProjectBtn.classList.toggle("dirty", isDirty()); }
+  function autosaveTick(){
+    if (!hasContent()) return;
+    var sig = stateSig(), full = sig + "|" + project.floors.map(function(f){ return f.id + ":" + f.name + ":" + (f.pdfBase64 ? f.pdfBase64.length : 0); }).join(",") + "|" + (AUTOSAVE.savedSig === sig);
+    if (full === AUTOSAVE.lastSig) return;
+    AUTOSAVE.lastSig = full;
+    var meta = projectObject(false);
+    meta.savedAt = Date.now(); meta.dirty = AUTOSAVE.savedSig !== sig;
+    meta.pointCount = project.floors.reduce(function(a,f){ return a + f.markers.length; }, 0);
+    idbSet("autosave-meta", meta);
+    project.floors.forEach(function(f){
+      if (!f.pdfBase64) return;
+      var k = f.id + ":" + f.pdfBase64.length;
+      if (AUTOSAVE.pdfSaved[f.id] !== k){ AUTOSAVE.pdfSaved[f.id] = k; idbSet("autosave-pdf:" + f.id, f.pdfBase64); }
+    });
+    updateDirtyDot();
+  }
+  setInterval(autosaveTick, 4000);
+  document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden") autosaveTick(); });
+  window.addEventListener("pagehide", autosaveTick);
+  function timeAgo(t){
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "just now"; if (m < 60) return m + " min ago";
+    var h = Math.round(m / 60); if (h < 24) return h + " h ago";
+    return new Date(t).toLocaleString();
+  }
+  function offerRestore(){
+    idbGet("autosave-meta").then(function(meta){
+      if (!meta || !meta.dirty || !meta.floors || !meta.floors.length) return;
+      if (hasContent()) return;   // something already open
+      el.restoreInfo.textContent = (meta.name || "Untitled Project") + " · " + (meta.pointCount || 0) + " points · " + timeAgo(meta.savedAt);
+      el.restoreCard.classList.add("on");
+      el.restoreBtn.onclick = function(){
+        el.restoreCard.classList.remove("on");
+        Promise.all(meta.floors.map(function(pf){ return idbGet("autosave-pdf:" + pf.id).then(function(b){ pf.pdfBase64 = b || null; }); }))
+          .then(function(){ loadProjectObject(meta, true); });
+      };
+      el.restoreDiscardBtn.onclick = function(){
+        el.restoreCard.classList.remove("on");
+        meta.dirty = false; idbSet("autosave-meta", meta);
+        showStatus("Discarded");
+      };
+    });
+  }
+
+  /* ================= Keyboard shortcuts ================= */
+  function tileOrder(){ return Array.prototype.map.call(el.typeList.querySelectorAll(".type-btn[data-tool]"), function(b){ return b.dataset.tool; }); }
+  function renderShortcuts(){
+    var keys = tileOrder().slice(0, 9);
+    var rows = [
+      ["1 – 9", keys.map(function(k, i){ return (i+1) + " " + getTypeDef(k).label; }).join(" · ")],
+      ["Esc", "Close the point bar, then stop placing"],
+      ["Right-click", "Same as Esc"],
+      ["R / Shift+R", "Rotate the selected point right / left"],
+      ["+ / −", "Bigger / smaller selected point"],
+      ["Delete", "Delete the selected point"],
+      ["Cmd/Ctrl + Z", "Undo"],
+      ["Cmd/Ctrl + Shift + Z", "Redo"],
+      ["Cmd/Ctrl + S", "Save (replaces the project file once it has been saved)"],
+      ["Cmd/Ctrl + scroll", "Zoom"],
+      ["Cmd/Ctrl + drag", "Move the drawing"],
+      ["?", "Show this list"]
+    ];
+    el.kbList.innerHTML = rows.map(function(r, i){
+      var txt = i === 0 ? keys.map(function(k, j){ return '<b style="color:var(--text-main)">'+(j+1)+'</b> '+escapeHtml(getTypeDef(k).label); }).join("<br>") : escapeHtml(r[1]);
+      return '<kbd>'+escapeHtml(r[0])+'</kbd><span>'+txt+'</span>';
+    }).join("");
+  }
+  function openShortcuts(){ renderShortcuts(); el.shortcutsOverlay.classList.add("visible"); }
+  el.shortcutsBtn.addEventListener("click", openShortcuts);
+  el.shortcutsCloseBtn.addEventListener("click", function(){ el.shortcutsOverlay.classList.remove("visible"); });
+  function anyOverlayOpen(){ return !!document.querySelector(".overlay.visible"); }
+  // Capture phase: runs before the older Esc handler so the first Esc closes the bar and the next one stops placing
+  document.addEventListener("keydown", function(e){
+    var tag = (e.target && e.target.tagName) || "";
+    var typing = /INPUT|TEXTAREA|SELECT/.test(tag) || (e.target && e.target.isContentEditable);
+    var mod = e.metaKey || e.ctrlKey;
+    if (mod && (e.key === "s" || e.key === "S")){
+      e.preventDefault();
+      if (FS_SUPPORTED && fsState.projectFile) saveProjectReplace(); else saveProjectAs();
+      return;
+    }
+    if (typing) return;
+    if (mod && (e.key === "z" || e.key === "Z")){ e.preventDefault(); if (e.shiftKey) histRedo(); else histUndo(); return; }
+    if (mod && (e.key === "y" || e.key === "Y")){ e.preventDefault(); histRedo(); return; }
+    if (mod || e.altKey) return;
+    if (e.key === "Escape"){
+      if (el.shortcutsOverlay.classList.contains("visible")){ el.shortcutsOverlay.classList.remove("visible"); return; }
+      var editorOpen = qb.id != null || el.editorPopover.classList.contains("visible");
+      if (!editorOpen && ui.activeTool && !ui.measureFirstPoint && !ui.wallFirstPoint && !ui.cableFirstPoint){ setActiveTool(ui.activeTool); showStatus("Tool deselected"); }
+      return;
+    }
+    if (anyOverlayOpen()) return;
+    if (e.key === "?"){ e.preventDefault(); openShortcuts(); return; }
+    if (/^[1-9]$/.test(e.key)){
+      var k = tileOrder()[parseInt(e.key,10) - 1];
+      if (k){ e.preventDefault(); if (!el.sidePanel.querySelector('.pane[data-pane="points"]').classList.contains("on") || document.getElementById("app").classList.contains("panel-collapsed")) showPane("points", true); setActiveTool(k); }
+      return;
+    }
+    if (qb.id != null){
+      if (e.key === "r" || e.key === "R"){ e.preventDefault(); qbRotate(e.shiftKey ? -QB_ROT_STEP : QB_ROT_STEP); return; }
+      if (e.key === "+" || e.key === "="){ e.preventDefault(); qbResize(QB_SIZE_STEP); return; }
+      if (e.key === "-" || e.key === "_"){ e.preventDefault(); qbResize(-QB_SIZE_STEP); return; }
+    }
+  }, true);
+
   /* ============== Init ============== */
   window.addEventListener("resize", function(){ /* no auto-refit on resize to avoid surprising jumps */ });
   rebuildTypeList();
   renderRevisionList();
   if (FS_SUPPORTED) idbGet("last").then(function(h){ if (h && h.kind === "file") fsState.lastFile = h; });
   updateSaveHint();
+  setTimeout(function(){ histReset(); markSaved(); offerRestore(); }, 600);
   if ("serviceWorker" in navigator && location.protocol === "https:"){
     navigator.serviceWorker.register("sw.js", { updateViaCache:"none" })
       .then(function(reg){ reg.update(); }).catch(function(){});
