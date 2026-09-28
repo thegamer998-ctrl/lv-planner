@@ -277,6 +277,18 @@
   .confirm-actions{ display:flex; gap:8px; }
   .confirm-actions button{ flex:1; border-radius:var(--radius-sm); padding:8px 0; font-size:12.5px; font-weight:600; border:none; }
   .btn-cancel{ background:rgba(255,255,255,0.07); color:var(--text-main); }
+  .export-box{ width:320px; max-height:88vh; overflow-y:auto; }
+  .export-box h4{ margin:0 0 7px; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:600;
+    display:flex; align-items:center; justify-content:space-between; }
+  .export-box h4 span button{ background:none; border:none; color:var(--accent); font-size:11px; font-weight:600; padding:0 0 0 10px; text-transform:none; letter-spacing:0; }
+  .export-list{ display:flex; flex-direction:column; gap:3px; margin-bottom:14px; }
+  .export-item{ display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:8px; background:var(--bg-panel); cursor:pointer; font-size:12.5px; }
+  .export-item input{ width:16px; height:16px; margin:0; accent-color:var(--accent); flex-shrink:0; }
+  .export-item .ei-icon svg{ width:20px; height:20px; display:block; }
+  .export-item .ei-count{ margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); }
+  .export-seg{ display:flex; gap:4px; margin-bottom:14px; }
+  .export-seg button{ flex:1; padding:8px 0; border-radius:7px; border:1px solid var(--hairline); background:var(--bg-panel); color:var(--text-main); font-size:12px; font-weight:600; }
+  .export-seg button.on{ background:var(--accent); color:#04202f; border-color:var(--accent); }
   .btn-confirm{ background:var(--danger); color:#2a0a0a; }
 
   @media (prefers-reduced-motion: reduce){ .marker{ animation:none; } * { transition:none !important; } }
@@ -290,7 +302,7 @@
     <div class="brand">
       <div class="kicker">www.expresskw.com</div>
       <h1>ExpressTech</h1>
-      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-27.6</span></div>
+      <div class="sub">Villa LV Planner <span style="opacity:0.55;font-size:0.8em;">v2026-09-28.1</span></div>
     </div>
 
     <div class="section">
@@ -484,12 +496,24 @@
 </div>
 
 <div class="overlay" id="exportScopeOverlay">
-  <div class="confirm-box">
-    <p>Export this floor only, or all floors in the project?</p>
-    <div class="confirm-actions" style="flex-direction:column;">
-      <button class="btn-save" id="exportCurrentBtn" style="width:100%;">This floor only</button>
-      <button class="btn-save" id="exportAllBtn" style="width:100%;background:var(--accent-soft);color:var(--accent);">All floors</button>
-      <button class="btn-cancel" id="exportScopeCancelBtn" style="width:100%;">Cancel</button>
+  <div class="confirm-box export-box">
+    <p style="font-weight:600;margin-bottom:12px;">Export PDF</p>
+    <div id="exportFloorsBlock">
+      <h4>Floors</h4>
+      <div class="export-seg">
+        <button type="button" id="exportCurrentBtn" class="on">This floor</button>
+        <button type="button" id="exportAllBtn">All floors</button>
+      </div>
+    </div>
+    <h4>Points to show <span><button type="button" id="exportTypesAll">All</button><button type="button" id="exportTypesNone">None</button></span></h4>
+    <div class="export-list" id="exportTypeList"></div>
+    <div id="exportExtrasBlock">
+      <h4>Also show</h4>
+      <div class="export-list" id="exportExtraList"></div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="exportScopeCancelBtn">Cancel</button>
+      <button class="btn-save" id="exportGoBtn">Export</button>
     </div>
   </div>
 </div>
@@ -940,7 +964,8 @@
    "canvasScroll","canvasStage","pdfCanvas","heatmapCanvas","overlaySvg","markerLayer","emptyState","legendOverlay","legendToggle",
    "editorPopover","saveMenu","saveAsBtn","saveReplaceBtn","saveReplaceSub","markerQuickBar","qbRotL","qbRotR","qbSmaller","qbBigger","qbDelete","qbMore","qbClose","popoverDot","popoverTypeLabel","popoverBody","popoverCloseBtn",
    "confirmOverlay","confirmMessage","confirmCancelBtn","confirmOkBtn",
-   "exportScopeOverlay","exportCurrentBtn","exportAllBtn","exportScopeCancelBtn",
+   "exportScopeOverlay","exportCurrentBtn","exportAllBtn","exportScopeCancelBtn","exportFloorsBlock","exportTypesAll","exportTypesNone",
+   "exportTypeList","exportExtrasBlock","exportExtraList","exportGoBtn",
    "copyFromFloorBtn","copyFloorOverlay","copyTargetPageLabel","copySourceFloorSelect","copySourcePageSelect","copyFloorConfirmBtn","copyFloorCancelBtn",
    "multiPageOverlay","multiPageCount","multiPageList","multiPageImportBtn","multiPageCancelBtn","multiPageAllBtn","multiPageNoneBtn","multiPageSelCount",
    "aiScanBtn","aiKeyLink","aiKeyOverlay","aiKeyInput","aiKeySaveBtn","aiKeyForgetBtn","aiKeyCancelBtn","detectPointsOverlay","detectPointsCount","detectPointsList","detectPointsImportBtn","detectPointsCancelBtn",
@@ -3111,18 +3136,89 @@
   }
 
   /* ============== Export ============== */
+  // Export dialog: pick floors, then tick which point types appear in the PDF.
+  // The list only shows types actually placed on the floors being exported.
+  var exportDlg = { scope:"current", unticked:{} };
+  function exportFloorsFor(scope){
+    return scope === "all" ? project.floors.filter(function(f){ return f.pdfDoc; }) : [floor()];
+  }
+  function renderExportChecklist(){
+    var floors = exportFloorsFor(exportDlg.scope);
+    var markers = [], cables = 0, measures = 0;
+    floors.forEach(function(f){ markers = markers.concat(f.markers); cables += f.cableRoutes.length; measures += f.measurements.length; });
+    var keys = allTypeKeys().filter(function(k){ return markers.some(function(m){ return m.type===k; }); });
+    el.exportTypeList.innerHTML = keys.length ? keys.map(function(k){
+      var t = getTypeDef(k), c = markers.filter(function(m){ return m.type===k; }).length;
+      return '<label class="export-item"><input type="checkbox" data-type="'+escapeHtml(k)+'"'+(exportDlg.unticked[k]?'':' checked')+'>'+
+        '<span class="ei-icon">'+typeIconSVG(t,0)+'</span><span>'+escapeHtml(t.label)+'</span><span class="ei-count">'+c+'</span></label>';
+    }).join("") : '<p class="popover-hint" style="margin:0;">No points placed yet \u2014 the drawing will export without points.</p>';
+    var extras = [];
+    if (cables) extras.push(['__cables', 'Cable routes', cables]);
+    if (measures) extras.push(['__measures', 'Measurements', measures]);
+    el.exportExtrasBlock.style.display = extras.length ? "" : "none";
+    el.exportExtraList.innerHTML = extras.map(function(x){
+      return '<label class="export-item"><input type="checkbox" data-type="'+x[0]+'"'+(exportDlg.unticked[x[0]]?'':' checked')+'>'+
+        '<span>'+x[1]+'</span><span class="ei-count">'+x[2]+'</span></label>';
+    }).join("");
+    el.exportScopeOverlay.querySelectorAll(".export-list input").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        var k = cb.getAttribute("data-type");
+        if (cb.checked) delete exportDlg.unticked[k]; else exportDlg.unticked[k] = true;
+        updateExportGo();
+      });
+    });
+    el.exportCurrentBtn.classList.toggle("on", exportDlg.scope === "current");
+    el.exportAllBtn.classList.toggle("on", exportDlg.scope === "all");
+    updateExportGo();
+  }
+  function updateExportGo(){
+    var boxes = el.exportTypeList.querySelectorAll("input");
+    var any = !boxes.length || Array.prototype.some.call(boxes, function(b){ return b.checked; });
+    el.exportGoBtn.disabled = !any;
+    el.exportGoBtn.style.opacity = any ? "" : "0.45";
+    el.exportGoBtn.textContent = any ? "Export" : "Tick at least one";
+  }
   el.exportBtn.addEventListener("click", function(){
     var f = floor(); if (!f || !f.pdfDoc) return;
-    var otherFloorsWithPdf = project.floors.filter(function(x){ return x.pdfDoc && x!==f; });
-    if (otherFloorsWithPdf.length){
-      el.exportScopeOverlay.classList.add("visible");
-    } else {
-      exportAnnotatedPdf("current");
-    }
+    var others = project.floors.filter(function(x){ return x.pdfDoc && x!==f; });
+    el.exportFloorsBlock.style.display = others.length ? "" : "none";
+    exportDlg.scope = "current"; exportDlg.unticked = {};   // every export starts with everything ticked
+    renderExportChecklist();
+    el.exportScopeOverlay.classList.add("visible");
   });
   el.exportScopeCancelBtn.addEventListener("click", function(){ el.exportScopeOverlay.classList.remove("visible"); });
-  el.exportCurrentBtn.addEventListener("click", function(){ el.exportScopeOverlay.classList.remove("visible"); exportAnnotatedPdf("current"); });
-  el.exportAllBtn.addEventListener("click", function(){ el.exportScopeOverlay.classList.remove("visible"); exportAnnotatedPdf("all"); });
+  el.exportCurrentBtn.addEventListener("click", function(){ exportDlg.scope = "current"; renderExportChecklist(); });
+  el.exportAllBtn.addEventListener("click", function(){ exportDlg.scope = "all"; renderExportChecklist(); });
+  el.exportTypesAll.addEventListener("click", function(){
+    el.exportTypeList.querySelectorAll("input").forEach(function(b){ b.checked = true; delete exportDlg.unticked[b.getAttribute("data-type")]; });
+    updateExportGo();
+  });
+  el.exportTypesNone.addEventListener("click", function(){
+    el.exportTypeList.querySelectorAll("input").forEach(function(b){ b.checked = false; exportDlg.unticked[b.getAttribute("data-type")] = true; });
+    updateExportGo();
+  });
+  el.exportGoBtn.addEventListener("click", function(){
+    if (el.exportGoBtn.disabled) return;
+    var boxes = el.exportTypeList.querySelectorAll("input");
+    var shown = Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.getAttribute("data-type"); });
+    var filter = {
+      types: {}, partial: shown.length < boxes.length, shownKeys: shown,
+      cables: !exportDlg.unticked.__cables, measures: !exportDlg.unticked.__measures
+    };
+    shown.forEach(function(k){ filter.types[k] = true; });
+    el.exportScopeOverlay.classList.remove("visible");
+    exportAnnotatedPdf(exportDlg.scope, filter);
+  });
+  // A stand-in for a floor that only carries the chosen points; everything else (drawing, walls, settings) comes from the real floor.
+  function filteredFloor(f, flt){
+    if (!flt) return f;
+    var v = Object.create(f);
+    v.markers = f.markers.filter(function(m){ return flt.types[m.type]; });
+    v.cableRoutes = flt.cables ? f.cableRoutes : [];
+    v.measurements = flt.measures ? f.measurements : [];
+    v.heatmapOn = f.heatmapOn && v.markers.some(function(m){ return isWifiType(m.type); });
+    return v;
+  }
 
   /* ============== Copy from another floor ============== */
   el.copyFromFloorBtn.addEventListener("click", function(){
@@ -3370,8 +3466,9 @@
     return pageChain.then(function(){ return pagesData; });
   }
 
-  function exportAnnotatedPdf(scope){
-    var floorsToExport = scope === "all" ? project.floors.filter(function(f){ return f.pdfDoc; }) : [floor()];
+  function exportAnnotatedPdf(scope, flt){
+    var floorsToExport = (scope === "all" ? project.floors.filter(function(f){ return f.pdfDoc; }) : [floor()])
+      .filter(Boolean).map(function(f){ return filteredFloor(f, flt); });
     if (!floorsToExport.length || !floorsToExport[0]) return;
     el.exportBtn.disabled = true; showStatus("Preparing export\u2026");
     var jsPDFCtor = window.jspdf.jsPDF; var doc=null;
@@ -3395,6 +3492,11 @@
         ? (project.name || "project").replace(/[^a-z0-9\-_ ]/gi,"").trim()
         : (floorsToExport[0].fileName ? floorsToExport[0].fileName.replace(/\.pdf$/i,"") : "villa-drawing");
       var suffix = scope === "all" ? "-all-floors-LV-points" : "-LV-points";
+      if (flt && flt.partial){
+        // e.g. "...-LV-points (CCTV Dome, Network Data).pdf" so each filtered PDF gets its own name
+        var names = flt.shownKeys.map(function(k){ return getTypeDef(k).label.replace(/[^a-z0-9\- ]/gi," ").replace(/\s+/g," ").trim(); });
+        suffix += " (" + (names.length > 3 ? names.slice(0,3).join(", ") + " +" + (names.length-3) : names.join(", ")) + ")";
+      }
       var plainName = base + suffix + ".pdf";
       var plainBlob = doc.output("blob");
       // Same document plus one combined summary page at the very end
