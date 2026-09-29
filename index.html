@@ -230,6 +230,19 @@
   .type-cable{ display:none; margin-left:4px; padding:1px 6px; border-radius:6px; font-size:10.5px; font-weight:700; background:#fff; border:1.5px solid currentColor; }
   .cable-defaults{ display:grid; grid-template-columns:1fr 112px; gap:6px 8px; align-items:center; font-size:12px; margin-top:4px; }
   .cable-defaults select{ height:28px; font-size:12px; padding:0 6px; }
+  .ct-list{ border:1px solid var(--hairline); border-radius:10px; overflow:hidden; }
+  .ct-row{ display:flex; align-items:center; gap:7px; padding:7px 10px; font-size:12.5px; border-top:1px solid var(--hairline); background:var(--bg-panel); }
+  .ct-row:first-child{ border-top:0; }
+  .ct-name{ font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ct-tag{ font-size:10.5px; font-weight:700; padding:0 5px; border:1.5px solid currentColor; border-radius:5px; background:#fff; }
+  .ct-tag.none{ color:var(--text-muted); border-color:transparent; background:none; font-weight:500; }
+  .ct-n{ color:var(--text-muted); font-size:11.5px; min-width:34px; text-align:right; }
+  .ct-def{ color:var(--text-muted); font-size:11px; }
+  .ct-del{ width:22px; height:22px; border-radius:6px; border:1px solid var(--hairline-2); background:var(--bg-panel-raised); color:var(--text-muted); font-size:15px; line-height:1; display:grid; place-items:center; }
+  .ct-del:hover{ color:#dc2626; border-color:#dc2626; }
+  .ct-add{ display:grid; grid-template-columns:1fr 62px auto; gap:6px; margin-top:8px; }
+  .ct-add input{ height:32px; font-size:12px; margin:0; }
+  .ct-add .action-btn{ margin:0; height:32px; padding:0 12px; }
   .cc-box{ margin-top:12px; border:1px solid var(--hairline); border-radius:10px; padding:10px 12px; background:var(--bg-panel); }
   .cc-per{ display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:8px; }
   .cc-per input{ width:58px; height:28px; text-align:center; }
@@ -662,7 +675,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.6</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.7</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -736,6 +749,11 @@
       <div class="layer-row"><span class="lbl"><b>Show cable runs</b><small>Automatic: point → floor draw box → cabinet</small></span>
         <button type="button" class="toggle-switch runs-toggle" role="switch" aria-checked="false"><span class="toggle-knob"></span></button></div>
       <div id="runsSummary" class="runs-sum"></div>
+      <p class="section-label" style="margin-top:16px;">Cable types</p>
+      <div id="cableTypeList" class="ct-list"></div>
+      <div class="ct-add"><input type="text" id="ctAddName" class="select-input" placeholder="Add cable, e.g. Cat6 Outdoor" maxlength="30">
+        <input type="text" id="ctAddTag" class="select-input" placeholder="Tag" maxlength="8" title="Short tag shown on the drawing (optional)">
+        <button type="button" class="action-btn primary" id="ctAddBtn">Add</button></div>
       <p class="section-label" style="margin-top:16px;">Cable for new points</p>
       <p class="pane-note" style="margin-top:0;">Every new point of that type gets this cable. Change a single point from its menu.</p>
       <div id="cableDefaults" class="cable-defaults"></div>
@@ -847,7 +865,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.6</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.7</p>
     </section>
   </aside>
 
@@ -1509,12 +1527,51 @@
 
   /* ============== Cable category per point ============== */
   // Cat6 is the default and shows no tag; anything else gets a small tag on the drawing
-  var CABLE_CATS = {
+  var CABLE_BUILTIN = {
     cat6:    { label:"Cat6",          tag:"",       color:"#2563eb" },
     cat6a:   { label:"Cat6A",         tag:"6A",     color:"#16a34a" },
     cat6aout:{ label:"Cat6A Outdoor", tag:"6A OUT", color:"#7c3aed" },
     cat7:    { label:"Cat7",          tag:"C7",     color:"#ea580c" }
   };
+  // Your cable list: built-ins (any but Cat6 can be removed) + cable types you add. Kept in this browser and in each project file.
+  var CABLE_LIB = { custom:[], hidden:[] };
+  try { var cl0 = JSON.parse(localStorage.getItem("lvplanner_cablelib") || "null"); if (cl0){ CABLE_LIB.custom = cl0.custom || []; CABLE_LIB.hidden = cl0.hidden || []; } } catch(e){}
+  var CABLE_CATS = {};
+  var CABLE_COLORS = ["#0891b2","#db2777","#65a30d","#b45309","#4f46e5","#0d9488","#be123c","#7c2d12"];
+  function rebuildCableCats(){
+    Object.keys(CABLE_CATS).forEach(function(k){ delete CABLE_CATS[k]; });
+    Object.keys(CABLE_BUILTIN).forEach(function(k){ if (k === "cat6" || CABLE_LIB.hidden.indexOf(k) < 0) CABLE_CATS[k] = CABLE_BUILTIN[k]; });
+    CABLE_LIB.custom.forEach(function(c){ if (c && c.key && c.label) CABLE_CATS[c.key] = { label:c.label, tag:c.tag || "", color:c.color || "#475569", custom:true }; });
+  }
+  rebuildCableCats();
+  function saveCableLib(){ try { localStorage.setItem("lvplanner_cablelib", JSON.stringify(CABLE_LIB)); } catch(e){} }
+  function autoCableTag(label){
+    var t = String(label).toUpperCase().replace(/^CAT\s*/, "").replace(/OUTDOOR/, "OUT").replace(/\s+/g, " ").trim();
+    return t.length > 8 ? t.slice(0, 8) : t;
+  }
+  function addCableType(label, tag){
+    label = String(label || "").trim(); if (!label) return null;
+    var exist = Object.keys(CABLE_CATS).find(function(k){ return CABLE_CATS[k].label.toLowerCase() === label.toLowerCase(); });
+    if (exist) return exist;
+    var bi = Object.keys(CABLE_BUILTIN).find(function(k){ return CABLE_BUILTIN[k].label.toLowerCase() === label.toLowerCase(); });
+    if (bi){ CABLE_LIB.hidden = CABLE_LIB.hidden.filter(function(x){ return x !== bi; }); }
+    else CABLE_LIB.custom.push({ key:"cc" + Date.now().toString(36), label:label, tag:String(tag || autoCableTag(label)).trim().slice(0, 8), color:CABLE_COLORS[CABLE_LIB.custom.length % CABLE_COLORS.length] });
+    saveCableLib(); rebuildCableCats(); return bi || CABLE_LIB.custom[CABLE_LIB.custom.length - 1].key;
+  }
+  function removeCableType(k){
+    if (k === "cat6" || !CABLE_CATS[k]) return;
+    if (CABLE_BUILTIN[k]){ if (CABLE_LIB.hidden.indexOf(k) < 0) CABLE_LIB.hidden.push(k); }
+    else CABLE_LIB.custom = CABLE_LIB.custom.filter(function(c){ return c.key !== k; });
+    Object.keys(CABLE_DEFAULTS).forEach(function(t){ if (CABLE_DEFAULTS[t] === k) delete CABLE_DEFAULTS[t]; });
+    try { localStorage.setItem("lvplanner_cablebytype", JSON.stringify(CABLE_DEFAULTS)); } catch(e){}
+    saveCableLib(); rebuildCableCats();
+  }
+  // A project opened from a file brings its own cable types with it
+  function mergeCableLib(lib){
+    if (!lib) return;
+    (lib.custom || []).forEach(function(c){ if (c && c.key && !CABLE_LIB.custom.some(function(x){ return x.key === c.key; })) CABLE_LIB.custom.push(c); });
+    saveCableLib(); rebuildCableCats();
+  }
   var CABLED_TYPES = { wifi:1, outdoorwifi:1, cctv:1, cctvoutdoor:1, network:1, ipphone:1, dtv:1, uplink:1, intercom:1, intercomscreen:1 };
   var CABLE_DEFAULTS = {};
   try {
@@ -1535,12 +1592,35 @@
       chip.textContent = CABLE_CATS[k].tag; chip.style.color = CABLE_CATS[k].color; chip.style.display = k === "cat6" ? "none" : "inline-block";
       chip.title = "New points get " + CABLE_CATS[k].label;
     });
-    document.querySelectorAll("[data-cable-sel]").forEach(function(sel){ sel.value = cableDefaultFor(sel.getAttribute("data-cable-sel")); });
+    document.querySelectorAll("[data-cable-sel]").forEach(function(sel){ var k = cableDefaultFor(sel.getAttribute("data-cable-sel")); sel.innerHTML = cableOptionsHtml(k); sel.value = k; });
+    renderCableTypeList();
     var box = document.getElementById("cableDefaults"); if (!box) return;
     box.innerHTML = Object.keys(CABLED_TYPES).filter(function(k){ return BUILTIN_TYPES[k]; }).map(function(k){
       return '<span>'+escapeHtml(BUILTIN_TYPES[k].label)+'</span><select class="select-input" data-cable-sel="'+k+'">'+cableOptionsHtml(cableDefaultFor(k))+'</select>';
     }).join("");
     box.querySelectorAll("select").forEach(function(sel){ sel.onchange = function(){ setCableDefault(sel.getAttribute("data-cable-sel"), sel.value); }; });
+  }
+  function cableUseCount(k){
+    var n = 0; project.floors.forEach(function(f){ f.markers.forEach(function(m){ if ((CABLE_CATS[m.cable] ? m.cable : "cat6") === k && CABLED_TYPES[m.type]) n++; }); }); return n;
+  }
+  function renderCableTypeList(){
+    var box = document.getElementById("cableTypeList"); if (!box) return;
+    box.innerHTML = Object.keys(CABLE_CATS).map(function(k){
+      var c = CABLE_CATS[k], n = cableUseCount(k);
+      return '<div class="ct-row"><span class="cable-dot" style="background:'+c.color+'"></span><span class="ct-name">'+escapeHtml(c.label)+'</span>'+
+        (c.tag ? '<span class="ct-tag" style="color:'+c.color+'">'+escapeHtml(c.tag)+'</span>' : '<span class="ct-tag none">no tag</span>')+
+        '<span class="ct-n">'+(n ? n + ' pt' + (n===1?'':'s') : '')+'</span>'+
+        (k === "cat6" ? '<span class="ct-def">default</span>' : '<button type="button" class="ct-del" data-ct-del="'+k+'" title="Remove '+escapeHtml(c.label)+'">&times;</button>')+'</div>';
+    }).join("");
+    box.querySelectorAll("[data-ct-del]").forEach(function(b){ b.onclick = function(){
+      var k = b.getAttribute("data-ct-del"), c = CABLE_CATS[k], n = cableUseCount(k);
+      var go = function(){
+        project.floors.forEach(function(f){ f.markers.forEach(function(m){ if (m.cable === k) delete m.cable; }); });
+        removeCableType(k); refreshCableDefaultsUi(); renderMarkers(); updateAllReadouts(); renderHardwareList(); histSoon();
+        showStatus(c.label + " removed from the list" + (n ? " \u2014 " + n + " point(s) moved to Cat6" : ""));
+      };
+      if (n) askConfirm("Remove " + c.label + "? " + n + " point(s) use it and will change to Cat6.", go); else go();
+    }; });
   }
   function cableTagHtml(m, r){
     var c = CABLE_CATS[m.cable]; if (!c || !c.tag) return "";
@@ -2172,7 +2252,7 @@
 
   function projectJsonBlob(){ return new Blob([JSON.stringify(projectObject(true))], { type:"application/json" }); }
   function projectObject(withPdf){
-    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, cableCalc: project.cableCalc, floors: project.floors.map(function(f){
+    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, cableCalc: project.cableCalc, cableLib: { custom: CABLE_LIB.custom }, floors: project.floors.map(function(f){
       return { id:f.id, name:f.name, fileName:f.fileName, pdfBase64:withPdf ? f.pdfBase64 : null, currentPage:f.currentPage,
         markers:f.markers, walls:f.walls, measurements:f.measurements, cableRoutes:f.cableRoutes,
         scaleByPage:f.scaleByPage, heatmapOn:f.heatmapOn, environment:f.environment, legendByPage:f.legendByPage, showCameraCones:f.showCameraCones };
@@ -2287,6 +2367,7 @@
       project.revisions = parsed.revisions || [];
       project.racks = Array.isArray(parsed.racks) ? parsed.racks : [];
       project.cableCalc = parsed.cableCalc || null;
+      mergeCableLib(parsed.cableLib);
       ui.placeRack = "";
       renderRevisionList();
       el.projectNameInput.value = project.name;
@@ -5845,6 +5926,7 @@
       (c.unscaled ? 'Lengths are rough until you set the scale with <b>Measure</b> on each page. ' : '') +
       'Includes '+FLOOR_HEIGHT_M+' m per floor for the riser and '+SLACK_M+' m slack per run.</p>';
     el.runsSummary.innerHTML = calcHtml + measured;
+    renderCableTypeList();
     var per = document.getElementById("ccPer");
     if (per) per.onchange = function(){
       var v = parseFloat(per.value); if (!(v > 0)) return;
@@ -5857,6 +5939,20 @@
       setTimeout(function(){ renderRunsSummary(); renderHardwareList(); histSoon(); }, 0);
     }; });
   }
+  (function(){
+    var nm = document.getElementById("ctAddName"), tg = document.getElementById("ctAddTag"), btn = document.getElementById("ctAddBtn");
+    if (!btn) return;
+    function doAdd(){
+      var label = nm.value.trim(); if (!label){ nm.focus(); return; }
+      var had = Object.keys(CABLE_CATS).some(function(k){ return CABLE_CATS[k].label.toLowerCase() === label.toLowerCase(); });
+      addCableType(label, tg.value);
+      nm.value = ""; tg.value = "";
+      refreshCableDefaultsUi(); renderRunsSummary();
+      showStatus(had ? label + " is already in the list" : label + " added \u2014 pick it for a point type below or from any point's menu");
+    }
+    btn.addEventListener("click", doAdd);
+    [nm, tg].forEach(function(i){ i.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); doAdd(); } }); });
+  })();
   refreshCableDefaultsUi();
 
   /* ================= Undo / redo history (every change) ================= */
