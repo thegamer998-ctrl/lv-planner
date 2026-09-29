@@ -648,7 +648,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.2</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.3</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -831,7 +831,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.2</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.3</p>
     </section>
   </aside>
 
@@ -2557,7 +2557,7 @@
         "Give each an id L1, L2, … For each, describe the symbol's exact shape so it can be recognised on the plan, copy the legend text, and map it to ONE type from this list: " + AI_TYPE_LIST +
         ". Cameras: use cctvoutdoor for a BULLET camera symbol or a legend text saying bullet/outdoor/external; use cctv only for a DOME/turret camera symbol or text saying dome/indoor/internal. " +
         "If a camera symbol says neither, use \"camera\" as the type. Use \"other\" for symbols that fit no type. " +
-        "Reply with JSON only: {\"legend\":[{\"id\":\"L1\",\"symbol\":\"shape description\",\"label\":\"legend text\",\"code\":\"letter code shown inside/next to the symbol, if any\",\"type\":\"type\"}]}";
+        "Reply with JSON only: {\"legend\":[{\"id\":\"L1\",\"symbol\":\"shape description\",\"label\":\"legend text\",\"code\":\"the letter code shown inside the symbol (e.g. T, D, W, CAM, IT)\",\"type\":\"type\"}]}";
       return callClaude(key, systemText, [
         { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:img.b64 } },
         { type:"text", text:prompt }
@@ -2581,12 +2581,15 @@
           return renderRegionJpeg(page, t).then(function(im){
           img = im;
           var prompt = "This image is ONE SECTION (" + img.w + " × " + img.h + " pixels) of a floor plan; sections overlap slightly. The drawing's legend is: " + legendText + ". " +
-            "Find EVERY symbol on the plan in this image that matches one of those legend entries. Outlets are often drawn in tight groups of 2-4 along a wall — list each symbol separately. " +
-            "Match each symbol to the legend entry with the SAME SHAPE — look at the symbol itself, not only the nearby text; a bullet camera and a dome camera are different entries. " +
-            "Ignore anything that is not a legend symbol (furniture, doors, dimensions, room names, power sockets, lights). Skip symbols cut off at the image edge. " +
-            "For each symbol give its centre in PIXELS of this image (x from the left, y from the top), the legend id, and the text label written next to it if any (e.g. CAM.3, WIFI 2, D4). " +
+            "Find EVERY low-voltage point in this image. Important — on the plan the symbols rarely look exactly like the legend: " +
+            "they are ROTATED to sit against a wall, they may overlap furniture or lamps, the letter shown inside the legend symbol is usually written NEXT to the symbol as a numbered label instead (T4, D1, CAM.3, WIFI.5), " +
+            "and floor outlets may be drawn as a small floor box (a square with a cross). The numbered label is the most reliable clue: a label starting with a legend code (T → telephone, D → data, W/WIFI → wifi, CAM → camera …) identifies the point and its legend entry. " +
+            "Every such numbered label is one point — do not skip any. If one symbol carries two labels (e.g. D1 and D2 beside one floor box), report it twice, once per label. Outlets drawn in a group are listed separately. " +
+            "Ignore furniture, doors, dimensions, room names, power sockets, switches and lights. Skip symbols cut off at the image edge. " +
+            "For each point give the centre of its symbol in PIXELS of this image (x from the left, y from the top), the legend id, and its label. " +
+            "For every CAMERA also give the direction it looks: the camera symbol is a rectangle (the body) with a small triangle at one end (the lens, pointing where the camera looks) — give bx,by = centre of the rectangle and lx,ly = centre of the triangle, in pixels. " +
             (legend.length ? "" : "Also give a type from this list: " + AI_TYPE_LIST + ". ") +
-            "Reply with JSON only: {\"points\":[{\"id\":\"L1\",\"label\":\"CAM.3\",\"x\":512,\"y\":300" + (legend.length ? "" : ",\"type\":\"cctv\"") + "}]}";
+            "Reply with JSON only: {\"points\":[{\"id\":\"L1\",\"label\":\"T4\",\"x\":512,\"y\":300" + (legend.length ? "" : ",\"type\":\"ipphone\"") + "},{\"id\":\"L4\",\"label\":\"CAM.3\",\"x\":800,\"y\":120,\"bx\":795,\"by\":118,\"lx\":820,\"ly\":140}]}";
           return callClaude(key, systemText, [
             { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:img.b64 } },
             { type:"text", text:prompt }
@@ -2600,7 +2603,10 @@
               var x = t.x0 + (px / img.w) * (t.x1 - t.x0), y = t.y0 + (py / img.h) * (t.y1 - t.y0);
               // how central the hit is in its section (edge hits are less reliable)
               var cx = Math.min(px, img.w - px) / img.w, cy = Math.min(py, img.h - py) / img.h;
-              raw.push({ type:type, desc:desc, legendLabel: lg ? lg.label : "", xRatio:x, yRatio:y, centr: Math.min(cx, cy) });
+              // camera direction: body centre → lens triangle (same scale on both axes, so the angle is true)
+              var facing = null, bx = parseFloat(p.bx), by = parseFloat(p.by), lx = parseFloat(p.lx), ly = parseFloat(p.ly);
+              if (![bx,by,lx,ly].some(isNaN) && Math.hypot(lx-bx, ly-by) > 2) facing = Math.atan2(ly - by, lx - bx) * 180 / Math.PI;
+              raw.push({ type:type, desc:desc, legendLabel: lg ? lg.label : "", xRatio:x, yRatio:y, centr: Math.min(cx, cy), facing: facing });
             });
           });
           });
@@ -2625,13 +2631,22 @@
       kept.sort(function(a, b){ return b.centr - a.centr; });
       var merged = [];
       kept.forEach(function(c){
-        var dup = merged.some(function(m){
+        var nc = normLabel(c.desc);
+        var dup = merged.find(function(m){
           if (c.textId != null && m.textId === c.textId) return true;
+          var nm = normLabel(m.desc);
+          if (nc && nm && /\d/.test(nc) && nc === nm && Math.hypot(m.xRatio - c.xRatio, m.yRatio - c.yRatio) < 0.06) return true;   // same label seen twice
+          if (nc && nm && /\d/.test(nc) && /\d/.test(nm) && nc !== nm) return false;   // D1 and D2 on one box stay two points
           return Math.hypot(m.xRatio - c.xRatio, m.yRatio - c.yRatio) < 0.012;
         });
         if (!dup) merged.push(c);
+        else if (dup.facing == null && c.facing != null) dup.facing = c.facing;
       });
       merged.sort(function(a, b){ return a.yRatio - b.yRatio || a.xRatio - b.xRatio; });
+      merged.forEach(function(c, i){
+        var n = 0; for (var j = 0; j < i; j++) if (Math.hypot(merged[j].xRatio - c.xRatio, merged[j].yRatio - c.yRatio) < 0.006) n++;
+        if (n) c.yRatio = Math.min(1, c.yRatio + 0.012 * n);
+      });
       merged.forEach(function(c, i){
         var known = !!getTypeDef(c.type);
         c.known = known || c.type === "camera";
@@ -2681,6 +2696,13 @@
       label.setAttribute("x",cx); label.setAttribute("y",cy+4); label.setAttribute("text-anchor","middle");
       label.setAttribute("font-size","11"); label.setAttribute("font-weight","700"); label.setAttribute("fill","#ffffff"); label.setAttribute("font-family","Arial");
       label.textContent = String(i+1);
+      if (c.facing != null){
+        var rad = c.facing * Math.PI / 180, arrow = document.createElementNS("http://www.w3.org/2000/svg","line");
+        arrow.setAttribute("x1", cx + Math.cos(rad)*11); arrow.setAttribute("y1", cy + Math.sin(rad)*11);
+        arrow.setAttribute("x2", cx + Math.cos(rad)*30); arrow.setAttribute("y2", cy + Math.sin(rad)*30);
+        arrow.setAttribute("stroke", color); arrow.setAttribute("stroke-width", "3"); arrow.setAttribute("stroke-linecap", "round");
+        ghost.appendChild(arrow);
+      }
       ghost.appendChild(circle); ghost.appendChild(label);
     });
     el.overlaySvg.appendChild(ghost);
@@ -2700,10 +2722,15 @@
         var idx = parseInt(row.dataset.idx, 10);
         var c = candidates[idx];
         var type = row.querySelector(".dp-type").value;
-        placePointMarker(type, c.xRatio, c.yRatio);
+        var mk = placePointMarker(type, c.xRatio, c.yRatio);
+        if (mk && c.facing != null && isCameraType(type)){
+          var rot = type === "cctvoutdoor" ? c.facing - BULLET_TILT : c.facing;
+          mk.rotation = ((Math.round(rot) % 360) + 360) % 360;
+        }
         added++;
       });
       cleanup();
+      renderMarkers(); if (typeof renderOverlay === "function") renderOverlay();
       showStatus("Added " + added + " point(s) \u2014 drag any that need a nudge");
     };
   }
@@ -3225,6 +3252,7 @@
     f.undoStack.push({ action:"add", kind:"marker", item:marker });
     renderMarkers(); updateAllReadouts();
     if (isWifiType(type)) heatmapDirty(f.currentPage);
+    return marker;
   }
 
   function duplicateMarker(id){
