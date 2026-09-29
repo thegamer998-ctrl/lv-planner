@@ -249,6 +249,17 @@
   .rpt-types{ margin-top:6px; } .rpt-types summary{ font-size:12px; color:var(--accent); cursor:pointer; }
   .rpt-top{ display:flex; align-items:flex-start; gap:12px; } .rpt-top > div{ flex:1; }
   .rpt-selall{ height:32px; padding:0 12px; border-radius:8px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+  .rpt-selall.sm{ height:26px; padding:0 9px; font-size:11.5px; gap:6px; } .rpt-selall.sm .rpt-sck{ width:13px; height:13px; }
+  #choiceOverlay .confirm-box.choice-box{ width:400px; max-width:calc(100vw - 32px); }
+  .choice-title{ font-weight:700; font-size:16px; margin:0 0 4px; word-break:break-word; } .choice-msg{ color:var(--text-muted); font-size:13px; margin:0 0 14px; line-height:1.45; }
+  #choiceInput{ margin:0 0 14px; height:38px; font-size:14px; }
+  .choice-btns{ display:flex; flex-direction:column; gap:8px; }
+  .choice-btns button{ min-height:42px; border-radius:10px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); font-weight:600; font-size:14px; padding:8px 14px; text-align:center; }
+  .choice-btns button small{ display:block; font-weight:500; font-size:11.5px; color:var(--text-muted); margin-top:1px; }
+  .choice-btns button.primary{ background:var(--accent); border-color:var(--accent); color:var(--on-accent); } .choice-btns button.primary small{ color:inherit; opacity:.85; }
+  .choice-btns button.danger{ color:#dc2626; border-color:color-mix(in srgb, #dc2626 40%, transparent); }
+  .choice-btns button.cancel{ border:0; background:var(--bg-panel-raised); color:var(--text-muted); }
+  .choice-btns button:disabled{ opacity:.45; }
   .rpt-sck{ width:15px; height:15px; border-radius:4px; border:1.5px solid var(--hairline-2); display:grid; place-items:center; }
   .rpt-sck.on, .rpt-sck.part{ background:var(--accent); border-color:var(--accent); }
   .rpt-sck.on::after{ content:""; width:7px; height:4px; border:2px solid #fff; border-top:0; border-right:0; transform:rotate(-45deg) translate(1px,-1px); }
@@ -726,7 +737,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.12</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.13</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -735,6 +746,7 @@
     <button class="tbtn icon" id="redoBtn" disabled title="Redo (Cmd/Ctrl+Shift+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
     <span class="tsep"></span>
     <button class="tbtn ai" id="aiScanBtn" disabled title="Scan drawing with AI"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg><span class="tlabel">AI scan</span></button>
+    <button class="tbtn" id="newProjectBtn" title="Start a new project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 12v6M9 15h6"/></svg><span class="tlabel">New</span></button>
     <button class="tbtn" id="loadProjectBtn" title="Open project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="tlabel">Open</span></button>
     <button class="tbtn" id="saveProjectBtn" title="Save project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="tlabel">Save</span></button>
     <button class="tbtn primary" id="exportBtn" disabled title="Export PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="tlabel">Export PDF</span></button>
@@ -916,7 +928,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.12</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.13</p>
     </section>
   </aside>
 
@@ -1012,6 +1024,15 @@
   <button type="button" id="qbMore" class="qb-more" title="More options"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
   <button type="button" id="qbClose" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
+<div class="overlay" id="choiceOverlay">
+  <div class="confirm-box choice-box">
+    <p class="choice-title" id="choiceTitle"></p>
+    <p class="choice-msg" id="choiceMsg"></p>
+    <input type="text" class="select-input" id="choiceInput" style="display:none;" maxlength="80">
+    <div class="choice-btns" id="choiceBtns"></div>
+  </div>
+</div>
+
 <div class="overlay" id="confirmOverlay">
   <div class="confirm-box">
     <p id="confirmMessage">Are you sure?</p>
@@ -1086,8 +1107,8 @@
   <div class="confirm-box" style="width:340px;max-height:82vh;display:flex;flex-direction:column;">
     <p style="margin-bottom:8px;">This PDF has <span id="multiPageCount">0</span> pages. Choose which to import as floors \u2014 names are guessed from the drawing text, edit any that need fixing.</p>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <button type="button" class="link-btn" id="multiPageAllBtn">Select all</button>
-      <button type="button" class="link-btn" id="multiPageNoneBtn">Select none</button>
+      <button type="button" class="rpt-selall" id="multiPageAllBtn"><span class="rpt-sck on"></span><span>Unselect all</span></button>
+      <button type="button" class="link-btn" id="multiPageNoneBtn" style="display:none;">Select none</button>
       <span class="popover-hint" id="multiPageSelCount" style="margin:0 0 0 auto;"></span>
     </div>
     <div id="multiPageList" style="overflow-y:auto;flex:1;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>
@@ -1101,6 +1122,7 @@
 <div class="overlay" id="detectPointsOverlay">
   <div class="confirm-box" style="width:320px;max-height:82vh;display:flex;flex-direction:column;">
     <p style="margin-bottom:8px;">The AI found <span id="detectPointsCount">0</span> possible point(s). Numbered markers show where each would land on the plan &mdash; uncheck any that don't belong, fix a type if needed, then add. Positions are approximate; drag to fine-tune afterwards.</p>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><button type="button" class="rpt-selall" id="detectSelAll"><span class="rpt-sck on"></span><span>Unselect all</span></button><span class="popover-hint" id="detectSelCount" style="margin:0 0 0 auto;"></span></div>
     <div id="detectPointsList" style="overflow-y:auto;flex:1;margin-bottom:10px;display:flex;flex-direction:column;gap:6px;"></div>
     <div class="confirm-actions" style="flex-direction:column;">
       <button class="btn-save" id="detectPointsImportBtn" style="width:100%;">Add selected points</button>
@@ -1754,7 +1776,7 @@
    "undoBtn","clearPageBtn","clearAllBtn","exportBtn","totalCount","hintText","statusText",
    "canvasScroll","canvasStage","pdfCanvas","heatmapCanvas","overlaySvg","markerLayer","emptyState","legendOverlay","legendToggle",
    "editorPopover","saveMenu","saveAsBtn","saveReplaceBtn","saveReplaceSub","markerQuickBar","qbRotL","qbRotR","qbSmaller","qbBigger","qbDelete","qbMore","qbClose","popoverDot","popoverTypeLabel","popoverBody","popoverCloseBtn",
-   "confirmOverlay","confirmMessage","confirmCancelBtn","confirmOkBtn","sumCables",
+   "confirmOverlay","confirmMessage","confirmCancelBtn","confirmOkBtn","choiceOverlay","choiceTitle","choiceMsg","choiceInput","choiceBtns","newProjectBtn","detectSelAll","detectSelCount","sumCables",
    "exportScopeOverlay","exportCurrentBtn","exportAllBtn","exportScopeCancelBtn","exportFloorsBlock","exportTypesAll","exportTypesNone",
    "exportTypeList","exportExtrasBlock","exportExtraList","exportGoBtn",
    "copyFromFloorBtn","copyFloorOverlay","copyTargetPageLabel","copySourceFloorSelect","copySourcePageSelect","copyFloorConfirmBtn","copyFloorCancelBtn",
@@ -1795,6 +1817,34 @@
   }
 
   var pendingConfirm = null;
+  // The one "Select all / Unselect all" control used everywhere
+  function setSelAllState(btn, n, total){
+    if (!btn) return;
+    var ck = btn.querySelector(".rpt-sck"), tx = btn.querySelector("span:last-child"), all = total > 0 && n === total;
+    if (ck) ck.className = "rpt-sck" + (all ? " on" : n ? " part" : "");
+    if (tx) tx.textContent = all ? "Unselect all" : "Select all";
+  }
+  function selAllBtnHtml(attr, n, total, small){
+    var all = total > 0 && n === total;
+    return '<button type="button" class="rpt-selall'+(small?' sm':'')+'" '+attr+'><span class="rpt-sck'+(all?' on':n?' part':'')+'"></span><span>'+(all?'Unselect all':'Select all')+'</span></button>';
+  }
+  // A dialog with several choices (and optionally a text box). cb(value, text) — value is null on Cancel.
+  var pendingChoice = null;
+  function askChoice(o, cb){
+    el.choiceTitle.textContent = o.title || ""; el.choiceMsg.textContent = o.message || ""; el.choiceMsg.style.display = o.message ? "" : "none";
+    var inp = el.choiceInput; inp.style.display = o.input ? "" : "none";
+    if (o.input){ inp.value = o.input.value || ""; inp.placeholder = o.input.placeholder || ""; }
+    el.choiceBtns.innerHTML = o.buttons.map(function(b, i){
+      return '<button type="button" data-i="'+i+'" class="'+(b.kind || (b.value == null ? "cancel" : ""))+'">'+escapeHtml(b.label)+(b.sub ? '<small>'+escapeHtml(b.sub)+'</small>' : '')+'</button>';
+    }).join("");
+    function sync(){ o.buttons.forEach(function(b, i){ if (b.needsInput) el.choiceBtns.querySelector('[data-i="'+i+'"]').disabled = !inp.value.trim(); }); }
+    pendingChoice = function(v){ el.choiceOverlay.classList.remove("visible"); pendingChoice = null; cb(v, inp.value); };
+    el.choiceBtns.querySelectorAll("button").forEach(function(btn){ btn.onclick = function(){ var b = o.buttons[+btn.getAttribute("data-i")]; if (btn.disabled) return; pendingChoice(b.value == null ? null : b.value); }; });
+    inp.oninput = sync; inp.onkeydown = function(e){ if (e.key === "Enter"){ var b = o.buttons.find(function(x){ return x.needsInput; }); if (b && inp.value.trim()) pendingChoice(b.value); } };
+    sync(); el.choiceOverlay.classList.add("visible");
+    if (o.input) setTimeout(function(){ inp.focus(); inp.select(); }, 30);
+  }
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && pendingChoice) pendingChoice(null); });
   function askConfirm(message, onYes){
     el.confirmMessage.textContent = message; el.confirmOverlay.classList.add("visible"); pendingConfirm = onYes;
   }
@@ -2327,27 +2377,28 @@
     return out;
   }
   function saveProjectAs(){
-    if (!requireCustomerName()) return;
+    if (!requireCustomerName()) return Promise.resolve(false);
     var sig = stateSig();
-    saveOutputFile(projectJsonBlob(), safeName(project.name) + ".json", "application/json", true).then(function(ok){ if (ok) markSaved(sig); });
+    return saveOutputFile(projectJsonBlob(), safeName(project.name) + ".json", "application/json", true).then(function(ok){ if (ok) markSaved(sig); return !!ok; });
   }
   // Overwrite the project file this project was last saved to / loaded from - no dialog.
   function saveProjectReplace(){
-    var fh = fsState.projectFile; if (!fh) return;
+    var fh = fsState.projectFile; if (!fh) return Promise.resolve(false);
     var blob = projectJsonBlob();
     var perm = fh.queryPermission ? fh.queryPermission({ mode:"readwrite" }) : Promise.resolve("granted");
-    perm.then(function(state){
+    return perm.then(function(state){
       if (state === "granted" || !fh.requestPermission) return state;
       return fh.requestPermission({ mode:"readwrite" });
     }).then(function(state){
       if (state && state !== "granted") throw Object.assign(new Error("denied"), { name:"NotAllowedError" });
       return fh.createWritable();
     }).then(function(w){ return w.write(blob).then(function(){ return w.close(); }); })
-      .then(function(){ rememberFile(fh, true); markSaved(); showStatus("Saved & replaced \u2014 " + fh.name); updateSaveHint(); })
+      .then(function(){ rememberFile(fh, true); markSaved(); showStatus("Saved & replaced \u2014 " + fh.name); updateSaveHint(); return true; })
       .catch(function(err){
         console.error(err);
         if (err && err.name === "NotAllowedError") showStatus("Permission not given \u2014 use Save as new file instead");
         else { fsState.projectFile = null; updateSaveHint(); showStatus("Couldn't replace the file (moved or deleted?) \u2014 use Save as new file"); }
+        return false;
       });
   }
   function closeSaveMenu(){ el.saveMenu.classList.remove("visible"); }
@@ -2369,7 +2420,8 @@
   document.addEventListener("click", function(e){ if (!el.saveMenu.contains(e.target)) closeSaveMenu(); });
   document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeSaveMenu(); });
 
-  el.loadProjectBtn.addEventListener("click", function(){
+  el.loadProjectBtn.addEventListener("click", function(){ guardUnsaved(openProjectPicker, "opening another project"); });
+  function openProjectPicker(){
     if (typeof window.showOpenFilePicker !== "function"){ el.projectFileInput.click(); return; }
     var opts = pickerOpts({ types:[{ description:"LV Planner project", accept:{ "application/json":[".json"] } }] });
     var handle = null;
@@ -2379,7 +2431,7 @@
       el.projectFileInput.files = dt.files;
       el.projectFileInput.dispatchEvent(new Event("change"));
     }).catch(function(err){ if (!err || err.name !== "AbortError") el.projectFileInput.click(); });
-  });
+  }
   el.projectFileInput.addEventListener("change", function(e){
     var file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -2463,7 +2515,7 @@
         }
         return Promise.resolve(nf);
       });
-      Promise.all(floorPromises).then(function(floors){
+      return Promise.all(floorPromises).then(function(floors){
         project.floors = floors.length ? floors : [makeFloor("Ground Floor")];
         project.activeFloorIndex = 0;
         loadActiveFloorIntoView();
@@ -2472,6 +2524,60 @@
         if (fromAutosave){ AUTOSAVE.savedSig = null; showStatus("Unsaved work restored \u2014 press Save to keep it"); }
         else { markSaved(); showStatus("Project loaded"); }
         updateDirtyDot();
+      });
+  }
+
+  /* ============== New project / unsaved-changes guard ============== */
+  function saveCurrentProject(){
+    if (!requireCustomerName()) return Promise.resolve(false);
+    if (FS_SUPPORTED && fsState.projectFile) return saveProjectReplace();
+    return saveProjectAs();
+  }
+  // Runs next() straight away when everything is saved; otherwise asks Save / Don't save / Cancel first
+  function guardUnsaved(next, what){
+    if (!isDirty()){ next(); return; }
+    askChoice({ title:"Save \u201c" + (project.name || "this project") + "\u201d first?", message:"It has changes that aren't saved yet" + (what ? " \u2014 " + what + "." : "."),
+      buttons:[{ label:"Save", value:"save", kind:"primary" }, { label:"Don't save", value:"discard", kind:"danger", sub:"The changes will be lost" }, { label:"Cancel", value:null }] },
+      function(v){
+        if (v === "save") saveCurrentProject().then(function(ok){ if (ok) next(); });
+        else if (v === "discard") next();
+      });
+  }
+  function startNewProject(pendingFile){
+    guardUnsaved(function(){
+      askChoice({ title:"New project", message:"Customer name for the new project \u2014 it's also the file name.", input:{ value:"", placeholder:"e.g. Almukhaizim Villa 387" },
+        buttons:[{ label:"Start new project", value:"go", kind:"primary", needsInput:true }, { label:"Cancel", value:null }] },
+        function(v, name){
+          if (v !== "go") return;
+          if (typeof closeEditor === "function") closeEditor();
+          fsState.projectFile = null;
+          ["rptOverlay","detectPointsOverlay","exportScopeOverlay"].forEach(function(id){ var o = document.getElementById(id); if (o) o.classList.remove("visible"); });
+          Promise.resolve(loadProjectObject({ name:String(name || "").trim() || "Untitled Project", floors:[] }, false)).then(function(){
+            updateSaveHint();
+            showStatus("New project \u201c" + project.name + "\u201d \u2014 " + (pendingFile ? "loading " + pendingFile.name + "\u2026" : "load its drawing to start"));
+            if (pendingFile) loadFileIntoFloor(pendingFile);
+          });
+        });
+    }, "starting a new project");
+  }
+  el.newProjectBtn.addEventListener("click", function(){ startNewProject(null); });
+  // Loading a drawing onto a floor that already has one: new project, new floor, or replace
+  function handleIncomingPdf(file){
+    var f = floor();
+    if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)){ showStatus("Please choose a PDF file"); return; }
+    if (!f || !(f.pdfDoc || f.markers.length)){ loadFileIntoFloor(file); return; }
+    askChoice({ title:"Load \u201c" + file.name + "\u201d", message:"\u201c" + f.name + "\u201d already has a drawing" + (f.markers.length ? " with " + f.markers.length + " point" + (f.markers.length === 1 ? "" : "s") : "") + ". What would you like to do?",
+      buttons:[{ label:"Start a new project", value:"new", kind:"primary", sub:"Save this one and begin a fresh project" },
+               { label:"Add it as a new floor", value:"floor", sub:"Keep everything and add a floor to this project" },
+               { label:"Replace this floor\u2019s drawing", value:"replace", kind:"danger", sub:f.markers.length ? "Its points will be removed" : "" },
+               { label:"Cancel", value:null }] },
+      function(v){
+        if (v === "new") startNewProject(file);
+        else if (v === "floor"){
+          var nf = makeFloor("Floor " + (project.floors.length + 1)); project.floors.push(nf);
+          project.activeFloorIndex = project.floors.length - 1; loadActiveFloorIntoView(); setTimeout(histReset, 0);
+          ui.replaceTargetFloorId = null; loadFileIntoFloor(file);
+        } else if (v === "replace"){ ui.replaceTargetFloorId = f.id; loadFileIntoFloor(file); }
       });
   }
 
@@ -2489,15 +2595,15 @@
   el.fileInput.addEventListener("change", function(e){
     var file = e.target.files && e.target.files[0];
     e.target.value = "";
-    if (file) loadFileIntoFloor(file);
+    if (!file) return;
+    if (ui.replaceTargetFloorId) loadFileIntoFloor(file); else handleIncomingPdf(file);
   });
   ["dragover","drop"].forEach(function(evt){ el.canvasScroll.addEventListener(evt, function(e){ e.preventDefault(); }); });
   el.canvasScroll.addEventListener("drop", function(e){
     var file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (file && (file.type==="application/pdf" || /\.pdf$/i.test(file.name))){
-      var f = floor();
-      ui.replaceTargetFloorId = f ? f.id : null;
-      loadFileIntoFloor(file);
+      ui.replaceTargetFloorId = null;
+      handleIncomingPdf(file);
     }
     else if (file) showStatus("Please drop a PDF file");
   });
@@ -2616,11 +2722,12 @@
     function mpUpdateCount(){
       var boxes = mpChecks(), n = boxes.filter(function(b){ return b.checked; }).length;
       el.multiPageSelCount.textContent = n + " of " + boxes.length + " selected";
+      setSelAllState(el.multiPageAllBtn, n, boxes.length);
       el.multiPageImportBtn.textContent = n ? ("Import " + n + (n === 1 ? " page" : " pages")) : "Select pages to import";
       el.multiPageImportBtn.disabled = !n;
     }
     function mpSetAll(on){ mpChecks().forEach(function(b){ b.checked = on; }); mpUpdateCount(); }
-    el.multiPageAllBtn.onclick = function(){ mpSetAll(true); };
+    el.multiPageAllBtn.onclick = function(){ var bx = mpChecks(); mpSetAll(!bx.every(function(b){ return b.checked; })); };
     el.multiPageNoneBtn.onclick = function(){ mpSetAll(false); };
     el.multiPageList.onchange = mpUpdateCount;
     // Tapping a thumbnail toggles that page too - a bigger target on the iPad
@@ -2974,6 +3081,13 @@
     });
     el.overlaySvg.appendChild(ghost);
     el.detectPointsOverlay.classList.add("visible");
+    function dpBoxes(){ return Array.prototype.slice.call(el.detectPointsList.querySelectorAll(".dp-check")); }
+    function dpCount(){ var bx = dpBoxes(), n = bx.filter(function(b){ return b.checked; }).length;
+      el.detectSelCount.textContent = n + " of " + bx.length + " selected"; setSelAllState(el.detectSelAll, n, bx.length);
+      el.detectPointsImportBtn.textContent = n ? "Add " + n + " point" + (n === 1 ? "" : "s") : "Select points to add"; el.detectPointsImportBtn.disabled = !n; }
+    el.detectPointsList.onchange = dpCount;
+    el.detectSelAll.onclick = function(){ var bx = dpBoxes(), all = bx.every(function(b){ return b.checked; }); bx.forEach(function(b){ b.checked = !all; }); dpCount(); };
+    dpCount();
 
     function cleanup(){
       el.detectPointsOverlay.classList.remove("visible");
@@ -5314,9 +5428,10 @@
       return '<div class="rpt-card'+(rptSel[r.key]?' on':'')+'" data-rs="'+r.key+'" role="button" tabindex="0"><span class="ic" style="background:'+(r.color || "#334155")+'">'+(r.icon || "◧")+'</span><span><b>'+(CARD_LABEL[r.key] || r.label)+'</b><small>'+r.sub+'</small>'+more+'</span><span class="rpt-tick"></span></div>';
     });
     if (rptPickOpen){
-      var pick = '<div class="rpt-pick"><h5>Floors <button type="button" data-rallf>All floors</button></h5><div class="rpt-chips">' +
+      var tkeys = allTypeKeys().filter(function(t){ return types[t]; });
+      var pick = '<div class="rpt-pick"><h5>Floors '+selAllBtnHtml('data-rallf', nOn, pdfFloors.length, true)+'</h5><div class="rpt-chips">' +
         pdfFloors.map(function(f){ return '<button type="button" class="'+(rptPrefs.floorsOff[f.id]?'':'on')+'" data-fl="'+f.id+'">'+escapeHtml(f.name)+'</button>'; }).join("") + '</div>' +
-        '<h5>Points shown on the drawings <button type="button" data-rallt>All</button></h5><div class="rpt-chips">' +
+        (tkeys.length ? '<h5>Points shown on the drawings '+selAllBtnHtml('data-rallt', tkeys.filter(function(t){ return !rptPrefs.typesOff[t]; }).length, tkeys.length, true)+'</h5>' : '') + '<div class="rpt-chips">' +
         allTypeKeys().filter(function(t){ return types[t]; }).map(function(t){ var d = getTypeDef(t); return '<button type="button" class="'+(rptPrefs.typesOff[t]?'':'on')+'" data-ty="'+t+'"><span class="dot" style="background:'+d.color+'"></span>'+escapeHtml(d.label)+' '+types[t]+'</button>'; }).join("") + '</div></div>';
       var di = REPORTS.findIndex(function(r){ return r.key === "drawings"; });
       cards.splice(di + (di % 2 === 0 ? 2 : 1), 0, pick);   // right after the row the Drawings card is in
@@ -5326,8 +5441,12 @@
     var mo = box.querySelector("[data-rmore]"); if (mo) mo.onclick = function(e){ e.stopPropagation(); rptPickOpen = !rptPickOpen; renderReportDialog(); };
     box.querySelectorAll("[data-fl]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-fl"); if (rptPrefs.floorsOff[k]) delete rptPrefs.floorsOff[k]; else rptPrefs.floorsOff[k] = true; renderReportDialog(); }; });
     box.querySelectorAll("[data-ty]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-ty"); if (rptPrefs.typesOff[k]) delete rptPrefs.typesOff[k]; else rptPrefs.typesOff[k] = true; renderReportDialog(); }; });
-    var af = box.querySelector("[data-rallf]"); if (af) af.onclick = function(){ rptPrefs.floorsOff = {}; renderReportDialog(); };
-    var at = box.querySelector("[data-rallt]"); if (at) at.onclick = function(){ rptPrefs.typesOff = {}; renderReportDialog(); };
+    var af = box.querySelector("[data-rallf]"); if (af) af.onclick = function(){
+      var allOn = pdfFloors.every(function(f){ return !rptPrefs.floorsOff[f.id]; });
+      rptPrefs.floorsOff = {}; if (allOn) pdfFloors.forEach(function(f){ rptPrefs.floorsOff[f.id] = true; }); renderReportDialog(); };
+    var at = box.querySelector("[data-rallt]"); if (at) at.onclick = function(){
+      var tk = Object.keys(types), allOn = tk.every(function(t){ return !rptPrefs.typesOff[t]; });
+      rptPrefs.typesOff = {}; if (allOn) tk.forEach(function(t){ rptPrefs.typesOff[t] = true; }); renderReportDialog(); };
     var n = selectedReportKeys().length, all = n === REPORTS.length;
     document.getElementById("rptCount").textContent = n + " of " + REPORTS.length + " selected";
     document.getElementById("rptSelCk").className = "rpt-sck" + (all ? " on" : n ? " part" : "");
