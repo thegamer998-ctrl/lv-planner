@@ -225,6 +225,36 @@
   .marker:hover svg{ filter:brightness(0.92); }
   .ap-tag{ position:absolute; transform:translate(-50%,-50%); color:#fff; font-family:Arial, sans-serif; font-weight:700;
     line-height:1.2; padding:0 0.32em; border-radius:0.35em; border:1px solid #fff; white-space:nowrap; pointer-events:none; letter-spacing:0.02em; }
+  .rpt-pdf{ display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 9px; border-radius:7px; border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; font-family:var(--font-body); cursor:pointer; white-space:nowrap; }
+  .rpt-pdf::before{ content:""; width:10px; height:10px; background:currentColor; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M7 10l5 5 5-5M5 21h14'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M7 10l5 5 5-5M5 21h14'/%3E%3C/svg%3E") center/contain no-repeat; }
+  .rpt-pdf:hover{ background:var(--accent); color:var(--on-accent); }
+  .scard h3 > span{ display:inline-flex; align-items:center; gap:8px; }
+  .nv-bar{ display:flex; align-items:center; gap:12px; margin-bottom:16px; } .nv-bar .nv-tabs{ margin-bottom:0; } .nv-bar .rpt-pdf{ height:32px; padding:0 12px; font-size:12px; }
+  #rptOverlay .confirm-box.rpt-box{ width:560px; max-width:calc(100vw - 32px); max-height:calc(100vh - 40px); display:flex; flex-direction:column; }
+  .rpt-title{ font-weight:700; font-size:16px; margin:0; } .rpt-sub{ color:var(--text-muted); font-size:12.5px; margin:2px 0 12px; }
+  .rpt-seg{ display:flex; gap:4px; background:var(--bg-panel-raised); padding:4px; border-radius:10px; margin-bottom:12px; }
+  .rpt-seg button{ flex:1; border:0; background:none; height:32px; border-radius:7px; font-weight:600; font-size:13px; color:var(--text-muted); }
+  .rpt-seg button.on{ background:var(--bg-panel); color:var(--text-main); box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .rpt-body{ overflow:auto; min-height:0; flex:1; }
+  .rpt-row{ display:flex; gap:10px; padding:9px 2px; border-top:1px solid var(--hairline); } .rpt-row:first-child{ border-top:0; }
+  .rpt-box .rpt-t{ flex:1; min-width:0; } .rpt-t b{ font-size:13.5px; display:block; } .rpt-t small{ color:var(--text-muted); font-size:12px; }
+  button.rpt-ck{ width:18px; height:18px; border-radius:5px; border:1.5px solid var(--hairline-2); background:var(--bg-panel); margin-top:1px; padding:0; display:grid; place-items:center; flex-shrink:0; }
+  button.rpt-ck.on{ background:var(--accent); border-color:var(--accent); }
+  button.rpt-ck.on::after{ content:""; width:9px; height:5px; border:2px solid #fff; border-top:0; border-right:0; transform:rotate(-45deg) translate(1px,-1px); }
+  .rpt-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+  .rpt-chips button{ height:26px; padding:0 9px; border-radius:7px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-muted); font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; gap:5px; }
+  .rpt-chips button.on{ background:var(--accent-soft); color:var(--accent); border-color:color-mix(in srgb, var(--accent) 35%, transparent); }
+  .rpt-chips .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .rpt-types{ margin-top:6px; } .rpt-types summary{ font-size:12px; color:var(--accent); cursor:pointer; }
+  .rpt-cards{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .rpt-card{ text-align:left; border:1.5px solid var(--hairline); border-radius:11px; padding:10px; display:flex; gap:9px; background:var(--bg-panel); color:var(--text-main); }
+  .rpt-card.on{ border-color:var(--accent); background:var(--accent-soft); }
+  .rpt-card .ic{ width:32px; height:32px; border-radius:8px; color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; flex-shrink:0; }
+  .rpt-card b{ display:block; font-size:13px; } .rpt-card small{ display:block; color:var(--text-muted); font-size:11.5px; line-height:1.35; }
+  .rpt-opts{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-muted); border-top:1px solid var(--hairline); padding-top:10px; margin-top:8px; }
+  .rpt-opts select{ width:auto; height:30px; margin:0; } .rpt-opts span{ margin-left:auto; font-size:11.5px; }
+  .rpt-info{ font-size:12px; color:var(--text-muted); margin:8px 0 0; word-break:break-word; }
   .cable-tag{ position:absolute; transform:translate(-50%,-50%); font-family:Arial, sans-serif; font-weight:700; line-height:1.15; padding:0 0.3em;
     border-radius:0.35em; background:#fff; border:1.5px solid currentColor; white-space:nowrap; pointer-events:none; }
   .type-cable{ display:none; margin-left:4px; padding:1px 6px; border-radius:6px; font-size:10.5px; font-weight:700; background:#fff; border:1.5px solid currentColor; }
@@ -678,7 +708,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.10</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.11</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -709,7 +739,7 @@
 
   <aside class="side-panel" id="sidePanel">
     <section class="pane on" data-pane="points">
-      <h2>Points</h2>
+      <h2>Points <button type="button" class="rpt-pdf" data-report="points" title="Export this as a PDF report">Schedule PDF</button></h2>
       <div class="place-rack" id="placeRackRow" style="display:none;"><span>New points connect to</span><select class="select-input" id="placeRackSel"></select></div>
       <div class="type-list" id="typeList"></div>
       <button class="add-type-btn" id="addTypeBtn">+ Add custom type</button>
@@ -748,7 +778,7 @@
     </section>
 
     <section class="pane" data-pane="cables">
-      <h2>Cables</h2>
+      <h2>Cables <button type="button" class="rpt-pdf" data-report="cables" title="Export this as a PDF report">PDF</button></h2>
       <div class="layer-row"><span class="lbl"><b>Show cable runs</b><small>Automatic: point → floor draw box → cabinet</small></span>
         <button type="button" class="toggle-switch runs-toggle" role="switch" aria-checked="false"><span class="toggle-knob"></span></button></div>
       <div id="runsSummary" class="runs-sum"></div>
@@ -777,13 +807,13 @@
     </section>
 
     <section class="pane" data-pane="racks">
-      <h2>Racks</h2>
+      <h2>Racks <button type="button" class="rpt-pdf" data-report="racks" title="Export this as a PDF report">PDF</button></h2>
       <div class="rk-tabs" id="rackTabs"></div>
       <div id="rackEditor"></div>
     </section>
 
     <section class="pane" data-pane="network">
-      <h2>Hardware by floor</h2>
+      <h2>Hardware by floor <button type="button" class="rpt-pdf" data-report="network" title="Export this as a PDF report">Network PDF</button></h2>
       <div class="hwf" id="hwFloors"></div>
     </section>
 
@@ -868,7 +898,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.10</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.11</p>
     </section>
   </aside>
 
@@ -892,7 +922,7 @@
     </div>
     <div class="rackview" id="rackView"><div class="rv-wrap" id="rvWrap"></div></div>
     <div class="netview" id="netView">
-      <div class="nv-tabs"><button type="button" data-nv="ports" class="on">Ports</button><button type="button" data-nv="topo">Topology</button></div>
+      <div class="nv-bar"><div class="nv-tabs"><button type="button" data-nv="ports" class="on">Ports</button><button type="button" data-nv="topo">Topology</button></div><button type="button" class="rpt-pdf" data-report="network" title="Export this as a PDF report">Export network PDF</button></div>
       <div id="netBody"></div>
     </div>
     <div class="hintpill"><span class="dot"></span><span id="hintText">Upload a villa drawing to begin</span></div>
@@ -926,12 +956,12 @@
       <div id="sumRows"></div>
     </div>
     <div class="scard">
-      <h3>Whole villa <small id="sumFloorsInfo"></small></h3>
+      <h3>Whole villa <span><small id="sumFloorsInfo"></small> <button type="button" class="rpt-pdf" data-report="summary" title="Export this as a PDF report">PDF</button></span></h3>
       <div class="sstat" id="sumVilla"></div>
       <div id="sumCables" class="sum-cables"></div>
     </div>
     <div class="scard">
-      <h3>Hardware list <button class="link-btn" id="hwCsvBtn" title="Spreadsheet (CSV) for Zoho Books">Export CSV</button></h3>
+      <h3>Hardware list <span><button type="button" class="rpt-pdf" data-report="hardware" title="Export this as a PDF report">PDF</button> <button class="link-btn" id="hwCsvBtn" title="Spreadsheet (CSV) for Zoho Books">Export CSV</button></span></h3>
       <div class="hw-list" id="hwList"></div>
     </div>
   </aside>
@@ -1001,6 +1031,21 @@
     <div class="confirm-actions">
       <button class="btn-cancel" id="exportScopeCancelBtn">Cancel</button>
       <button class="btn-save" id="exportGoBtn">Export</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rptOverlay">
+  <div class="confirm-box rpt-box">
+    <p class="rpt-title">Export PDF</p>
+    <p class="rpt-sub" id="rptSub"></p>
+    <div class="rpt-seg" id="rptSeg"><button type="button" data-m="full" class="on">Full report</button><button type="button" data-m="single">Single report</button></div>
+    <div class="rpt-body" id="rptBody"></div>
+    <div class="rpt-opts">Paper <select id="rptPaper" class="select-input"><option value="a4">A4</option><option value="a3">A3</option></select><span>Drawings are exported at full size.</span></div>
+    <p class="rpt-info" id="rptInfo"></p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="rptCancel">Cancel</button>
+      <button class="btn-save" id="rptGo">Export PDF</button>
     </div>
   </div>
 </div>
@@ -1697,7 +1742,7 @@
    "copyFromFloorBtn","copyFloorOverlay","copyTargetPageLabel","copySourceFloorSelect","copySourcePageSelect","copyFloorConfirmBtn","copyFloorCancelBtn",
    "multiPageOverlay","multiPageCount","multiPageList","multiPageImportBtn","multiPageCancelBtn","multiPageAllBtn","multiPageNoneBtn","multiPageSelCount",
    "aiScanBtn","aiKeyLink","aiKeyOverlay","aiKeyInput","aiKeySaveBtn","aiKeyForgetBtn","aiKeyCancelBtn","detectPointsOverlay","detectPointsCount","detectPointsList","detectPointsImportBtn","detectPointsCancelBtn",
-   "downloadReadyOverlay","downloadReadyLink","downloadReadySummaryLink","downloadReadyCloseBtn",
+   "rptOverlay","downloadReadyOverlay","downloadReadyLink","downloadReadySummaryLink","downloadReadyCloseBtn",
    "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","redoBtn","restoreCard","restoreInfo","restoreBtn","restoreDiscardBtn","shortcutsOverlay","kbList","shortcutsCloseBtn","shortcutsBtn","cableDefaults","runsSummary","featHeatmap","featCones","modelPane","rackTabs","rackEditor","rackView","rvWrap","placeRackRow","placeRackSel","netView","netBody","hwFloors","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
    "addRevisionBtn","revisionList","revisionForm","revisionNoteInput","revisionCancelBtn","revisionSaveBtn"
   ].forEach(function(id){ el[id] = document.getElementById(id); });
@@ -4334,14 +4379,14 @@
     el.exportGoBtn.style.opacity = any ? "" : "0.45";
     el.exportGoBtn.textContent = any ? "Export" : "Tick at least one";
   }
-  el.exportBtn.addEventListener("click", function(){
+  function openLegacyExport(){
     var f = floor(); if (!f || !f.pdfDoc) return;
     var others = project.floors.filter(function(x){ return x.pdfDoc && x!==f; });
     el.exportFloorsBlock.style.display = others.length ? "" : "none";
     exportDlg.scope = "current"; exportDlg.unticked = {};   // every export starts with everything ticked
     renderExportChecklist();
     el.exportScopeOverlay.classList.add("visible");
-  });
+  }
   el.exportScopeCancelBtn.addEventListener("click", function(){ el.exportScopeOverlay.classList.remove("visible"); });
   el.exportCurrentBtn.addEventListener("click", function(){ exportDlg.scope = "current"; renderExportChecklist(); });
   el.exportAllBtn.addEventListener("click", function(){ exportDlg.scope = "all"; renderExportChecklist(); });
@@ -4780,6 +4825,521 @@
     }
   }
 
+
+
+  /* ================= Reports (PDF): full report or any single report ================= */
+  // White A4 report pages with an ExpressTech header and page numbers. Drawings stay at their native size.
+  var REPORTS = [
+    { key:"cover",     label:"Cover page",          sub:"Project, date, floors, contents",                 full:true,  single:false },
+    { key:"summary",   label:"Summary",             sub:"Totals, points per floor, points by cable, PoE",  full:true,  single:true, icon:"Σ", color:"#0f172a" },
+    { key:"drawings",  label:"Drawings with points",sub:"Each floor’s marked-up plan",                     full:true,  single:true, icon:"▦", color:"#0891b2", singleLabel:"Drawings only" },
+    { key:"points",    label:"Point schedule",      sub:"Every point: ID, type, model, cable, switch port",full:true,  single:true, icon:"#", color:"#16a34a" },
+    { key:"cables",    label:"Cable report",        sub:"Rolls to order, cable per point",                 full:true,  single:true, icon:"C", color:"#15803d" },
+    { key:"network",   label:"Network",             sub:"Switch ports with PoE per port, topology",        full:true,  single:true, icon:"N", color:"#006fff" },
+    { key:"racks",     label:"Racks",               sub:"Front view of each cabinet + equipment",          full:true,  single:true, icon:"R", color:"#475569" },
+    { key:"hardware",  label:"Hardware list",       sub:"Everything to order (same as the CSV)",           full:true,  single:true, icon:"H", color:"#ea580c" },
+    { key:"checklist", label:"Site checklist",      sub:"Tick-box list of the points on each floor",       full:false, single:true, icon:"✓", color:"#a855f7" }
+  ];
+  var REPORT_BY_KEY = {}; REPORTS.forEach(function(r){ REPORT_BY_KEY[r.key] = r; });
+  var rptPrefs = { mode:"full", single:"summary", off:{ checklist:true }, paper:"a4", floorsOff:{}, typesOff:{} };
+  try { var rp0 = JSON.parse(localStorage.getItem("lvplanner_reportprefs") || "null"); if (rp0){ rptPrefs.mode = rp0.mode || "full"; rptPrefs.single = rp0.single || "summary"; rptPrefs.off = rp0.off || rptPrefs.off; rptPrefs.paper = rp0.paper || "a4"; } } catch(e){}
+  function saveRptPrefs(){ try { localStorage.setItem("lvplanner_reportprefs", JSON.stringify({ mode:rptPrefs.mode, single:rptPrefs.single, off:rptPrefs.off, paper:rptPrefs.paper })); } catch(e){} }
+
+  // ---------- point IDs: GF-AP01, FF-CAM03, GF-D12 ----------
+  var ID_CODES = { wifi:"AP", outdoorwifi:"OAP", cctv:"CAM", cctvoutdoor:"CAM", network:"D", ipphone:"T", dtv:"DTV", tv:"TV", uplink:"UP",
+    speaker:"SP", intercom:"IC", intercomscreen:"ICS", smartlock:"SL", rack:"IT", drawbox:"DB" };
+  function floorCode(f, i){
+    var n = String(f.name || "").trim(), w = n.split(/\s+/).filter(Boolean);
+    var c = w.length > 1 ? w.map(function(x){ return x[0]; }).join("") : (n.slice(0, 2) || ("F" + (i + 1)));
+    return c.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3) || ("F" + (i + 1));
+  }
+  function pointIds(){
+    var ids = {}, used = {};
+    project.floors.forEach(function(f, fi){
+      var fc = floorCode(f, fi); if (used[fc]) fc = fc + (fi + 1); used[fc] = true;
+      var n = {};
+      f.markers.slice().sort(function(a, b){ return (a.page - b.page) || (a.yRatio - b.yRatio) || (a.xRatio - b.xRatio); }).forEach(function(m){
+        var code = ID_CODES[m.type] || "X"; n[code] = (n[code] || 0) + 1;
+        ids[m.id] = fc + "-" + code + (n[code] < 10 ? "0" : "") + n[code];
+      });
+    });
+    return ids;
+  }
+  var TYPE_SORT = ["wifi","outdoorwifi","cctv","cctvoutdoor","ipphone","network","dtv","intercom","intercomscreen","smartlock","tv","speaker","uplink","rack","drawbox"];
+  function typeRank(t){ var i = TYPE_SORT.indexOf(t); return i < 0 ? 99 : i; }
+
+  // ---------- page drawing helpers ----------
+  var R = null;   // current report build state
+  function rgb(hex){ var c = hexToRgb(hex); return [c.r, c.g, c.b]; }
+  function rNewDocPage(w, h){
+    var o = w > h ? "l" : "p";
+    if (!R.doc) R.doc = new window.jspdf.jsPDF({ orientation:o, unit:"px", format:[w, h] });
+    else R.doc.addPage([w, h], o);
+    return R.doc.internal.getNumberOfPages();
+  }
+  function rPage(title, sub){
+    var d, k = R.k;
+    var n = rNewDocPage(R.W, R.H); d = R.doc;
+    R.pages.push(n); R.title = title; R.sub = sub;
+    d.setFillColor(255,255,255); d.rect(0, 0, R.W, R.H, "F");
+    var M = R.M, top = 40*k;
+    d.setFillColor(0,111,255); d.roundedRect(M, top, 30*k, 30*k, 7*k, 7*k, "F");
+    d.setTextColor(255,255,255); d.setFont("helvetica","bold"); d.setFontSize(11*k); d.text("ET", M + 15*k, top + 19.5*k, { align:"center" });
+    d.setTextColor(15,23,42); d.setFontSize(16*k); d.text(title, M + 42*k, top + 13*k);
+    d.setFont("helvetica","normal"); d.setFontSize(9.5*k); d.setTextColor(100,116,139); d.text((project.name || "Project") + (sub ? "  ·  " + sub : ""), M + 42*k, top + 27*k);
+    d.setFontSize(9*k); d.text("ExpressTech", R.W - M, top + 12*k, { align:"right" }); d.text(R.date, R.W - M, top + 25*k, { align:"right" });
+    d.setDrawColor(15,23,42); d.setLineWidth(1.6*k); d.line(M, top + 38*k, R.W - M, top + 38*k);
+    R.y = top + 62*k;
+  }
+  function rRoom(h){ if (R.y + h > R.H - 58*R.k){ rPage(R.title.replace(/ \(continued\)$/, "") + " (continued)", R.sub); return true; } return false; }
+  function rH(text, sub){
+    var d = R.doc, k = R.k; rRoom(46*k);
+    d.setFont("helvetica","bold"); d.setFontSize(12.5*k); d.setTextColor(15,23,42); d.text(text, R.M, R.y);
+    var tw0 = d.getTextWidth(text);
+    if (sub){ d.setFont("helvetica","normal"); d.setFontSize(9.5*k); d.setTextColor(100,116,139); d.text(sub, R.M + tw0 + 8*k, R.y); }
+    R.y += 14*k;
+  }
+  function rNote(text){
+    var d = R.doc, k = R.k; d.setFont("helvetica","normal"); d.setFontSize(8.8*k); d.setTextColor(100,116,139);
+    var lines = d.splitTextToSize(text, R.W - 2*R.M); rRoom(lines.length * 11*k + 6*k);
+    d.text(lines, R.M, R.y + 4*k); R.y += lines.length * 11*k + 10*k;
+  }
+  function rTiles(items){
+    var d = R.doc, k = R.k, gap = 9*k, n = items.length, w = (R.W - 2*R.M - gap*(n-1)) / n, h = 50*k;
+    rRoom(h + 16*k);
+    items.forEach(function(it, i){
+      var x = R.M + i*(w + gap), hl = !!it.hl;
+      if (hl){ d.setFillColor(15,23,42); d.roundedRect(x, R.y, w, h, 6*k, 6*k, "F"); }
+      else { d.setDrawColor(226,232,240); d.setLineWidth(1*k); d.roundedRect(x, R.y, w, h, 6*k, 6*k, "S"); }
+      d.setFont("helvetica","normal"); d.setFontSize(8.8*k); d.setTextColor(hl?148:100, hl?163:116, hl?184:139); d.text(it.label, x + 10*k, R.y + 16*k);
+      d.setFont("helvetica","bold"); d.setFontSize((String(it.value).length > 9 ? 13 : 19)*k); d.setTextColor(hl?255:15, hl?255:23, hl?255:42); d.text(String(it.value), x + 10*k, R.y + 39*k);
+    });
+    R.y += h + 18*k;
+  }
+  // cols: [{h, w (fraction), align}]; rows: arrays of cells: string | {t, dot, bold, muted, tag:{t,color}}; opts.total: last row bold
+  function rTable(cols, rows, opts){
+    opts = opts || {};
+    var d = R.doc, k = R.k, x0 = R.M, tw = R.W - 2*R.M, rh = 17*k, fs = 9.3*k;
+    var xs = [], acc = 0; cols.forEach(function(c){ xs.push(x0 + acc*tw); acc += c.w; });
+    function head(){
+      d.setFont("helvetica","bold"); d.setFontSize(7.8*k); d.setTextColor(100,116,139);
+      cols.forEach(function(c, i){ var cx = c.align === "right" ? xs[i] + c.w*tw - 5*k : xs[i] + 5*k; d.text(String(c.h).toUpperCase(), cx, R.y, { align:c.align === "right" ? "right" : "left" }); });
+      R.y += 5*k; d.setDrawColor(203,213,225); d.setLineWidth(1.1*k); d.line(x0, R.y, x0 + tw, R.y); R.y += 12*k;
+    }
+    rRoom(rh*3 + 20*k); head();
+    rows.forEach(function(row, ri){
+      var isTot = opts.total && ri === rows.length - 1;
+      if (R.y + rh > R.H - 58*k){ rPage(R.title.replace(/ \(continued\)$/, "") + " (continued)", R.sub); head(); }
+      if (isTot){ d.setDrawColor(148,163,184); d.setLineWidth(1*k); d.line(x0, R.y - 11*k, x0 + tw, R.y - 11*k); }
+      row.forEach(function(cell, i){
+        var c = cols[i]; if (!c) return;
+        var o = (cell && typeof cell === "object") ? cell : { t: cell == null ? "" : String(cell) };
+        var right = c.align === "right", cx = right ? xs[i] + c.w*tw - 5*k : xs[i] + 5*k, maxW = c.w*tw - 10*k;
+        if (o.dot){ var cc = rgb(o.dot); d.setFillColor(cc[0],cc[1],cc[2]); d.circle(cx + 3*k, R.y - 3.2*k, 3*k, "F"); cx += 10*k; maxW -= 10*k; }
+        if (o.tag){
+          var tc = rgb(o.tag.color); d.setFont("helvetica","bold"); d.setFontSize(7*k); var twd = d.getTextWidth(o.tag.t) + 7*k;
+          d.setDrawColor(tc[0],tc[1],tc[2]); d.setLineWidth(1*k); d.roundedRect(cx, R.y - 9*k, twd, 11*k, 2.5*k, 2.5*k, "S");
+          d.setTextColor(tc[0],tc[1],tc[2]); d.text(o.tag.t, cx + 3.5*k, R.y - 1*k); return;
+        }
+        d.setFont("helvetica", (o.bold || isTot) ? "bold" : "normal"); d.setFontSize(fs);
+        if (o.muted) d.setTextColor(148,163,184); else d.setTextColor(31,41,55);
+        var t = String(o.t); while (t.length > 3 && d.getTextWidth(t) > maxW) t = t.slice(0, -2);
+        if (t !== String(o.t)) t = t.slice(0, -1) + "…";
+        d.text(t, cx, R.y, { align: right ? "right" : "left" });
+      });
+      if (!isTot){ d.setDrawColor(238,241,245); d.setLineWidth(0.8*k); d.line(x0, R.y + 5.5*k, x0 + tw, R.y + 5.5*k); }
+      R.y += rh;
+    });
+    R.y += 12*k;
+  }
+  function rFooters(reportName){
+    var d = R.doc, k = R.k, total = d.internal.getNumberOfPages();
+    R.pages.forEach(function(p){
+      d.setPage(p);
+      d.setDrawColor(226,232,240); d.setLineWidth(0.8*k); d.line(R.M, R.H - 38*k, R.W - R.M, R.H - 38*k);
+      d.setFont("helvetica","normal"); d.setFontSize(8.3*k); d.setTextColor(148,163,184);
+      d.text("ExpressTech · Villa LV Planner · " + reportName, R.M, R.H - 25*k);
+      d.text("Page " + p + " of " + total, R.W - R.M, R.H - 25*k, { align:"right" });
+    });
+  }
+
+  // ---------- shared numbers ----------
+  function cabledOf(m){ return CABLE_CATS[m.cable] ? m.cable : "cat6"; }
+  function villaCounts(markers){
+    var c = { ap:0, cam:0, phone:0, data:0, icom:0, all:0, other:{} };
+    markers.forEach(function(m){
+      if (isCablePoint(m)){
+        c.all++;
+        if (isWifiType(m.type)) c.ap++; else if (isCameraType(m.type)) c.cam++; else if (m.type === "ipphone") c.phone++;
+        else if (m.type === "intercom" || m.type === "intercomscreen") c.icom++; else c.data++;
+      } else if (m.type !== "rack" && m.type !== "drawbox"){ var t = getTypeDef(m.type); if (t) c.other[t.label] = (c.other[t.label] || 0) + 1; }
+    });
+    c.dataPts = c.all - c.cam; return c;
+  }
+  function portMapByMarker(plan){
+    var map = {};
+    plan.racks.forEach(function(r){ r.switches.forEach(function(sw){ sw.ports.forEach(function(p){ if (p.dev && p.dev.m) map[p.dev.m.id] = { sw:sw, n:p.n }; }); }); });
+    return map;
+  }
+  function allMarkersWithFloor(){ var out = []; project.floors.forEach(function(f){ f.markers.forEach(function(m){ out.push({ f:f, m:m }); }); }); return out; }
+
+  // ---------- sections ----------
+  var SECTION = {};
+  SECTION.cover = function(ctx){
+    var k = R.k;
+    var n = rNewDocPage(R.W, R.H), d = R.doc; R.pages.push(n); R.title = "Cover";
+    d.setFillColor(255,255,255); d.rect(0, 0, R.W, R.H, "F");
+    d.setFillColor(15,23,42); d.rect(0, 0, R.W, 250*k, "F");
+    d.setFillColor(0,111,255); d.roundedRect(R.M, 60*k, 44*k, 44*k, 10*k, 10*k, "F");
+    d.setTextColor(255,255,255); d.setFont("helvetica","bold"); d.setFontSize(16*k); d.text("ET", R.M + 22*k, 88*k, { align:"center" });
+    d.setFontSize(30*k); d.text("Low-voltage design", R.M, 160*k);
+    d.setFont("helvetica","normal"); d.setFontSize(13*k); d.setTextColor(148,163,184); d.text((project.name || "Project") + "  ·  " + ctx.reportName, R.M, 188*k);
+    var fl = project.floors.map(function(f){ return f.name; }).join(", ");
+    var meta = [["Project", project.name || "—"], ["Prepared by", "ExpressTech"], ["Date", R.date], ["Floors", fl || "—"]];
+    if (project.revisions && project.revisions.length){ var lr = project.revisions[project.revisions.length - 1]; meta.push(["Revision", "Rev " + lr.rev + " · " + lr.date]); }
+    var y = 300*k;
+    meta.forEach(function(p, i){
+      var x = R.M + (i % 2) * (R.W - 2*R.M) / 2; if (i % 2 === 0 && i) y += 44*k;
+      d.setFont("helvetica","normal"); d.setFontSize(8.5*k); d.setTextColor(100,116,139); d.text(p[0].toUpperCase(), x, y);
+      d.setFont("helvetica","bold"); d.setFontSize(12*k); d.setTextColor(15,23,42); d.text(d.splitTextToSize(String(p[1]), (R.W - 2*R.M)/2 - 12*k)[0], x, y + 16*k);
+    });
+    R.y = y + 74*k;
+    d.setFont("helvetica","bold"); d.setFontSize(13*k); d.setTextColor(15,23,42); d.text("Contents", R.M, R.y); R.y += 20*k;
+    R.tocY = R.y; R.tocPage = n;   // filled in at the end once page numbers are known
+  };
+  SECTION.summary = function(){
+    rPage("Summary", "Whole villa");
+    var all = []; project.floors.forEach(function(f){ all = all.concat(f.markers); });
+    var c = villaCounts(all);
+    rTiles([{ label:"Access points", value:c.ap }, { label:"Cameras", value:c.cam }, { label:"Data points", value:c.dataPts }, { label:"All points", value:c.all, hl:true }]);
+    rH("Points per floor");
+    var rows = project.floors.map(function(f){ var x = villaCounts(f.markers); return [f.name, x.ap, x.cam, x.phone, x.data, x.icom, { t:String(x.all), bold:true }]; });
+    rows.push(["Whole villa", c.ap, c.cam, c.phone, c.data, c.icom, c.all]);
+    rTable([{ h:"Floor", w:.28 }, { h:"Access points", w:.13, align:"right" }, { h:"Cameras", w:.11, align:"right" }, { h:"IP phones", w:.12, align:"right" },
+      { h:"Data", w:.1, align:"right" }, { h:"Intercom", w:.12, align:"right" }, { h:"All points", w:.14, align:"right" }], rows, { total:true });
+    var byCable = {}; all.filter(isCablePoint).forEach(function(m){ var k2 = cabledOf(m); byCable[k2] = (byCable[k2] || 0) + 1; });
+    var ks = Object.keys(CABLE_CATS).filter(function(k2){ return byCable[k2]; });
+    if (ks.length){
+      rH("Points by cable");
+      rTable([{ h:"Cable", w:.6 }, { h:"Points", w:.4, align:"right" }],
+        ks.map(function(k2){ return [{ t:CABLE_CATS[k2].label, dot:CABLE_CATS[k2].color }, byCable[k2]]; }).concat([["All points", c.all]]), { total:true });
+    }
+    var plan = buildNetworkPlan(), eq = [];
+    var gw = rackGateway(mainRack()); if (gw) eq.push(["Gateway", equipName(gw)]);
+    var sws = []; plan.racks.forEach(function(r){ r.switches.forEach(function(s){ sws.push(s); }); });
+    if (sws.length){
+      var names = {}; sws.forEach(function(s){ names[s.name] = (names[s.name] || 0) + 1; });
+      eq.push(["Switches", Object.keys(names).map(function(n){ return (names[n] > 1 ? names[n] + " × " : "") + n; }).join(", ")]);
+      var used = 0, tot = 0, w = 0, b = 0; sws.forEach(function(s){ s.ports.forEach(function(p){ tot++; if (p.dev) used++; }); w += s.usedW; b += s.budget || 0; });
+      eq.push(["Switch ports used", used + " of " + tot]);
+      if (b) eq.push(["PoE load (max.)", fmtW(w) + " of " + b + " W"]);
+    }
+    project.racks.filter(function(r){ return r.items.length; }).forEach(function(r){ var loc = rackLocation(r); eq.push([r.name + (r.main ? " (main)" : ""), r.height + "U · " + r.size + " cm" + (loc ? " · " + loc.f.name : "")]); });
+    if (eq.length){ rH("Equipment"); rTable([{ h:"Item", w:.35 }, { h:"", w:.65 }], eq); }
+    var cc = cableCalc();
+    if (cc.order.length){
+      rH("Cable to order", "average " + cc.perPoint + " m per point");
+      rTable([{ h:"Cable", w:.34 }, { h:"Points", w:.16, align:"right" }, { h:"Metres", w:.2, align:"right" }, { h:"Order", w:.3, align:"right" }],
+        cc.order.map(function(k2){ var x = cc.cats[k2]; return [{ t:CABLE_CATS[k2].label, dot:CABLE_CATS[k2].color }, x.n, Math.round(x.metres) + " m", { t: x.roll === 1 ? x.order + " m (by the metre)" : x.order + " × " + rollName(x.roll), bold:true }]; }));
+    }
+    var oth = Object.keys(c.other);
+    rNote("Data points = access points, IP phones, data, Data & TV, intercom. All points = data points + cameras." + (oth.length ? " Also on the drawings (not counted): " + oth.map(function(o){ return c.other[o] + " " + o; }).join(", ") + "." : ""));
+    if (project.revisions && project.revisions.length){
+      rH("Revision history");
+      rTable([{ h:"Rev", w:.1 }, { h:"Date", w:.2 }, { h:"Note", w:.7 }], project.revisions.map(function(r){ return [r.rev, r.date, r.note]; }));
+    }
+  };
+  SECTION.points = function(){
+    rPage("Point schedule", "Whole villa");
+    var ids = pointIds(), plan = buildNetworkPlan(), pm = portMapByMarker(plan);
+    project.floors.forEach(function(f){
+      var ms = f.markers.filter(function(m){ return m.type !== "drawbox"; }).sort(function(a, b){ return typeRank(a.type) - typeRank(b.type) || String(ids[a.id]).localeCompare(String(ids[b.id])); });
+      if (!ms.length) return;
+      rH(f.name, ms.length + " points");
+      rTable([{ h:"ID", w:.13 }, { h:"Type", w:.2 }, { h:"Model", w:.2 }, { h:"Note", w:.17 }, { h:"Cable", w:.14 }, { h:"Switch port", w:.16, align:"right" }],
+        ms.map(function(m){
+          var t = getTypeDef(m.type), v = markerVariant(m), p = pm[m.id];
+          var cab = CABLED_TYPES[m.type] ? { t:CABLE_CATS[cabledOf(m)].label, dot:CABLE_CATS[cabledOf(m)].color } : { t:"—", muted:true };
+          return [{ t:ids[m.id], bold:true }, { t:t ? t.label : m.type, dot:t ? t.color : null }, v ? v.name : "—", m.note || "", cab,
+            p ? { t:"Port " + p.n } : { t: m.type === "uplink" ? "→ gateway" : "—", muted:true }];
+        }));
+    });
+  };
+  SECTION.cables = function(){
+    rPage("Cable report", "Whole villa");
+    var cc = cableCalc();
+    if (!cc.order.length){ rNote("No cabled points yet."); return; }
+    var totM = 0, totBox = 0, totN = 0;
+    var rows = cc.order.map(function(k2){ var x = cc.cats[k2]; totM += x.metres; totN += x.n; if (x.roll !== 1) totBox += x.order;
+      return [{ t:CABLE_CATS[k2].label, dot:CABLE_CATS[k2].color, bold:true }, x.n, Math.round(x.metres) + " m", x.roll === 1 ? "By the metre" : rollName(x.roll), x.roll === 1 ? "—" : (Math.round(x.rolls*100)/100).toFixed(2), { t: x.roll === 1 ? x.order + " m" : String(x.order), bold:true }]; });
+    rows.push(["Total", totN, Math.round(totM) + " m", "", "", totBox ? totBox + " boxes/reels" : ""]);
+    rTable([{ h:"Cable", w:.26 }, { h:"Points", w:.1, align:"right" }, { h:"Metres", w:.14, align:"right" }, { h:"Roll", w:.2 }, { h:"Rolls", w:.12, align:"right" }, { h:"Order", w:.18, align:"right" }], rows, { total:true });
+    rNote("Average " + cc.perPoint + " m of cable per point. Rolls are rounded up to whole boxes.");
+    rH("By point type");
+    var agg = {};
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){ if (!needsRun(m)) return; var key = m.type + "|" + cabledOf(m); agg[key] = (agg[key] || 0) + 1; }); });
+    rTable([{ h:"Point type", w:.4 }, { h:"Cable", w:.3 }, { h:"Points", w:.14, align:"right" }, { h:"Metres", w:.16, align:"right" }],
+      Object.keys(agg).sort(function(a, b){ return typeRank(a.split("|")[0]) - typeRank(b.split("|")[0]); }).map(function(key){
+        var p = key.split("|"), t = getTypeDef(p[0]);
+        return [{ t:t ? t.label : p[0], dot:t ? t.color : null }, { t:CABLE_CATS[p[1]].label, dot:CABLE_CATS[p[1]].color }, agg[key], Math.round(agg[key] * cc.perPoint) + " m"];
+      }));
+    var ids = pointIds();
+    project.floors.forEach(function(f){
+      var ms = f.markers.filter(needsRun).sort(function(a, b){ return typeRank(a.type) - typeRank(b.type) || String(ids[a.id]).localeCompare(String(ids[b.id])); });
+      if (!ms.length) return;
+      rH("Cable per point — " + f.name, ms.length + " runs");
+      rTable([{ h:"ID", w:.16 }, { h:"Type", w:.28 }, { h:"Cable", w:.26 }, { h:"Tag on drawing", w:.16 }, { h:"Est. length", w:.14, align:"right" }],
+        ms.map(function(m){ var t = getTypeDef(m.type), k2 = cabledOf(m), cat = CABLE_CATS[k2];
+          return [{ t:ids[m.id], bold:true }, { t:t.label, dot:t.color }, { t:cat.label, dot:cat.color }, cat.tag ? { tag:{ t:cat.tag, color:cat.color } } : { t:"—", muted:true }, cc.perPoint + " m"]; }));
+    });
+  };
+  SECTION.network = function(){
+    var plan = buildNetworkPlan(), ids = pointIds();
+    var sws = []; plan.racks.forEach(function(r){ r.switches.forEach(function(s){ sws.push(s); }); });
+    rPage("Network — switch ports", sws.length ? sws.length + " switch" + (sws.length === 1 ? "" : "es") : "");
+    plan.warnings.forEach(function(w){ rNote("⚠ " + w); });
+    if (!sws.length){ rNote("No switches yet — build a rack first (Racks → Suggest from points)."); }
+    sws.forEach(function(sw){
+      var used = sw.ports.filter(function(p){ return p.dev; }).length;
+      rH(sw.name + " — " + sw.rack.name, used + " of " + sw.ports.length + " ports used" + (sw.budget ? " · PoE " + fmtW(sw.usedW) + " of " + sw.budget + " W" : ""));
+      var rows = [], free = [];
+      sw.ports.forEach(function(p){
+        if (p.dev){ var m = p.dev.m, t = getTypeDef(m.type);
+          rows.push([String(p.n), { t:(ids[m.id] || "") + " · " + p.dev.label + (p.dev.note ? " · " + p.dev.note : ""), dot:p.dev.color }, p.dev.floor, p.speed, p.dev.poe || "—", p.dev.w ? fmtW(p.dev.w) : "—", CABLE_CATS[cabledOf(m)].label]); }
+        else if (p.up) rows.push([String(p.n), { t:p.up, bold:true }, "Uplink", p.speed, "—", "—", uplinkCableName(p.kind || "patch")]);
+        else free.push(p.n);
+      });
+      if (free.length) rows.push([{ t:free.length + " free", muted:true }, { t:"Ports " + compactRanges(free), muted:true }, "", "", "", "", ""]);
+      sw.sfp.forEach(function(x){ if (x.up) rows.push(["SFP+ " + x.n, { t:x.up, bold:true }, "Uplink", x.speed, "—", "—", uplinkCableName(x.kind)]); });
+      rTable([{ h:"Port", w:.08, align:"right" }, { h:"Device", w:.36 }, { h:"Floor", w:.14 }, { h:"Speed", w:.08 }, { h:"PoE", w:.08 }, { h:"Max W", w:.1, align:"right" }, { h:"Cable", w:.16 }], rows);
+    });
+    if (sws.length){ rNote("Access points take the 2.5G ports first. Power figures are Ubiquiti’s maximum ratings."); drawTopologyPage(plan); }
+  };
+  function compactRanges(ns){
+    var out = [], s = null, p = null;
+    ns.forEach(function(n){ if (s === null){ s = p = n; } else if (n === p + 1){ p = n; } else { out.push(s === p ? s : s + "–" + p); s = p = n; } });
+    if (s !== null) out.push(s === p ? s : s + "–" + p); return out.join(", ");
+  }
+  function drawTopologyPage(plan){
+    var sws = []; plan.racks.forEach(function(r){ r.switches.forEach(function(sw){ sws.push(sw); }); });
+    if (!sws.length) return;
+    var core = sws.find(function(x){ return x.isCore; }); if (core) sws = [core].concat(sws.filter(function(x){ return x !== core; }));
+    rPage("Network — topology", "");
+    var d = R.doc, k = R.k, M = R.M, tw = R.W - 2*M, cx = R.W/2;
+    function box(x, y, w, h, t1, t2, col, fill){
+      var c = rgb(col); d.setFillColor(fill ? c[0] : 255, fill ? c[1] : 255, fill ? c[2] : 255); d.setDrawColor(c[0],c[1],c[2]); d.setLineWidth(1.5*k);
+      d.roundedRect(x, y, w, h, 6*k, 6*k, "FD");
+      d.setFont("helvetica","bold"); d.setFontSize(10.5*k); d.setTextColor(fill ? 255 : 15, fill ? 255 : 23, fill ? 255 : 42);
+      d.text(fitText(t1, w - 12*k), x + w/2, y + (t2 ? h/2 - 1*k : h/2 + 3.5*k), { align:"center" });
+      if (t2){ d.setFont("helvetica","normal"); d.setFontSize(8.3*k); d.setTextColor(fill ? 219 : 100, fill ? 234 : 116, fill ? 254 : 139); d.text(fitText(t2, w - 12*k), x + w/2, y + h/2 + 11*k, { align:"center" }); }
+    }
+    function fitText(t, w){ t = String(t); while (t.length > 3 && d.getTextWidth(t) > w) t = t.slice(0, -2); return t === arguments[0] ? t : t.slice(0, -1) + "…"; }
+    function vline(x, y1, y2, dash){ d.setDrawColor(148,163,184); d.setLineWidth(1.3*k); if (dash && d.setLineDashPattern) d.setLineDashPattern([5*k, 4*k], 0); d.line(x, y1, x, y2); if (dash && d.setLineDashPattern) d.setLineDashPattern([], 0); }
+    function hline(x1, x2, y){ d.setDrawColor(148,163,184); d.setLineWidth(1.3*k); d.line(x1, y, x2, y); }
+    var bw = 200*k, bh = 38*k, y = R.y;
+    box(cx - bw/2, y, bw, bh, "Internet", "ISP · fibre / 5G", "#94a3b8"); vline(cx, y + bh, y + bh + 22*k); y += bh + 22*k;
+    var gw = rackGateway(mainRack());
+    box(cx - bw/2, y, bw, bh, gw ? equipName(gw) : "Gateway / router", mainRack().name, "#006fff", true); y += bh;
+    var spine = M + 14*k;   // trunk from the gateway down the left side to every switch
+    vline(cx, y, y + 14*k); hline(spine, cx, y + 14*k); var trunkTop = y + 14*k; y += 34*k;
+    var cols = 4, gap = 10*k, gx0 = M + 48*k, bx = M + 38*k, gwid = (R.W - M - gx0 - gap*(cols - 1)) / cols, gh = 44*k;
+    var fIdx = {}; project.floors.forEach(function(f, i){ fIdx[f.name] = i; });
+    sws.forEach(function(sw, si){
+      var groups = deviceGroups(sw).sort(function(a, b){ return (fIdx[a.floor] - fIdx[b.floor]) || 0; }), rows = Math.ceil(groups.length / cols), need = bh + 26*k + rows*(gh + 34*k) + 20*k;
+      if (y + need > R.H - 70*k && si){ rPage("Network — topology (continued)", ""); y = R.y; trunkTop = y; }
+      var used = sw.ports.filter(function(p){ return p.dev; }).length;
+      var sx = M + 30*k, sw2 = 280*k;
+      vline(spine, trunkTop, y + bh/2, sw.fibre); hline(spine, sx, y + bh/2);
+      box(sx, y, sw2, bh, sw.name + (sw.fibre ? " (fibre)" : ""), sw.rack.name + " · " + used + " of " + sw.ports.length + " ports" + (sw.budget ? " · " + fmtW(sw.usedW) + " PoE" : ""), "#006fff");
+      trunkTop = y + bh/2;
+      var busY = y + bh + 13*k; vline(bx, y + bh, busY);
+      groups.forEach(function(g, gi){
+        var r = Math.floor(gi / cols), c = gi % cols, gx = gx0 + c*(gwid + gap), gy = busY + 13*k + r*(gh + 34*k);
+        vline(gx + gwid/2, gy - 13*k, gy);
+        box(gx, gy, gwid, gh, g.n + " " + g.cat, g.sub, g.color);
+        d.setFont("helvetica","bold"); d.setFontSize(7.5*k); d.setTextColor(100,116,139); d.text(String(g.floor).toUpperCase(), gx + gwid/2, gy + gh + 10*k, { align:"center" });
+      });
+      // horizontal bus for each row of groups
+      for (var r2 = 0; r2 < rows; r2++){
+        var ry = busY + r2*(gh + 34*k), last = Math.min(cols, groups.length - r2*cols) - 1;
+        hline(bx, gx0 + last*(gwid + gap) + gwid/2, ry);
+        if (r2) vline(bx, ry - (gh + 34*k), ry);
+      }
+      y = busY + rows*(gh + 34*k) + 14*k;
+    });
+    R.y = y + 6*k;
+    rNote("Each switch hangs off the gateway; boxes under a switch are the devices it feeds, grouped by floor. Dashed lines are fibre links between racks.");
+  }
+  SECTION.racks = function(){
+    var racks = project.racks.filter(function(r){ return r.items.length; });
+    if (!racks.length){ rPage("Racks", ""); rNote("No rack equipment yet."); return; }
+    var imgs = R.rackImgs || {};
+    racks.forEach(function(r){
+      var loc = rackLocation(r);
+      rPage(r.name + (r.main ? " (main rack)" : ""), r.height + "U · " + r.size + " cm · " + (r.mount === "wall" ? "wall-mount" : "floor-standing") + (loc ? " · " + loc.f.name : ""));
+      var d = R.doc, k = R.k, im = imgs[r.id], top = R.y, imgW = 0;
+      if (im){
+        var maxW = (R.W - 2*R.M) * 0.52, maxH = R.H - top - 80*k, s = Math.min(maxW / im.w, maxH / im.h);
+        imgW = im.w * s; d.addImage(im.data, "PNG", R.M, top, imgW, im.h * s);
+      }
+      var colX = R.M + imgW + 22*k, colW = R.W - R.M - colX;
+      var rows = r.items.slice().sort(function(a, b){ return a.pos - b.pos; }).map(function(it){
+        var e = EQUIP_BY_SKU[it.sku]; return e ? ["U" + it.pos + (e.u > 1 ? "–" + (it.pos + e.u - 1) : ""), { t:equipName(e), bold:true }] : null; }).filter(Boolean);
+      rTableAt(colX, colW, [{ h:"U", w:.22 }, { h:"Device", w:.78 }], rows, "Equipment");
+      var c = pointCounts(r), pr = [["Access points", c.ap], ["Cameras", c.cam], ["Access / intercom", c.icom], ["IP phones", c.phone], ["Data points", c.data]].filter(function(x){ return x[1]; });
+      if (c.watts) pr.push(["PoE load (max.)", c.watts + " W"]);
+      if (pr.length) rTableAt(colX, colW, [{ h:"Point", w:.7 }, { h:"", w:.3, align:"right" }], pr, "Connected points");
+    });
+  };
+  // A table placed in a column (next to the rack picture)
+  function rTableAt(x, w, cols, rows, title){
+    var saveM = R.M, saveW = R.W, d = R.doc, k = R.k;
+    R.M = x; R.W = w + 2*x;
+    d.setFont("helvetica","bold"); d.setFontSize(12*k); d.setTextColor(15,23,42); d.text(title, x, R.y); R.y += 14*k;
+    rTable(cols, rows);
+    R.M = saveM; R.W = saveW;
+  }
+  SECTION.hardware = function(){
+    rPage("Hardware list", "Whole villa");
+    var items = hardwareItems();
+    if (!items.length){ rNote("Nothing to order yet."); return; }
+    rTable([{ h:"Item", w:.42 }, { h:"SKU", w:.24 }, { h:"Where", w:.24 }, { h:"Qty", w:.1, align:"right" }],
+      items.map(function(r){ return [{ t:r.name, bold:true }, { t:r.sku || "", muted:!r.sku }, Object.keys(r.where).map(function(w){ return Object.keys(r.where).length > 1 ? w + " ×" + r.where[w] : w; }).join(", "), { t:String(r.qty), bold:true }]; }));
+    rNote("Same list as Export CSV for Zoho Books.");
+  };
+  SECTION.checklist = function(){
+    rPage("Site checklist", "Tick on site");
+    project.floors.forEach(function(f){
+      var cnt = {}; f.markers.forEach(function(m){ if (m.type === "drawbox") return; cnt[m.type] = (cnt[m.type] || 0) + 1; });
+      var ks = Object.keys(cnt).sort(function(a, b){ return typeRank(a) - typeRank(b); }); if (!ks.length) return;
+      rH(f.name);
+      rTable([{ h:"Point type", w:.4 }, { h:"Qty", w:.1, align:"right" }, { h:"Marked", w:.125 }, { h:"Cabled", w:.125 }, { h:"Terminated", w:.125 }, { h:"Tested", w:.125 }],
+        ks.map(function(t){ var d = getTypeDef(t); return [{ t:d ? d.label : t, dot:d ? d.color : null }, cnt[t], "☐", "☐", "☐", "☐"]; }));
+    });
+    rNote("Only the point types placed on each floor are listed.");
+  };
+  SECTION.drawings = function(ctx){
+    var floors = project.floors.filter(function(f){ return f.pdfDoc && !rptPrefs.floorsOff[f.id]; });
+    var flt = ctx.filter;
+    var chain = Promise.resolve();
+    floors.forEach(function(f){
+      chain = chain.then(function(){
+        return renderFloorPagesData(filteredFloor(f, flt)).then(function(pages){
+          pages.forEach(function(pd){ var n = rNewDocPage(pd.w, pd.h); R.drawingPages.push({ n:n, f:f }); R.doc.addImage(pd.img, "PNG", 0, 0, pd.w, pd.h); });
+        });
+      });
+    });
+    return chain;
+  };
+
+  // ---------- build ----------
+  function buildReport(keys, reportName, ctx){
+    ctx = ctx || {}; ctx.reportName = reportName;
+    var k = rptPrefs.paper === "a3" ? Math.SQRT2 : 1;
+    R = { doc:null, k:k, W:Math.round(794*k), H:Math.round(1123*k), M:Math.round(48*k), y:0, pages:[], drawingPages:[], sections:[], date:new Date().toLocaleDateString(undefined, { day:"numeric", month:"long", year:"numeric" }), rackImgs:null };
+    var chain = Promise.resolve();
+    if (keys.indexOf("racks") >= 0) chain = chain.then(function(){ return renderRackImages().then(function(m){ R.rackImgs = m; }); });
+    keys.forEach(function(key){
+      chain = chain.then(function(){
+        var before = R.doc ? R.doc.internal.getNumberOfPages() : 0;
+        return Promise.resolve(SECTION[key](ctx)).then(function(){
+          if (key !== "cover" && R.doc) R.sections.push({ label: key === "drawings" ? "Drawings" : REPORT_BY_KEY[key].label, page: before + 1 });
+        });
+      });
+    });
+    return chain.then(function(){
+      if (!R.doc) return null;
+      // contents on the cover
+      if (R.tocPage){
+        var d = R.doc, kk = R.k; d.setPage(R.tocPage); var y = R.tocY;
+        R.sections.forEach(function(s){
+          d.setFont("helvetica","normal"); d.setFontSize(11*kk); d.setTextColor(31,41,55); d.text(s.label, R.M, y);
+          d.text(String(s.page), R.W - R.M, y, { align:"right" });
+          d.setDrawColor(203,213,225); d.setLineWidth(0.6*kk); d.line(R.M, y + 6*kk, R.W - R.M, y + 6*kk); y += 22*kk;
+        });
+      }
+      rFooters(reportName);
+      return R.doc;
+    });
+  }
+  function reportFileName(reportName){ return safeName((project.name || "Project") + " – " + reportName) + ".pdf"; }
+  function runReport(keys, reportName, ctx){
+    if (!project.floors.some(function(f){ return f.markers.length || f.pdfDoc; })){ showStatus("Load a drawing and place points first"); return; }
+    if (keys.indexOf("drawings") >= 0 && !project.floors.some(function(f){ return f.pdfDoc && !rptPrefs.floorsOff[f.id]; })) keys = keys.filter(function(x){ return x !== "drawings"; });
+    if (!keys.length){ showStatus("Nothing to export"); return; }
+    el.exportBtn.disabled = true; showStatus("Preparing " + reportName.toLowerCase() + "…");
+    buildReport(keys, reportName, ctx).then(function(doc){
+      el.exportBtn.disabled = false;
+      if (!doc){ showStatus("Nothing to export"); return; }
+      var name = reportFileName(reportName);
+      ui.pendingPdf = { plain:{ blob:doc.output("blob"), name:name } };
+      el.downloadReadyLink.textContent = "Save " + name;
+      el.downloadReadySummaryLink.style.display = "none";
+      ensureProjectDir().then(function(){ el.downloadReadyOverlay.classList.add("visible"); showStatus("Ready — " + name); });
+    }).catch(function(err){ console.error(err); el.exportBtn.disabled = false; showStatus("Export failed — please try again"); });
+  }
+  // One-click report from a panel
+  function exportSingle(key){ var r = REPORT_BY_KEY[key]; runReport([key], r.singleLabel || r.label, { filter:null }); }
+
+  // ---------- dialog ----------
+  function renderReportDialog(){
+    var box = document.getElementById("rptBody"); if (!box) return;
+    var floors = project.floors, pts = 0; floors.forEach(function(f){ pts += f.markers.length; });
+    document.getElementById("rptSub").textContent = (project.name || "Project") + " · " + floors.length + " floor" + (floors.length === 1 ? "" : "s") + " · " + pts + " points";
+    document.querySelectorAll("#rptSeg button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-m") === rptPrefs.mode); });
+    var floorChips = floors.filter(function(f){ return f.pdfDoc; }).map(function(f){ return '<button type="button" class="rpt-fl'+(rptPrefs.floorsOff[f.id]?'':' on')+'" data-fl="'+f.id+'">'+escapeHtml(f.name)+'</button>'; }).join("");
+    // point types shown on the drawings
+    var types = {}; floors.forEach(function(f){ f.markers.forEach(function(m){ types[m.type] = (types[m.type] || 0) + 1; }); });
+    var typeChips = allTypeKeys().filter(function(t){ return types[t]; }).map(function(t){ var d = getTypeDef(t); return '<button type="button" class="rpt-ty'+(rptPrefs.typesOff[t]?'':' on')+'" data-ty="'+t+'"><span class="dot" style="background:'+d.color+'"></span>'+escapeHtml(d.label)+' '+types[t]+'</button>'; }).join("");
+    var drawingsExtra = (floorChips ? '<div class="rpt-chips">' + floorChips + '</div>' : '') +
+      (typeChips ? '<details class="rpt-types"><summary>Points shown on the drawings</summary><div class="rpt-chips">' + typeChips + '</div></details>' : '');
+    if (rptPrefs.mode === "full"){
+      box.innerHTML = REPORTS.map(function(r){
+        var on = !rptPrefs.off[r.key];
+        return '<div class="rpt-row"><button type="button" class="rpt-ck'+(on?' on':'')+'" data-rk="'+r.key+'" aria-label="'+r.label+'"></button><div class="rpt-t"><b>'+r.label+'</b><small>'+r.sub+'</small>'+(r.key === "drawings" && on ? drawingsExtra : '')+'</div></div>';
+      }).join("");
+    } else {
+      box.innerHTML = '<div class="rpt-cards">' + REPORTS.filter(function(r){ return r.single; }).map(function(r){
+        return '<button type="button" class="rpt-card'+(rptPrefs.single===r.key?' on':'')+'" data-rs="'+r.key+'"><span class="ic" style="background:'+r.color+'">'+r.icon+'</span><span><b>'+(r.singleLabel || r.label)+'</b><small>'+r.sub+'</small></span></button>';
+      }).join("") + '</div>' + (rptPrefs.single === "drawings" ? '<div style="margin-top:10px;">' + drawingsExtra + '</div>' : '');
+    }
+    box.querySelectorAll("[data-rk]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-rk"); if (rptPrefs.off[k]) delete rptPrefs.off[k]; else rptPrefs.off[k] = true; renderReportDialog(); }; });
+    box.querySelectorAll("[data-rs]").forEach(function(b){ b.onclick = function(){ rptPrefs.single = b.getAttribute("data-rs"); renderReportDialog(); }; });
+    box.querySelectorAll("[data-fl]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-fl"); if (rptPrefs.floorsOff[k]) delete rptPrefs.floorsOff[k]; else rptPrefs.floorsOff[k] = true; renderReportDialog(); }; });
+    box.querySelectorAll("[data-ty]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-ty"); if (rptPrefs.typesOff[k]) delete rptPrefs.typesOff[k]; else rptPrefs.typesOff[k] = true; renderReportDialog(); var dt = box.querySelector(".rpt-types"); if (dt) dt.open = true; }; });
+    document.getElementById("rptPaper").value = rptPrefs.paper;
+    var keys = selectedReportKeys(), name = currentReportName();
+    document.getElementById("rptInfo").textContent = keys.length ? reportFileName(name) : "Tick at least one section";
+    document.getElementById("rptGo").disabled = !keys.length;
+  }
+  function selectedReportKeys(){
+    if (rptPrefs.mode === "single") return [rptPrefs.single];
+    return REPORTS.filter(function(r){ return r.full || !rptPrefs.off[r.key]; }).filter(function(r){ return !rptPrefs.off[r.key]; }).map(function(r){ return r.key; });
+  }
+  function currentReportName(){ if (rptPrefs.mode === "single"){ var r = REPORT_BY_KEY[rptPrefs.single]; return r.singleLabel || r.label; } return "Full report"; }
+  function drawingFilter(){
+    var types = {}, all = [], shown = [];
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){ types[m.type] = true; }); });
+    Object.keys(types).forEach(function(t){ all.push(t); if (!rptPrefs.typesOff[t]) shown.push(t); });
+    if (shown.length === all.length) return null;
+    var flt = { types:{}, partial:true, shownKeys:shown, cables:true, measures:true, runs:ui.showRuns };
+    shown.forEach(function(t){ flt.types[t] = true; }); return flt;
+  }
+  function openReportDialog(){
+    var f = floor(); if (!f || !f.pdfDoc){ showStatus("Load a drawing first"); return; }
+    rptPrefs.typesOff = {};
+    renderReportDialog(); el.rptOverlay.classList.add("visible");
+  }
+  el.exportBtn.addEventListener("click", openReportDialog);
+  document.querySelectorAll("#rptSeg button").forEach(function(b){ b.addEventListener("click", function(){ rptPrefs.mode = b.getAttribute("data-m"); renderReportDialog(); }); });
+  document.getElementById("rptPaper").addEventListener("change", function(){ rptPrefs.paper = this.value; });
+  document.getElementById("rptCancel").addEventListener("click", function(){ el.rptOverlay.classList.remove("visible"); });
+  document.getElementById("rptGo").addEventListener("click", function(){
+    var keys = selectedReportKeys(); if (!keys.length) return;
+    saveRptPrefs(); el.rptOverlay.classList.remove("visible");
+    runReport(keys, currentReportName(), { filter:drawingFilter() });
+  });
+  document.querySelectorAll("[data-report]").forEach(function(b){ b.addEventListener("click", function(e){ e.stopPropagation(); exportSingle(b.getAttribute("data-report")); }); });
 
   /* ================= Racks ================= */
   var RACK_HEIGHTS = [4,6,9,12,18,21,32,42];
