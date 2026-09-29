@@ -247,7 +247,25 @@
   .rpt-chips button.on{ background:var(--accent-soft); color:var(--accent); border-color:color-mix(in srgb, var(--accent) 35%, transparent); }
   .rpt-chips .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
   .rpt-types{ margin-top:6px; } .rpt-types summary{ font-size:12px; color:var(--accent); cursor:pointer; }
+  .rpt-top{ display:flex; align-items:flex-start; gap:12px; } .rpt-top > div{ flex:1; }
+  .rpt-selall{ height:32px; padding:0 12px; border-radius:8px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+  .rpt-sck{ width:15px; height:15px; border-radius:4px; border:1.5px solid var(--hairline-2); display:grid; place-items:center; }
+  .rpt-sck.on, .rpt-sck.part{ background:var(--accent); border-color:var(--accent); }
+  .rpt-sck.on::after{ content:""; width:7px; height:4px; border:2px solid #fff; border-top:0; border-right:0; transform:rotate(-45deg) translate(1px,-1px); }
+  .rpt-sck.part::after{ content:""; width:7px; height:2px; background:#fff; border-radius:1px; }
+  .rpt-lbl{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--text-muted); text-transform:uppercase; margin:4px 0 8px; display:flex; justify-content:space-between; }
+  .rpt-lbl span{ text-transform:none; letter-spacing:0; font-weight:600; }
   .rpt-cards{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .rpt-card{ position:relative; padding-right:34px !important; cursor:pointer; }
+  .rpt-card .rpt-tick{ position:absolute; top:9px; right:9px; width:18px; height:18px; border-radius:50%; border:1.5px solid var(--hairline-2); background:var(--bg-panel); }
+  .rpt-card.on .rpt-tick{ background:var(--accent); border-color:var(--accent); }
+  .rpt-card.on .rpt-tick::after{ content:""; position:absolute; left:5px; top:5px; width:7px; height:4px; border:2px solid #fff; border-top:0; border-right:0; transform:rotate(-45deg); }
+  .rpt-more{ margin-top:7px; height:24px; padding:0 8px; border-radius:7px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--accent); font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; gap:4px; }
+  .rpt-more svg{ width:11px; height:11px; transition:transform .15s; } .rpt-more.open svg{ transform:rotate(180deg); }
+  .rpt-pick{ grid-column:1 / -1; border:1px solid var(--hairline); border-radius:11px; padding:11px 13px; background:var(--bg-panel-raised); }
+  .rpt-pick h5{ margin:0 0 7px; font-size:12.5px; display:flex; justify-content:space-between; align-items:center; }
+  .rpt-pick h5 button{ border:0; background:none; color:var(--accent); font-size:12px; font-weight:600; padding:0; }
+  .rpt-pick .rpt-chips{ margin:0 0 10px; } .rpt-pick .rpt-chips:last-child{ margin-bottom:0; }
   .rpt-card{ text-align:left; border:1.5px solid var(--hairline); border-radius:11px; padding:10px; display:flex; gap:9px; background:var(--bg-panel); color:var(--text-main); }
   .rpt-card.on{ border-color:var(--accent); background:var(--accent-soft); }
   .rpt-card .ic{ width:32px; height:32px; border-radius:8px; color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; flex-shrink:0; }
@@ -708,7 +726,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.11</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.12</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -898,7 +916,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.11</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.12</p>
     </section>
   </aside>
 
@@ -1037,9 +1055,9 @@
 
 <div class="overlay" id="rptOverlay">
   <div class="confirm-box rpt-box">
-    <p class="rpt-title">Export PDF</p>
-    <p class="rpt-sub" id="rptSub"></p>
-    <div class="rpt-seg" id="rptSeg"><button type="button" data-m="full" class="on">Full report</button><button type="button" data-m="single">Single report</button></div>
+    <div class="rpt-top"><div><p class="rpt-title">Export PDF</p><p class="rpt-sub" id="rptSub"></p></div>
+      <button type="button" class="rpt-selall" id="rptSelAll"><span class="rpt-sck" id="rptSelCk"></span><span id="rptSelTxt">Unselect all</span></button></div>
+    <div class="rpt-lbl">All reports <span id="rptCount"></span></div>
     <div class="rpt-body" id="rptBody"></div>
     <div class="rpt-opts">Paper <select id="rptPaper" class="select-input"><option value="a4">A4</option><option value="a3">A3</option></select><span>Drawings are exported at full size.</span></div>
     <p class="rpt-info" id="rptInfo"></p>
@@ -4830,15 +4848,15 @@
   /* ================= Reports (PDF): full report or any single report ================= */
   // White A4 report pages with an ExpressTech header and page numbers. Drawings stay at their native size.
   var REPORTS = [
-    { key:"cover",     label:"Cover page",          sub:"Project, date, floors, contents",                 full:true,  single:false },
+    { key:"cover",     label:"Cover page",          sub:"Project, date, floors, contents",                 full:true,  single:true, icon:"◧", color:"#334155" },
     { key:"summary",   label:"Summary",             sub:"Totals, points per floor, points by cable, PoE",  full:true,  single:true, icon:"Σ", color:"#0f172a" },
-    { key:"drawings",  label:"Drawings with points",sub:"Each floor’s marked-up plan",                     full:true,  single:true, icon:"▦", color:"#0891b2", singleLabel:"Drawings only" },
+    { key:"drawings",  label:"Drawings",            sub:"Each floor’s marked-up plan",                     full:true,  single:true, icon:"▦", color:"#0891b2", singleLabel:"Drawings only" },
     { key:"points",    label:"Point schedule",      sub:"Every point: ID, type, model, cable, switch port",full:true,  single:true, icon:"#", color:"#16a34a" },
     { key:"cables",    label:"Cable report",        sub:"Rolls to order, cable per point",                 full:true,  single:true, icon:"C", color:"#15803d" },
     { key:"network",   label:"Network",             sub:"Switch ports with PoE per port, topology",        full:true,  single:true, icon:"N", color:"#006fff" },
     { key:"racks",     label:"Racks",               sub:"Front view of each cabinet + equipment",          full:true,  single:true, icon:"R", color:"#475569" },
     { key:"hardware",  label:"Hardware list",       sub:"Everything to order (same as the CSV)",           full:true,  single:true, icon:"H", color:"#ea580c" },
-    { key:"checklist", label:"Site checklist",      sub:"Tick-box list of the points on each floor",       full:false, single:true, icon:"✓", color:"#a855f7" }
+    { key:"checklist", label:"Site checklist",      sub:"Tick-box list of the points on each floor",       full:true,  single:true, icon:"✓", color:"#a855f7" }
   ];
   var REPORT_BY_KEY = {}; REPORTS.forEach(function(r){ REPORT_BY_KEY[r.key] = r; });
   var rptPrefs = { mode:"full", single:"summary", off:{ checklist:true }, paper:"a4", floorsOff:{}, typesOff:{} };
@@ -5281,42 +5299,50 @@
   // One-click report from a panel
   function exportSingle(key){ var r = REPORT_BY_KEY[key]; runReport([key], r.singleLabel || r.label, { filter:null }); }
 
-  // ---------- dialog ----------
+  // ---------- dialog: one "All reports" screen; everything selected when it opens ----------
+  var rptSel = {}, rptPickOpen = false;
+  var CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  var CARD_LABEL = { cover:"Cover page", drawings:"Drawings" };
   function renderReportDialog(){
     var box = document.getElementById("rptBody"); if (!box) return;
     var floors = project.floors, pts = 0; floors.forEach(function(f){ pts += f.markers.length; });
     document.getElementById("rptSub").textContent = (project.name || "Project") + " · " + floors.length + " floor" + (floors.length === 1 ? "" : "s") + " · " + pts + " points";
-    document.querySelectorAll("#rptSeg button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-m") === rptPrefs.mode); });
-    var floorChips = floors.filter(function(f){ return f.pdfDoc; }).map(function(f){ return '<button type="button" class="rpt-fl'+(rptPrefs.floorsOff[f.id]?'':' on')+'" data-fl="'+f.id+'">'+escapeHtml(f.name)+'</button>'; }).join("");
-    // point types shown on the drawings
+    var pdfFloors = floors.filter(function(f){ return f.pdfDoc; }), nOn = pdfFloors.filter(function(f){ return !rptPrefs.floorsOff[f.id]; }).length;
     var types = {}; floors.forEach(function(f){ f.markers.forEach(function(m){ types[m.type] = (types[m.type] || 0) + 1; }); });
-    var typeChips = allTypeKeys().filter(function(t){ return types[t]; }).map(function(t){ var d = getTypeDef(t); return '<button type="button" class="rpt-ty'+(rptPrefs.typesOff[t]?'':' on')+'" data-ty="'+t+'"><span class="dot" style="background:'+d.color+'"></span>'+escapeHtml(d.label)+' '+types[t]+'</button>'; }).join("");
-    var drawingsExtra = (floorChips ? '<div class="rpt-chips">' + floorChips + '</div>' : '') +
-      (typeChips ? '<details class="rpt-types"><summary>Points shown on the drawings</summary><div class="rpt-chips">' + typeChips + '</div></details>' : '');
-    if (rptPrefs.mode === "full"){
-      box.innerHTML = REPORTS.map(function(r){
-        var on = !rptPrefs.off[r.key];
-        return '<div class="rpt-row"><button type="button" class="rpt-ck'+(on?' on':'')+'" data-rk="'+r.key+'" aria-label="'+r.label+'"></button><div class="rpt-t"><b>'+r.label+'</b><small>'+r.sub+'</small>'+(r.key === "drawings" && on ? drawingsExtra : '')+'</div></div>';
-      }).join("");
-    } else {
-      box.innerHTML = '<div class="rpt-cards">' + REPORTS.filter(function(r){ return r.single; }).map(function(r){
-        return '<button type="button" class="rpt-card'+(rptPrefs.single===r.key?' on':'')+'" data-rs="'+r.key+'"><span class="ic" style="background:'+r.color+'">'+r.icon+'</span><span><b>'+(r.singleLabel || r.label)+'</b><small>'+r.sub+'</small></span></button>';
-      }).join("") + '</div>' + (rptPrefs.single === "drawings" ? '<div style="margin-top:10px;">' + drawingsExtra + '</div>' : '');
+    var cards = REPORTS.map(function(r){
+      var more = r.key === "drawings" && pdfFloors.length ? '<button type="button" class="rpt-more'+(rptPickOpen?' open':'')+'" data-rmore>'+(nOn === pdfFloors.length ? (pdfFloors.length > 1 ? "All floors" : pdfFloors[0].name) : nOn + " of " + pdfFloors.length + " floors")+' '+CHEV+'</button>' : '';
+      return '<div class="rpt-card'+(rptSel[r.key]?' on':'')+'" data-rs="'+r.key+'" role="button" tabindex="0"><span class="ic" style="background:'+(r.color || "#334155")+'">'+(r.icon || "◧")+'</span><span><b>'+(CARD_LABEL[r.key] || r.label)+'</b><small>'+r.sub+'</small>'+more+'</span><span class="rpt-tick"></span></div>';
+    });
+    if (rptPickOpen){
+      var pick = '<div class="rpt-pick"><h5>Floors <button type="button" data-rallf>All floors</button></h5><div class="rpt-chips">' +
+        pdfFloors.map(function(f){ return '<button type="button" class="'+(rptPrefs.floorsOff[f.id]?'':'on')+'" data-fl="'+f.id+'">'+escapeHtml(f.name)+'</button>'; }).join("") + '</div>' +
+        '<h5>Points shown on the drawings <button type="button" data-rallt>All</button></h5><div class="rpt-chips">' +
+        allTypeKeys().filter(function(t){ return types[t]; }).map(function(t){ var d = getTypeDef(t); return '<button type="button" class="'+(rptPrefs.typesOff[t]?'':'on')+'" data-ty="'+t+'"><span class="dot" style="background:'+d.color+'"></span>'+escapeHtml(d.label)+' '+types[t]+'</button>'; }).join("") + '</div></div>';
+      var di = REPORTS.findIndex(function(r){ return r.key === "drawings"; });
+      cards.splice(di + (di % 2 === 0 ? 2 : 1), 0, pick);   // right after the row the Drawings card is in
     }
-    box.querySelectorAll("[data-rk]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-rk"); if (rptPrefs.off[k]) delete rptPrefs.off[k]; else rptPrefs.off[k] = true; renderReportDialog(); }; });
-    box.querySelectorAll("[data-rs]").forEach(function(b){ b.onclick = function(){ rptPrefs.single = b.getAttribute("data-rs"); renderReportDialog(); }; });
+    box.innerHTML = '<div class="rpt-cards">' + cards.join("") + '</div>';
+    box.querySelectorAll("[data-rs]").forEach(function(c){ c.onclick = function(e){ if (e.target.closest("[data-rmore]")) return; var k = c.getAttribute("data-rs"); if (rptSel[k]) delete rptSel[k]; else rptSel[k] = true; renderReportDialog(); }; });
+    var mo = box.querySelector("[data-rmore]"); if (mo) mo.onclick = function(e){ e.stopPropagation(); rptPickOpen = !rptPickOpen; renderReportDialog(); };
     box.querySelectorAll("[data-fl]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-fl"); if (rptPrefs.floorsOff[k]) delete rptPrefs.floorsOff[k]; else rptPrefs.floorsOff[k] = true; renderReportDialog(); }; });
-    box.querySelectorAll("[data-ty]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-ty"); if (rptPrefs.typesOff[k]) delete rptPrefs.typesOff[k]; else rptPrefs.typesOff[k] = true; renderReportDialog(); var dt = box.querySelector(".rpt-types"); if (dt) dt.open = true; }; });
+    box.querySelectorAll("[data-ty]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-ty"); if (rptPrefs.typesOff[k]) delete rptPrefs.typesOff[k]; else rptPrefs.typesOff[k] = true; renderReportDialog(); }; });
+    var af = box.querySelector("[data-rallf]"); if (af) af.onclick = function(){ rptPrefs.floorsOff = {}; renderReportDialog(); };
+    var at = box.querySelector("[data-rallt]"); if (at) at.onclick = function(){ rptPrefs.typesOff = {}; renderReportDialog(); };
+    var n = selectedReportKeys().length, all = n === REPORTS.length;
+    document.getElementById("rptCount").textContent = n + " of " + REPORTS.length + " selected";
+    document.getElementById("rptSelCk").className = "rpt-sck" + (all ? " on" : n ? " part" : "");
+    document.getElementById("rptSelTxt").textContent = all ? "Unselect all" : "Select all";
     document.getElementById("rptPaper").value = rptPrefs.paper;
-    var keys = selectedReportKeys(), name = currentReportName();
-    document.getElementById("rptInfo").textContent = keys.length ? reportFileName(name) : "Tick at least one section";
-    document.getElementById("rptGo").disabled = !keys.length;
+    document.getElementById("rptInfo").textContent = n ? "Saves as " + reportFileName(currentReportName()) : "Pick at least one report";
+    document.getElementById("rptGo").disabled = !n;
   }
-  function selectedReportKeys(){
-    if (rptPrefs.mode === "single") return [rptPrefs.single];
-    return REPORTS.filter(function(r){ return r.full || !rptPrefs.off[r.key]; }).filter(function(r){ return !rptPrefs.off[r.key]; }).map(function(r){ return r.key; });
+  function selectedReportKeys(){ return REPORTS.filter(function(r){ return rptSel[r.key]; }).map(function(r){ return r.key; }); }
+  function currentReportName(){
+    var ks = selectedReportKeys();
+    if (ks.length === REPORTS.length) return "Full report";
+    if (ks.length === 1){ var r = REPORT_BY_KEY[ks[0]]; return ks[0] === "drawings" ? "Drawings" : (r.singleLabel && ks[0] !== "drawings" ? r.singleLabel : r.label); }
+    return "Report";
   }
-  function currentReportName(){ if (rptPrefs.mode === "single"){ var r = REPORT_BY_KEY[rptPrefs.single]; return r.singleLabel || r.label; } return "Full report"; }
   function drawingFilter(){
     var types = {}, all = [], shown = [];
     project.floors.forEach(function(f){ f.markers.forEach(function(m){ types[m.type] = true; }); });
@@ -5327,12 +5353,17 @@
   }
   function openReportDialog(){
     var f = floor(); if (!f || !f.pdfDoc){ showStatus("Load a drawing first"); return; }
-    rptPrefs.typesOff = {};
+    rptSel = {}; REPORTS.forEach(function(r){ rptSel[r.key] = true; });   // everything selected when it opens
+    rptPrefs.typesOff = {}; rptPrefs.floorsOff = {}; rptPickOpen = false;
     renderReportDialog(); el.rptOverlay.classList.add("visible");
   }
   el.exportBtn.addEventListener("click", openReportDialog);
-  document.querySelectorAll("#rptSeg button").forEach(function(b){ b.addEventListener("click", function(){ rptPrefs.mode = b.getAttribute("data-m"); renderReportDialog(); }); });
-  document.getElementById("rptPaper").addEventListener("change", function(){ rptPrefs.paper = this.value; });
+  document.getElementById("rptSelAll").addEventListener("click", function(){
+    var all = selectedReportKeys().length === REPORTS.length;
+    rptSel = {}; if (!all) REPORTS.forEach(function(r){ rptSel[r.key] = true; });
+    renderReportDialog();
+  });
+  document.getElementById("rptPaper").addEventListener("change", function(){ rptPrefs.paper = this.value; saveRptPrefs(); });
   document.getElementById("rptCancel").addEventListener("click", function(){ el.rptOverlay.classList.remove("visible"); });
   document.getElementById("rptGo").addEventListener("click", function(){
     var keys = selectedReportKeys(); if (!keys.length) return;
