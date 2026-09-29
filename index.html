@@ -651,6 +651,9 @@
   .sstat div{ background:var(--bg-panel-raised); border-radius:10px; padding:10px 12px; }
   .sstat small{ color:var(--text-muted); display:block; font-size:11px; }
   .sstat b{ font-size:17px; }
+  .sum-cables{ margin-top:10px; }
+  .sum-cables .h{ font-size:11px; color:var(--text-muted); margin:0 0 4px; }
+  .sum-cables .srow{ font-size:12.5px; }
   .sempty{ color:var(--text-muted); font-size:12px; margin:0; }
 
   @media (max-width:1300px){
@@ -675,7 +678,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.8</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.9</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -865,7 +868,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.8</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.9</p>
     </section>
   </aside>
 
@@ -925,6 +928,7 @@
     <div class="scard">
       <h3>Whole villa <small id="sumFloorsInfo"></small></h3>
       <div class="sstat" id="sumVilla"></div>
+      <div id="sumCables" class="sum-cables"></div>
     </div>
     <div class="scard">
       <h3>Hardware list <button class="link-btn" id="hwCsvBtn" title="Spreadsheet (CSV) for Zoho Books">Export CSV</button></h3>
@@ -1687,7 +1691,7 @@
    "undoBtn","clearPageBtn","clearAllBtn","exportBtn","totalCount","hintText","statusText",
    "canvasScroll","canvasStage","pdfCanvas","heatmapCanvas","overlaySvg","markerLayer","emptyState","legendOverlay","legendToggle",
    "editorPopover","saveMenu","saveAsBtn","saveReplaceBtn","saveReplaceSub","markerQuickBar","qbRotL","qbRotR","qbSmaller","qbBigger","qbDelete","qbMore","qbClose","popoverDot","popoverTypeLabel","popoverBody","popoverCloseBtn",
-   "confirmOverlay","confirmMessage","confirmCancelBtn","confirmOkBtn",
+   "confirmOverlay","confirmMessage","confirmCancelBtn","confirmOkBtn","sumCables",
    "exportScopeOverlay","exportCurrentBtn","exportAllBtn","exportScopeCancelBtn","exportFloorsBlock","exportTypesAll","exportTypesNone",
    "exportTypeList","exportExtrasBlock","exportExtraList","exportGoBtn",
    "copyFromFloorBtn","copyFloorOverlay","copyTargetPageLabel","copySourceFloorSelect","copySourcePageSelect","copyFloorConfirmBtn","copyFloorCancelBtn",
@@ -3284,8 +3288,10 @@
   var SUM_GROUPS = [
     ["Access points", function(m){ return isWifiType(m.type); }],
     ["Cameras", function(m){ return isCameraType(m.type); }],
-    ["Data points", function(m){ return m.type === "network" || m.type === "dtv" || m.type === "uplink" || m.type === "ipphone"; }]
+    ["Data points", function(m){ return m.type === "network" || m.type === "dtv" || m.type === "ipphone"; }]
   ];
+  // "All points" = every point that needs a data cable to a switch port (cameras, APs, phones, data, intercom…); the uplink goes to the gateway, not a switch
+  function isCablePoint(m){ return !!CABLED_TYPES[m.type] && m.type !== "uplink"; }
   function renderSummary(){
     if (!el.sumRows) return;
     var f = floor();
@@ -3307,8 +3313,14 @@
     if (el.netView && el.netView.classList.contains("on")) renderNetwork();
     if (el.rackEditor && el.sidePanel.querySelector('.pane[data-pane="racks"]').classList.contains("on")) renderRacks();
     refreshPlaceRack();
+    var cablePts = all.filter(isCablePoint);
     el.sumVilla.innerHTML = SUM_GROUPS.map(function(g){ return '<div><small>'+g[0]+'</small><b>'+all.filter(g[1]).length+'</b></div>'; }).join("") +
-      '<div><small>All points</small><b>'+all.length+'</b></div>';
+      '<div title="Every point with a data cable to a switch port. The uplink is not included."><small>All points</small><b>'+cablePts.length+'</b></div>';
+    var byCable = {}; cablePts.forEach(function(m){ var k = CABLE_CATS[m.cable] ? m.cable : "cat6"; byCable[k] = (byCable[k] || 0) + 1; });
+    var ks = Object.keys(CABLE_CATS).filter(function(k){ return byCable[k]; });
+    if (el.sumCables) el.sumCables.innerHTML = ks.length ? '<p class="h">Points by cable</p>' + ks.map(function(k){
+      return '<div class="srow"><span class="sdot" style="background:'+CABLE_CATS[k].color+'"></span>'+escapeHtml(CABLE_CATS[k].label)+'<b>'+byCable[k]+'</b></div>';
+    }).join("") : "";
   }
 
   function toggleCameraCones(){
@@ -5358,7 +5370,7 @@
   };
   // Generic estimates when no model is known
   var TYPE_POWER = { wifi:[21,"PoE+","2.5G"], outdoorwifi:[19,"PoE+","2.5G"], cctv:[10,"PoE","1G"], cctvoutdoor:[10,"PoE","1G"], ipphone:[6,"PoE","1G"],
-    intercom:[13,"PoE","1G"], intercomscreen:[5,"PoE","1G"], network:[0,"","1G"], dtv:[0,"","1G"], uplink:[0,"","1G"] };
+    intercom:[13,"PoE","1G"], intercomscreen:[5,"PoE","1G"], network:[0,"","1G"], dtv:[0,"","1G"] };
   var POE_RANK = { "":0, "PoE":1, "PoE+":2, "PoE++":3 };
   var SPEED_RANK = { "100M":1, "1G":1, "2.5G":2, "10G":3, "25G":4 };
   function devicePower(m){
