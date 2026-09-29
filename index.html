@@ -675,7 +675,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.7</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.8</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -865,7 +865,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.7</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.8</p>
     </section>
   </aside>
 
@@ -1644,7 +1644,7 @@
   function calcSettings(){
     var c = project.cableCalc || {};
     var out = { perPoint: parseFloat(c.perPoint) > 0 ? parseFloat(c.perPoint) : 45, roll:{} };
-    Object.keys(CABLE_CATS).forEach(function(k){ out.roll[k] = (c.roll && (c.roll[k] === 500 || c.roll[k] === 305)) ? c.roll[k] : 305; });
+    Object.keys(CABLE_CATS).forEach(function(k){ out.roll[k] = (c.roll && (c.roll[k] === 500 || c.roll[k] === 305 || c.roll[k] === 1)) ? c.roll[k] : 305; });
     return out;
   }
   function getTypeSizeDefault(key){ return project.typeSizeDefaults[key] || 0.8; }
@@ -4737,7 +4737,7 @@
       doc.setFontSize(12); doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.text("Cable", 50, y); y+=18;
       doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(127,149,174);
       ccPdf.order.forEach(function(k){ var c = ccPdf.cats[k];
-        doc.text(CABLE_CATS[k].label + ": " + c.n + " points x " + ccPdf.perPoint + " m = " + Math.round(c.metres) + " m  ->  " + c.order + " x " + c.roll + " m " + (c.roll === 500 ? "reel" : "box"), 50, y); y+=15; });
+        doc.text(CABLE_CATS[k].label + ": " + c.n + " points x " + ccPdf.perPoint + " m = " + Math.round(c.metres) + " m  ->  " + (c.roll === 1 ? c.order + " m, by the metre" : c.order + " x " + rollName(c.roll)), 50, y); y+=15; });
       y += 10;
     }
 
@@ -5310,7 +5310,7 @@
     var cc = cableCalc();
     cc.order.forEach(function(k){
       var c = cc.cats[k];
-      add("cable:"+k, CABLE_CATS[k].label + " cable, " + c.roll + " m " + (c.roll === 500 ? "reel" : "box"), "", "All floors", c.order);
+      add("cable:"+k, CABLE_CATS[k].label + " cable, " + (c.roll === 1 ? "by the metre (m)" : rollName(c.roll)), "", "All floors", c.order);
     });
     project.racks.forEach(function(r){
       if (!r.items.length) return;
@@ -5891,6 +5891,8 @@
     });
     return { tot:tot, missing:missing, unscaled:unscaled };
   }
+  // roll 305 = box, 500 = reel, 1 = bought by the metre
+  function rollName(roll){ return roll === 1 ? "by the metre" : roll + " m " + (roll === 500 ? "reel" : "box"); }
   function cableCalc(){
     var st = calcSettings(), cats = {};
     project.floors.forEach(function(f){
@@ -5912,9 +5914,10 @@
       '<label class="cc-per">Average cable per point <input type="number" id="ccPer" min="5" max="200" step="1" value="'+cc.perPoint+'"> m</label>'+
       (cc.order.length ? cc.order.map(function(k){
         var c = cc.cats[k], by = Object.keys(c.byType).map(function(t){ var d = getTypeDef(t); return c.byType[t] + " " + (d ? d.label : t); }).join(" · ");
-        return '<div class="cc-cat"><div class="h"><span class="cable-dot" style="background:'+CABLE_CATS[k].color+'"></span>'+CABLE_CATS[k].label+' · '+c.n+' point'+(c.n===1?'':'s')+'<b>'+c.order+' roll'+(c.order===1?'':'s')+'</b></div>'+
+        return '<div class="cc-cat"><div class="h"><span class="cable-dot" style="background:'+CABLE_CATS[k].color+'"></span>'+CABLE_CATS[k].label+' · '+c.n+' point'+(c.n===1?'':'s')+'<b>'+(c.roll === 1 ? c.order+' m' : c.order+' roll'+(c.order===1?'':'s'))+'</b></div>'+
           '<div class="sub">'+escapeHtml(by)+'</div>'+
-          '<div class="math">'+c.n+' × '+cc.perPoint+' m = <b>'+Math.round(c.metres)+' m</b> ÷ <select data-roll="'+k+'"><option value="305"'+(c.roll===305?' selected':'')+'>305 m box</option><option value="500"'+(c.roll===500?' selected':'')+'>500 m reel</option></select> = '+(Math.round(c.rolls*100)/100)+' → order <b>'+c.order+'</b></div></div>';
+          '<div class="math">'+c.n+' × '+cc.perPoint+' m = <b>'+Math.round(c.metres)+' m</b> '+(c.roll === 1 ? '' : '÷ ')+'<select data-roll="'+k+'"><option value="305"'+(c.roll===305?' selected':'')+'>305 m box</option><option value="500"'+(c.roll===500?' selected':'')+'>500 m reel</option><option value="1"'+(c.roll===1?' selected':'')+'>By the metre</option></select>'+
+            (c.roll === 1 ? ' → buy <b>'+c.order+' m</b>' : ' = '+(Math.round(c.rolls*100)/100)+' → order <b>'+c.order+'</b>')+'</div></div>';
       }).join("") : '<p class="note" style="margin:0;">Place points to see how many rolls you need.</p>')+
       '</div>';
     var c = cableTotals(), keys = Object.keys(c.tot);
