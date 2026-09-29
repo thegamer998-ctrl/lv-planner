@@ -648,7 +648,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.3</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.4</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -831,7 +831,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.3</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.4</p>
     </section>
   </aside>
 
@@ -2152,6 +2152,7 @@
     reader.onload = function(){
       var parsed;
       try { parsed = JSON.parse(reader.result); } catch(err){ showStatus("That file doesn't look like a saved project"); return; }
+      if (parsed && parsed.kind === "lv-points"){ fsState.loadedHandle = null; importPointsFile(parsed); return; }
       fsState.projectFile = fsState.loadedHandle || null;
       if (fsState.loadedHandle) rememberFile(fsState.loadedHandle, true);
       fsState.loadedHandle = null;
@@ -2159,6 +2160,33 @@
     };
     reader.readAsText(file);
   });
+  // Is there already a point of this kind at (x, y) on the current page?
+  function existingPointNear(f, type, x, y, list){
+    var cam = isCameraType(type);
+    return (list || f.markers).some(function(m){
+      if (m.page !== f.currentPage) return false;
+      var same = m.type === type || (cam && isCameraType(m.type));
+      return same && Math.hypot(m.xRatio - x, m.yRatio - y) < 0.012;
+    });
+  }
+  // A points file written by Claude in chat (no API key): {kind:"lv-points", points:[{type,x,y,rotation,label}]}
+  // x / y are fractions (0–1) of the page width / height. Points go onto the current page.
+  function importPointsFile(data){
+    var f = floor();
+    if (!f || !f.pdfDoc){ showStatus("Load the drawing first, then open the points file"); return; }
+    var pts = Array.isArray(data.points) ? data.points : [], added = 0, skipped = 0, before = f.markers.slice();
+    pts.forEach(function(p){
+      var type = String(p.type || ""), x = parseFloat(p.x), y = parseFloat(p.y);
+      if (!getTypeDef(type) || isNaN(x) || isNaN(y) || x < 0 || x > 1 || y < 0 || y > 1) return;
+      if (existingPointNear(f, type, x, y, before)){ skipped++; return; }
+      var mk = placePointMarker(type, x, y); if (!mk) return;
+      if (p.rotation != null && !isNaN(parseFloat(p.rotation))) mk.rotation = ((Math.round(parseFloat(p.rotation)) % 360) + 360) % 360;
+      if (p.label) mk.note = String(p.label).slice(0, 60);
+      added++;
+    });
+    renderMarkers(); renderOverlay(); updateAllReadouts(); histSoon();
+    showStatus("Added " + added + " point(s)" + (skipped ? " \u2014 " + skipped + " already on the drawing were skipped" : "") + (data.source ? " from " + data.source : ""));
+  }
   // Shared by "Open project" and "Restore unsaved work"
   function loadProjectObject(parsed, fromAutosave){
       showStatus("Loading project\u2026");
@@ -2674,9 +2702,10 @@
     el.detectPointsList.innerHTML = candidates.map(function(c, idx){
       var opts = typeOptions.map(function(o){ return '<option value="'+o.key+'"'+(o.key===c.type?" selected":"")+'>'+escapeHtml(o.label)+'</option>'; }).join("");
       var unmatched = c.known === false;
-      var text = c.label + (c.desc ? " \u00b7 " + c.desc : "") + (unmatched ? " (not an LV type)" : "") + (c.needsCheck ? " (camera \u2014 check bullet or dome)" : "");
-      return '<div class="detect-row" data-idx="'+idx+'"'+(unmatched?' style="opacity:0.7;"':'')+'>'+
-        '<input type="checkbox" class="dp-check"'+(unmatched?'':' checked')+'>'+
+      var already = f && existingPointNear(f, c.type, c.xRatio, c.yRatio);
+      var text = c.label + (c.desc ? " \u00b7 " + c.desc : "") + (unmatched ? " (not an LV type)" : "") + (already ? " (already on the drawing)" : "") + (c.needsCheck && !already ? " (camera \u2014 check bullet or dome)" : "");
+      return '<div class="detect-row" data-idx="'+idx+'"'+(unmatched||already?' style="opacity:0.7;"':'')+'>'+
+        '<input type="checkbox" class="dp-check"'+(unmatched||already?'':' checked')+'>'+
         '<span class="dp-label" style="white-space:normal;">'+escapeHtml(text)+'</span>'+
         '<select class="dp-type">'+opts+'</select>'+
         '</div>';
