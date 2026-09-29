@@ -225,6 +225,20 @@
   .marker:hover svg{ filter:brightness(0.92); }
   .ap-tag{ position:absolute; transform:translate(-50%,-50%); color:#fff; font-family:Arial, sans-serif; font-weight:700;
     line-height:1.2; padding:0 0.32em; border-radius:0.35em; border:1px solid #fff; white-space:nowrap; pointer-events:none; letter-spacing:0.02em; }
+  .cable-tag{ position:absolute; transform:translate(-50%,-50%); font-family:Arial, sans-serif; font-weight:700; line-height:1.15; padding:0 0.3em;
+    border-radius:0.35em; background:#fff; border:1.5px solid currentColor; white-space:nowrap; pointer-events:none; }
+  .type-cable{ display:none; margin-left:4px; padding:1px 6px; border-radius:6px; font-size:10.5px; font-weight:700; background:#fff; border:1.5px solid currentColor; }
+  .cable-defaults{ display:grid; grid-template-columns:1fr 112px; gap:6px 8px; align-items:center; font-size:12px; margin-top:4px; }
+  .cable-defaults select{ height:28px; font-size:12px; padding:0 6px; }
+  .cc-box{ margin-top:12px; border:1px solid var(--hairline); border-radius:10px; padding:10px 12px; background:var(--bg-panel); }
+  .cc-per{ display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:8px; }
+  .cc-per input{ width:58px; height:28px; text-align:center; }
+  .cc-cat{ border-top:1px solid var(--hairline); padding:8px 0 2px; font-size:12px; }
+  .cc-cat .h{ display:flex; align-items:center; gap:6px; font-weight:700; }
+  .cc-cat .h b{ margin-left:auto; }
+  .cc-cat .sub{ color:var(--text-muted); margin:2px 0 4px 14px; line-height:1.4; }
+  .cc-cat .math{ display:flex; align-items:center; gap:5px; margin-left:14px; flex-wrap:wrap; }
+  .cc-cat .math select{ height:26px; font-size:12px; padding:0 4px; }
   .seg{ display:flex; gap:4px; margin-bottom:10px; }
   .seg button{ flex:1; height:30px; border-radius:6px; border:1px solid var(--hairline); background:var(--bg-panel); color:var(--text-main); font-size:11.5px; font-weight:600; }
   .seg button.on{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
@@ -648,7 +662,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.4</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.5</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -721,14 +735,16 @@
       <h2>Cables</h2>
       <div class="layer-row"><span class="lbl"><b>Show cable runs</b><small>Automatic: point → floor draw box → cabinet</small></span>
         <button type="button" class="toggle-switch runs-toggle" role="switch" aria-checked="false"><span class="toggle-knob"></span></button></div>
-      <label class="mini-label">Cable for new points</label>
-      <select class="select-input" id="pointCableSel"><option value="cat6">Cat6</option><option value="cat6a">Cat6A</option><option value="cat7">Cat7</option></select>
       <div id="runsSummary" class="runs-sum"></div>
+      <p class="section-label" style="margin-top:16px;">Cable for new points</p>
+      <p class="pane-note" style="margin-top:0;">Every new point of that type gets this cable. Change a single point from its menu.</p>
+      <div id="cableDefaults" class="cable-defaults"></div>
       <p class="section-label" style="margin-top:16px;">Manual routes</p>
       <label class="mini-label" style="margin-top:0;">Cable type (new routes)</label>
       <select class="select-input" id="cableTypeSelect">
         <option value="cat6">Cat6</option>
         <option value="cat6a">Cat6A</option>
+        <option value="cat6aout">Cat6A Outdoor</option>
         <option value="cat7">Cat7</option>
         <option value="cat8">Cat8</option>
         <option value="coax">Coax (RG6)</option>
@@ -831,7 +847,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.4</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.5</p>
     </section>
   </aside>
 
@@ -1317,6 +1333,7 @@
   var CABLE_TYPES = {
     cat6:    { label:"Cat6" },
     cat6a:   { label:"Cat6A" },
+    cat6aout:{ label:"Cat6A Outdoor" },
     cat7:    { label:"Cat7" },
     cat8:    { label:"Cat8" },
     coax:    { label:"Coax (RG6)" },
@@ -1490,8 +1507,66 @@
 
   function allTypeKeys(){ return BUILTIN_ORDER.concat(Object.keys(project.customTypes)); }
 
+  /* ============== Cable category per point ============== */
+  // Cat6 is the default and shows no tag; anything else gets a small tag on the drawing
+  var CABLE_CATS = {
+    cat6:    { label:"Cat6",          tag:"",       color:"#2563eb" },
+    cat6a:   { label:"Cat6A",         tag:"6A",     color:"#16a34a" },
+    cat6aout:{ label:"Cat6A Outdoor", tag:"6A OUT", color:"#7c3aed" },
+    cat7:    { label:"Cat7",          tag:"C7",     color:"#ea580c" }
+  };
+  var CABLED_TYPES = { wifi:1, outdoorwifi:1, cctv:1, cctvoutdoor:1, network:1, ipphone:1, dtv:1, uplink:1, intercom:1, intercomscreen:1 };
+  var CABLE_DEFAULTS = {};
+  try {
+    var cbt0 = JSON.parse(localStorage.getItem("lvplanner_cablebytype") || "{}");
+    Object.keys(cbt0 || {}).forEach(function(k){ if (CABLE_CATS[cbt0[k]]) CABLE_DEFAULTS[k] = cbt0[k]; });
+  } catch(e){}
+  function cableDefaultFor(type){ return CABLE_CATS[CABLE_DEFAULTS[type]] ? CABLE_DEFAULTS[type] : "cat6"; }
+  function cableOptionsHtml(cur){ return Object.keys(CABLE_CATS).map(function(k){ return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+CABLE_CATS[k].label+'</option>'; }).join(""); }
+  function setCableDefault(type, k){
+    if (!CABLE_CATS[k]) return;
+    if (k === "cat6") delete CABLE_DEFAULTS[type]; else CABLE_DEFAULTS[type] = k;
+    try { localStorage.setItem("lvplanner_cablebytype", JSON.stringify(CABLE_DEFAULTS)); } catch(e){}
+    refreshCableDefaultsUi();
+  }
+  function refreshCableDefaultsUi(){
+    document.querySelectorAll("[data-cable-for]").forEach(function(chip){
+      var k = cableDefaultFor(chip.getAttribute("data-cable-for"));
+      chip.textContent = CABLE_CATS[k].tag; chip.style.color = CABLE_CATS[k].color; chip.style.display = k === "cat6" ? "none" : "inline-block";
+      chip.title = "New points get " + CABLE_CATS[k].label;
+    });
+    document.querySelectorAll("[data-cable-sel]").forEach(function(sel){ sel.value = cableDefaultFor(sel.getAttribute("data-cable-sel")); });
+    var box = document.getElementById("cableDefaults"); if (!box) return;
+    box.innerHTML = Object.keys(CABLED_TYPES).filter(function(k){ return BUILTIN_TYPES[k]; }).map(function(k){
+      return '<span>'+escapeHtml(BUILTIN_TYPES[k].label)+'</span><select class="select-input" data-cable-sel="'+k+'">'+cableOptionsHtml(cableDefaultFor(k))+'</select>';
+    }).join("");
+    box.querySelectorAll("select").forEach(function(sel){ sel.onchange = function(){ setCableDefault(sel.getAttribute("data-cable-sel"), sel.value); }; });
+  }
+  function cableTagHtml(m, r){
+    var c = CABLE_CATS[m.cable]; if (!c || !c.tag) return "";
+    return '<span class="cable-tag" style="color:'+c.color+';font-size:'+Math.max(6, r*0.58).toFixed(1)+'px;'+
+      'left:calc(50% + '+(r*0.95).toFixed(1)+'px);top:calc(50% - '+(r*0.9).toFixed(1)+'px);">'+c.tag+'</span>';
+  }
+  function drawCableTagOnCanvas(ctx, m, cx, cy, r){
+    var c = CABLE_CATS[m.cable]; if (!c || !c.tag) return;
+    var fs = Math.max(6, r*0.58);
+    ctx.save(); ctx.font = "bold " + fs + "px Arial, sans-serif";
+    var pw = ctx.measureText(c.tag).width + fs*0.6, ph = fs*1.15 + 2, tx = cx + r*0.95, ty = cy - r*0.9;
+    roundRect(ctx, tx - pw/2, ty - ph/2, pw, ph, fs*0.35);
+    ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.lineWidth = Math.max(1, fs*0.14); ctx.strokeStyle = c.color; ctx.stroke();
+    ctx.fillStyle = c.color; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(c.tag, tx, ty + fs*0.04);
+    ctx.restore();
+  }
+
   /* ============== Project / floor data model ============== */
-  var project = { name:"Untitled Project", customTypes:{}, nextColorIndex:14, typeSizeDefaults:{}, revisions:[], floors:[], activeFloorIndex:-1, racks:[] };
+  var project = { name:"Untitled Project", customTypes:{}, nextColorIndex:14, typeSizeDefaults:{}, revisions:[], floors:[], activeFloorIndex:-1, racks:[], cableCalc:null };
+  // Cable calculator: average metres per point and roll length per cable (305 m box standard, 500 m reels available)
+  function calcSettings(){
+    var c = project.cableCalc || {};
+    var out = { perPoint: parseFloat(c.perPoint) > 0 ? parseFloat(c.perPoint) : 45, roll:{} };
+    Object.keys(CABLE_CATS).forEach(function(k){ out.roll[k] = (c.roll && (c.roll[k] === 500 || c.roll[k] === 305)) ? c.roll[k] : 305; });
+    return out;
+  }
   function getTypeSizeDefault(key){ return project.typeSizeDefaults[key] || 0.8; }
   function setTypeSizeDefault(key, size, applyToFloor){
     size = Math.max(0.4, Math.min(2.5, size));
@@ -1539,7 +1614,7 @@
    "multiPageOverlay","multiPageCount","multiPageList","multiPageImportBtn","multiPageCancelBtn","multiPageAllBtn","multiPageNoneBtn","multiPageSelCount",
    "aiScanBtn","aiKeyLink","aiKeyOverlay","aiKeyInput","aiKeySaveBtn","aiKeyForgetBtn","aiKeyCancelBtn","detectPointsOverlay","detectPointsCount","detectPointsList","detectPointsImportBtn","detectPointsCancelBtn",
    "downloadReadyOverlay","downloadReadyLink","downloadReadySummaryLink","downloadReadyCloseBtn",
-   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","redoBtn","restoreCard","restoreInfo","restoreBtn","restoreDiscardBtn","shortcutsOverlay","kbList","shortcutsCloseBtn","shortcutsBtn","pointCableSel","runsSummary","featHeatmap","featCones","modelPane","rackTabs","rackEditor","rackView","rvWrap","placeRackRow","placeRackSel","netView","netBody","hwFloors","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
+   "projectNameInput","saveProjectBtn","loadProjectBtn","floorList","addFloorBtn","wallMaterialSelect","wallToolList","redoBtn","restoreCard","restoreInfo","restoreBtn","restoreDiscardBtn","shortcutsOverlay","kbList","shortcutsCloseBtn","shortcutsBtn","cableDefaults","runsSummary","featHeatmap","featCones","modelPane","rackTabs","rackEditor","rackView","rvWrap","placeRackRow","placeRackSel","netView","netBody","hwFloors","hwList","hwCsvBtn","ubntToggle","defaultModelsBlock","defaultModelsList","sumFloorName","sumPageInfo","sumBar","sumRows","sumVilla","sumFloorsInfo","summaryPanel","summaryToggleBtn","themeToggleBtn","rail","sidePanel",
    "addRevisionBtn","revisionList","revisionForm","revisionNoteInput","revisionCancelBtn","revisionSaveBtn"
   ].forEach(function(id){ el[id] = document.getElementById(id); });
 
@@ -1595,7 +1670,7 @@
     var delHtml = deletable ? '<button class="type-del" data-del="'+key+'" title="Remove type">&times;</button>' : "";
     var modelChip = (CATALOG[key] && sizable) ? '<span class="type-model" data-model-for="'+key+'" title="Choose model"></span>' : "";
     btn.innerHTML = '<span class="type-badge">'+typeIconSVG(typeDef, 0)+'</span>'+
-      '<span class="type-name">'+escapeHtml(typeDef.label)+'</span>'+modelChip+'<span class="type-count" id="count-'+key+'">0</span>'+delHtml;
+      '<span class="type-name">'+escapeHtml(typeDef.label)+'</span>'+modelChip+(CABLED_TYPES[key] ? '<span class="type-cable" data-cable-for="'+key+'"></span>' : '')+'<span class="type-count" id="count-'+key+'">0</span>'+delHtml;
     btn.addEventListener("click", function(e){
       if (e.target.closest(".type-del")) return;
       if (e.target.closest(".type-model")){ if (ui.activeTool !== key) setActiveTool(key); openModelPicker(key); return; }
@@ -1636,6 +1711,9 @@
       '<button type="button" class="size-ctrl-btn" data-dir="up">&plus;</button>'+
       '</div>'+
       '<p class="popover-hint" style="margin-top:6px;">Updates every '+escapeHtml(typeDef.label)+' point already on this floor.</p>'+
+      (CABLED_TYPES[key] ? '<span class="mini-label" style="margin:10px 0 4px;display:block;">Cable for new '+escapeHtml(typeDef.label)+' points</span>'+
+        '<select class="select-input type-cable-sel" data-cable-sel="'+key+'" style="margin-bottom:4px;">'+cableOptionsHtml(cableDefaultFor(key))+'</select>'+
+        '<button type="button" class="link-btn type-cable-apply" style="font-size:11.5px;">Also change the '+escapeHtml(typeDef.label)+' points already on this floor</button>' : '')+
       '<div class="toggle-row" style="margin-top:9px;margin-bottom:0;">'+
       '<span class="toggle-label">Show on plan</span>'+
       '<button type="button" class="toggle-switch type-visibility-toggle on" role="switch" aria-checked="true">'+
@@ -1650,6 +1728,16 @@
       if (!isOpen){ panel.style.display = "block"; expandBtn.classList.add("open"); }
     });
 
+    var cSel = panel.querySelector(".type-cable-sel");
+    if (cSel){
+      cSel.addEventListener("change", function(e){ e.stopPropagation(); setCableDefault(key, cSel.value); });
+      panel.querySelector(".type-cable-apply").addEventListener("click", function(e){
+        e.stopPropagation(); var f = floor(); if (!f) return; var n = 0, k = cableDefaultFor(key);
+        f.markers.forEach(function(m){ if (m.type === key){ if (k === "cat6") delete m.cable; else m.cable = k; n++; } });
+        renderMarkers(); updateAllReadouts(); renderHardwareList(); histSoon();
+        showStatus(n + " " + typeDef.label + " point(s) on " + f.name + " set to " + CABLE_CATS[k].label);
+      });
+    }
     var visToggle = panel.querySelector(".type-visibility-toggle");
     visToggle.classList.toggle("on", !ui.hiddenTypes[key]);
     visToggle.setAttribute("aria-checked", ui.hiddenTypes[key] ? "false" : "true");
@@ -1705,6 +1793,7 @@
     if (customs.length){ head("Custom"); customs.forEach(function(key){ createToolButton(el.typeList, key, project.customTypes[key], true, true); }); }
     refreshToolButtons();
     refreshModelChips();
+    refreshCableDefaultsUi();
   }
 
   function deleteCustomType(key){
@@ -2083,7 +2172,7 @@
 
   function projectJsonBlob(){ return new Blob([JSON.stringify(projectObject(true))], { type:"application/json" }); }
   function projectObject(withPdf){
-    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, floors: project.floors.map(function(f){
+    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, cableCalc: project.cableCalc, floors: project.floors.map(function(f){
       return { id:f.id, name:f.name, fileName:f.fileName, pdfBase64:withPdf ? f.pdfBase64 : null, currentPage:f.currentPage,
         markers:f.markers, walls:f.walls, measurements:f.measurements, cableRoutes:f.cableRoutes,
         scaleByPage:f.scaleByPage, heatmapOn:f.heatmapOn, environment:f.environment, legendByPage:f.legendByPage, showCameraCones:f.showCameraCones };
@@ -2197,6 +2286,7 @@
       project.typeSizeDefaults = parsed.typeSizeDefaults || {};
       project.revisions = parsed.revisions || [];
       project.racks = Array.isArray(parsed.racks) ? parsed.racks : [];
+      project.cableCalc = parsed.cableCalc || null;
       ui.placeRack = "";
       renderRevisionList();
       el.projectNameInput.value = project.name;
@@ -2833,7 +2923,8 @@
       wrap.innerHTML = typeIconSVG(t, m.rotation||0);
       var svgEl = wrap.querySelector("svg");
       if (svgEl){ var sz = markerScreenPx(f, m); svgEl.style.width = sz+"px"; svgEl.style.height = sz+"px";
-        var mv = markerVariant(m); if (mv) wrap.insertAdjacentHTML("beforeend", tagHtml(mv, sz*15/46)); }
+        var mv = markerVariant(m); if (mv) wrap.insertAdjacentHTML("beforeend", tagHtml(mv, sz*15/46));
+        wrap.insertAdjacentHTML("beforeend", cableTagHtml(m, sz*15/46)); }
       if (m.note){ var dot=document.createElement("span"); dot.className="note-dot"; wrap.appendChild(dot); }
       wrap.addEventListener("pointerdown", function(e){
         e.stopPropagation();
@@ -3275,7 +3366,7 @@
     if (type === "rack"){ marker.rackItems = []; }
     if (UBNT.on && CATALOG[type]) marker.model = currentSku(type);
     if (ui.placeRack && connectsToRack(marker)) marker.rack = ui.placeRack;
-    if (ui.pointCable && ui.pointCable !== "cat6" && needsRun(marker)) marker.cable = ui.pointCable;
+    var dc = cableDefaultFor(type); if (dc !== "cat6" && needsRun(marker)) marker.cable = dc;
     f.markers.push(marker);
     if (type === "rack") linkRackMarker(marker, f.name);
     f.undoStack.push({ action:"add", kind:"marker", item:marker });
@@ -3559,7 +3650,7 @@
       if (cblSel) cblSel.addEventListener("change", function(){
         var mk = f.markers.find(function(x){ return x.id===id; }); if (!mk) return;
         if (cblSel.value === "cat6") delete mk.cable; else mk.cable = cblSel.value;
-        renderOverlay(); renderRunsSummary(); renderHardwareList();
+        renderMarkers(); renderOverlay(); renderRunsSummary(); renderHardwareList();
       });
       var cabSel = document.getElementById("popCabinet");
       if (cabSel) cabSel.addEventListener("change", function(){
@@ -4252,6 +4343,7 @@
     var scale = targetSize/30;
     drawTypeIconOnCanvas(ctx, t, x, y, scale, marker.rotation||0);
     drawTagOnCanvas(ctx, markerVariant(marker), x, y, targetSize/2);
+    drawCableTagOnCanvas(ctx, marker, x, y, targetSize/2);
   }
   function drawWallOnCanvas(ctx, wall, w, h){
     var mat = MATERIALS[wall.material] || MATERIALS.drywall;
@@ -4557,6 +4649,14 @@
       doc.setFontSize(12); doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.text("Cable Routes", 50, y); y+=18;
       doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(127,149,174);
       Object.keys(cableCounts).forEach(function(k){ doc.text((CABLE_TYPES[k]||{label:k}).label+": "+cableCounts[k], 50, y); y+=15; });
+      y += 10;
+    }
+    var ccPdf = cableCalc();
+    if (ccPdf.order.length){
+      doc.setFontSize(12); doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.text("Cable", 50, y); y+=18;
+      doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(127,149,174);
+      ccPdf.order.forEach(function(k){ var c = ccPdf.cats[k];
+        doc.text(CABLE_CATS[k].label + ": " + c.n + " points x " + ccPdf.perPoint + " m = " + Math.round(c.metres) + " m  ->  " + c.order + " x " + c.roll + " m " + (c.roll === 500 ? "reel" : "box"), 50, y); y+=15; });
       y += 10;
     }
 
@@ -5126,10 +5226,10 @@
       if (runs + patch) add("el", "Patch cord 0.15 m", "", "Racks", runs + patch);
     }
     if (fib) add("fib", "10G SFP+ multi-mode fibre module", "", "Racks", fib*2);
-    var ct = cableTotals();
-    Object.keys(ct.tot).forEach(function(k){
-      var boxes = Math.ceil(ct.tot[k].m / BOX_M);
-      add("cable:"+k, CABLE_CATS[k].label + " cable, 305 m box (est. " + Math.round(ct.tot[k].m) + " m)", "", "All floors", boxes);
+    var cc = cableCalc();
+    cc.order.forEach(function(k){
+      var c = cc.cats[k];
+      add("cable:"+k, CABLE_CATS[k].label + " cable, " + c.roll + " m " + (c.roll === 500 ? "reel" : "box"), "", "All floors", c.order);
     });
     project.racks.forEach(function(r){
       if (!r.items.length) return;
@@ -5293,8 +5393,9 @@
         var pt = sw.ports[parseInt(parts[1],10)-1];
         if (pt && free(sw, pt, d)){ place(sw, pt, d); d.manual = true; }
       });
+      // fastest devices first (2.5G / 10G access points take the 2.5G ports before anything else), then PoE class and power
       var todo = r.devices.filter(function(d){ return !d.sw; }).sort(function(a,b){
-        return POE_RANK[b.poe] - POE_RANK[a.poe] || b.w - a.w || (a.floor > b.floor ? 1 : a.floor < b.floor ? -1 : 0);
+        return (SPEED_RANK[b.speed] || 1) - (SPEED_RANK[a.speed] || 1) || POE_RANK[b.poe] - POE_RANK[a.poe] || b.w - a.w || (a.floor > b.floor ? 1 : a.floor < b.floor ? -1 : 0);
       });
       todo.forEach(function(d){
         var best = null, bestScore = 1e9;
@@ -5637,12 +5738,7 @@
   el.featCones.addEventListener("click", function(){ FEATURES.cones = !FEATURES.cones; saveFeatures(); applyFeatures(); });
 
   /* ================= Cable category per point + automatic cable runs ================= */
-  var CABLE_CATS = { cat6:{ label:"Cat6", color:"#2563eb" }, cat6a:{ label:"Cat6A", color:"#16a34a" }, cat7:{ label:"Cat7", color:"#ea580c" } };
   var FLOOR_HEIGHT_M = 3.5, SLACK_M = 3, BOX_M = 305;
-  ui.pointCable = "cat6";
-  try { var pc0 = localStorage.getItem("lvplanner_pointcable"); if (CABLE_CATS[pc0]) ui.pointCable = pc0; } catch(e){}
-  el.pointCableSel.value = ui.pointCable;
-  el.pointCableSel.addEventListener("change", function(){ ui.pointCable = el.pointCableSel.value; try { localStorage.setItem("lvplanner_pointcable", ui.pointCable); } catch(e){} });
   function cableOf(m){ return CABLE_CATS[m.cable] ? m.cable : "cat6"; }
   function needsRun(m){ if (m.type === "rack" || m.type === "drawbox") return false; var pw = devicePower(m); return pw.port || m.type === "network" || m.type === "dtv" || m.type === "uplink"; }
   ui.showRuns = false;
@@ -5714,17 +5810,54 @@
     });
     return { tot:tot, missing:missing, unscaled:unscaled };
   }
+  function cableCalc(){
+    var st = calcSettings(), cats = {};
+    project.floors.forEach(function(f){
+      f.markers.forEach(function(m){
+        if (!needsRun(m)) return;
+        var k = cableOf(m), c = cats[k] || (cats[k] = { n:0, byType:{} });
+        c.n++; c.byType[m.type] = (c.byType[m.type] || 0) + 1;
+      });
+    });
+    Object.keys(cats).forEach(function(k){
+      var c = cats[k]; c.metres = c.n * st.perPoint; c.roll = st.roll[k]; c.rolls = c.metres / c.roll; c.order = Math.ceil(c.rolls - 1e-9);
+    });
+    return { perPoint: st.perPoint, cats: cats, order: Object.keys(CABLE_CATS).filter(function(k){ return cats[k]; }) };
+  }
   function renderRunsSummary(){
     if (!el.runsSummary) return;
+    var cc = cableCalc();
+    var calcHtml = '<div class="cc-box"><p class="section-label" style="margin:0 0 8px;">Cable calculator</p>'+
+      '<label class="cc-per">Average cable per point <input type="number" id="ccPer" min="5" max="200" step="1" value="'+cc.perPoint+'"> m</label>'+
+      (cc.order.length ? cc.order.map(function(k){
+        var c = cc.cats[k], by = Object.keys(c.byType).map(function(t){ var d = getTypeDef(t); return c.byType[t] + " " + (d ? d.label : t); }).join(" · ");
+        return '<div class="cc-cat"><div class="h"><span class="cable-dot" style="background:'+CABLE_CATS[k].color+'"></span>'+CABLE_CATS[k].label+' · '+c.n+' point'+(c.n===1?'':'s')+'<b>'+c.order+' roll'+(c.order===1?'':'s')+'</b></div>'+
+          '<div class="sub">'+escapeHtml(by)+'</div>'+
+          '<div class="math">'+c.n+' × '+cc.perPoint+' m = <b>'+Math.round(c.metres)+' m</b> ÷ <select data-roll="'+k+'"><option value="305"'+(c.roll===305?' selected':'')+'>305 m box</option><option value="500"'+(c.roll===500?' selected':'')+'>500 m reel</option></select> = '+(Math.round(c.rolls*100)/100)+' → order <b>'+c.order+'</b></div></div>';
+      }).join("") : '<p class="note" style="margin:0;">Place points to see how many rolls you need.</p>')+
+      '</div>';
     var c = cableTotals(), keys = Object.keys(c.tot);
-    el.runsSummary.innerHTML = (keys.length ? keys.map(function(k){
+    var measured = !ui.showRuns ? '' : '<p class="section-label" style="margin:14px 0 4px;">Measured on the drawing (for reference)</p>' + (keys.length ? keys.map(function(k){
       var t = c.tot[k], bx = Math.ceil(t.m/BOX_M);
-      return '<div class="srow"><span class="cable-dot" style="background:'+CABLE_CATS[k].color+'"></span>'+CABLE_CATS[k].label+' · '+t.n+' runs<b>~'+Math.round(t.m)+' m · '+bx+' box'+(bx===1?'':'es')+'</b></div>';
+      return '<div class="srow"><span class="cable-dot" style="background:'+CABLE_CATS[k].color+'"></span>'+CABLE_CATS[k].label+' · '+t.n+' runs<b>~'+Math.round(t.m)+' m</b></div>';
     }).join("") : '') +
     '<p class="note">'+(c.missing ? c.missing + ' point(s) have no path yet — place a <b>Draw Box</b> on each floor (and the cabinet). ' : '') +
       (c.unscaled ? 'Lengths are rough until you set the scale with <b>Measure</b> on each page. ' : '') +
       'Includes '+FLOOR_HEIGHT_M+' m per floor for the riser and '+SLACK_M+' m slack per run.</p>';
+    el.runsSummary.innerHTML = calcHtml + measured;
+    var per = document.getElementById("ccPer");
+    if (per) per.onchange = function(){
+      var v = parseFloat(per.value); if (!(v > 0)) return;
+      project.cableCalc = project.cableCalc || {}; project.cableCalc.perPoint = Math.max(5, Math.min(200, v));
+      setTimeout(function(){ renderRunsSummary(); renderHardwareList(); histSoon(); }, 0);
+    };
+    el.runsSummary.querySelectorAll("[data-roll]").forEach(function(sel){ sel.onchange = function(){
+      project.cableCalc = project.cableCalc || {}; project.cableCalc.roll = project.cableCalc.roll || {};
+      project.cableCalc.roll[sel.getAttribute("data-roll")] = parseInt(sel.value, 10);
+      setTimeout(function(){ renderRunsSummary(); renderHardwareList(); histSoon(); }, 0);
+    }; });
   }
+  refreshCableDefaultsUi();
 
   /* ================= Undo / redo history (every change) ================= */
   var hist = { undo:[], redo:[], last:null, restoring:false, timer:null };
