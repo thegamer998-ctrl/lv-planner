@@ -678,7 +678,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.9</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.10</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -868,7 +868,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.9</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.10</p>
     </section>
   </aside>
 
@@ -3288,7 +3288,8 @@
   var SUM_GROUPS = [
     ["Access points", function(m){ return isWifiType(m.type); }],
     ["Cameras", function(m){ return isCameraType(m.type); }],
-    ["Data points", function(m){ return m.type === "network" || m.type === "dtv" || m.type === "ipphone"; }]
+    // Data points = every network point except cameras: APs, IP phones, data, Data & TV, intercom, intercom screen
+    ["Data points", function(m){ return isCablePoint(m) && !isCameraType(m.type); }]
   ];
   // "All points" = every point that needs a data cable to a switch port (cameras, APs, phones, data, intercom…); the uplink goes to the gateway, not a switch
   function isCablePoint(m){ return !!CABLED_TYPES[m.type] && m.type !== "uplink"; }
