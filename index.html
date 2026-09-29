@@ -648,7 +648,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.1</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.2</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -831,7 +831,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.1</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.2</p>
     </section>
   </aside>
 
@@ -999,7 +999,7 @@
 
 <div class="overlay" id="detectPointsOverlay">
   <div class="confirm-box" style="width:320px;max-height:82vh;display:flex;flex-direction:column;">
-    <p style="margin-bottom:8px;">The AI found <span id="detectPointsCount">0</span> possible point(s). Numbered markers show where each would land on the plan \u2014 uncheck any that don't belong, fix a type if needed, then add. Positions are approximate; drag to fine-tune afterwards.</p>
+    <p style="margin-bottom:8px;">The AI found <span id="detectPointsCount">0</span> possible point(s). Numbered markers show where each would land on the plan &mdash; uncheck any that don't belong, fix a type if needed, then add. Positions are approximate; drag to fine-tune afterwards.</p>
     <div id="detectPointsList" style="overflow-y:auto;flex:1;margin-bottom:10px;display:flex;flex-direction:column;gap:6px;"></div>
     <div class="confirm-actions" style="flex-direction:column;">
       <button class="btn-save" id="detectPointsImportBtn" style="width:100%;">Add selected points</button>
@@ -2438,7 +2438,7 @@
   /* ============== AI scan (Claude vision) ============== */
   var AI_MODEL = "claude-sonnet-5";
   var AI_KEY_STORAGE = "lvplanner_anthropic_key";
-  var AI_TYPE_LIST = "wifi (indoor wireless access point), outdoorwifi (outdoor wireless access point), cctv (indoor/dome camera), cctvoutdoor (outdoor/bullet camera), network (data outlet), ipphone (telephone outlet), tv (television outlet, also satellite outlets S/ss), dtv (combined data + TV outlet), uplink (uplink/riser), speaker (speaker), rack (IT rack / telecom cabinet / data room), intercom (intercom outlet), intercomscreen (intercom screen/monitor), smartlock (smart door lock)";
+  var AI_TYPE_LIST = "wifi (indoor wireless access point), outdoorwifi (outdoor wireless access point), cctv (DOME / turret camera), cctvoutdoor (BULLET camera), network (data outlet), ipphone (telephone outlet), tv (television outlet, also satellite outlets S/ss), dtv (combined data + TV outlet), uplink (uplink/riser), speaker (speaker), rack (IT rack / telecom cabinet / data room), intercom (intercom outlet), intercomscreen (intercom screen/monitor), smartlock (smart door lock)";
 
   function getAiKey(){ try { return localStorage.getItem(AI_KEY_STORAGE) || ""; } catch(e){ return ""; } }
   function setAiKey(k){ try { if (k) localStorage.setItem(AI_KEY_STORAGE, k); else localStorage.removeItem(AI_KEY_STORAGE); } catch(e){} }
@@ -2484,24 +2484,29 @@
     });
   }
 
-  function renderPageToJpeg(page, longEdgePx, cropRatio){
+  // Render one region of the page (ratios) straight to a JPEG sized so the API never resizes it
+  // (≤1568 px long edge, ≤1.15 MP) — the pixel coordinates the AI returns are then exact for this image.
+  // Only the region is rendered, so memory stays small even on iPad.
+  function renderRegionJpeg(page, r){
     var vp1 = page.getViewport({ scale:1 });
-    var scale = longEdgePx / Math.max(vp1.width, vp1.height);
-    var vp = page.getViewport({ scale:scale });
-    var full = document.createElement("canvas"); full.width = vp.width; full.height = vp.height;
-    return page.render({ canvasContext: full.getContext("2d"), viewport: vp }).promise.then(function(){
-      var src = full;
-      if (cropRatio){
-        var sx = cropRatio.x0*full.width, sy = cropRatio.y0*full.height;
-        var sw = (cropRatio.x1-cropRatio.x0)*full.width, sh = (cropRatio.y1-cropRatio.y0)*full.height;
-        var tile = document.createElement("canvas"); tile.width = Math.round(sw); tile.height = Math.round(sh);
-        tile.getContext("2d").drawImage(full, sx, sy, sw, sh, 0, 0, tile.width, tile.height);
-        src = tile;
-      }
-      var dataUrl = src.toDataURL("image/jpeg", 0.85);
-      return dataUrl.split(",")[1];
+    var rw = (r.x1 - r.x0) * vp1.width, rh = (r.y1 - r.y0) * vp1.height;
+    var k = Math.min(1568 / Math.max(rw, rh), Math.sqrt(1100000 / (rw * rh)));
+    var vp = page.getViewport({ scale:k, offsetX: -r.x0 * vp1.width * k, offsetY: -r.y0 * vp1.height * k });
+    var c = document.createElement("canvas"); c.width = Math.max(1, Math.round(rw * k)); c.height = Math.max(1, Math.round(rh * k));
+    var ctx = c.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+    return page.render({ canvasContext: ctx, viewport: vp }).promise.then(function(){
+      return { b64: c.toDataURL("image/jpeg", 0.9).split(",")[1], w: c.width, h: c.height };
     });
   }
+  function boxFromPct(b, pad){
+    if (!b) return null;
+    var x0 = parseFloat(b.x0), y0 = parseFloat(b.y0), x1 = parseFloat(b.x1), y1 = parseFloat(b.y1);
+    if ([x0,y0,x1,y1].some(isNaN) || x1 <= x0 || y1 <= y0) return null;
+    pad = pad || 0;
+    return { x0:Math.max(0, x0/100 - pad), y0:Math.max(0, y0/100 - pad), x1:Math.min(1, x1/100 + pad), y1:Math.min(1, y1/100 + pad) };
+  }
+  function inBox(b, x, y){ return b && x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; }
+  function normLabel(s){ return String(s || "").toUpperCase().replace(/[\s._\-]+/g, ""); }
 
   function runAiScan(){
     var f = floor(); if (!f || !f.pdfDoc) return;
@@ -2509,70 +2514,140 @@
     if (!key){ openAiKeyModal(runAiScan); return; }
     var pageNum = f.currentPage;
     el.aiScanBtn.disabled = true;
-    showStatus("Reading the drawing's legend\u2026");
+    showStatus("Reading the drawing layout…");
 
     var systemText = "You are an expert at reading architectural low-voltage (ELV) floor plans. You only ever reply with strict JSON, no prose, no markdown.";
-    var legend = null;
-    var N = 3, OV = 0.05, tiles = [];
-    for (var r=0; r<N; r++) for (var c=0; c<N; c++){
-      tiles.push({ x0:Math.max(0,c/N-OV), y0:Math.max(0,r/N-OV), x1:Math.min(1,(c+1)/N+OV), y1:Math.min(1,(r+1)/N+OV) });
-    }
-    var raw = [];
+    var page, layout = {}, legend = [], raw = [], texts = [];
 
-    f.pdfDoc.getPage(pageNum).then(function(page){
-      return renderPageToJpeg(page, 1568, null).then(function(b64){
-        var prompt = "Read the LEGEND on this floor plan. List every low-voltage / ELV symbol it defines and map each to one of these types: " + AI_TYPE_LIST + ". Use \"other\" if none fit. Ignore power/lighting symbols. Reply with JSON only: {\"legend\":[{\"symbol\":\"short visual description of the symbol\",\"label\":\"legend text\",\"type\":\"type\"}]}";
-        return callClaude(key, systemText, [
-          { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 } },
-          { type:"text", text:prompt }
-        ]);
-      }).then(function(res){
-        legend = (res && res.legend) || [];
-        var chain = Promise.resolve();
-        tiles.forEach(function(t, i){
-          chain = chain.then(function(){
-            showStatus("Scanning section " + (i+1) + " of " + tiles.length + "\u2026");
-            return renderPageToJpeg(page, 1568, t).then(function(b64){
-              var prompt = "This image is ONE SECTION of a floor plan (it overlaps neighbouring sections). The legend for this drawing is: " + JSON.stringify(legend) +
-                ". Your job is an EXHAUSTIVE inventory of every low-voltage / ELV symbol drawn on the plan in this image. The symbols are small (little triangles, circles or squares with a letter code). Outlets are often drawn in tight groups of 2-4 side by side along a wall - list EVERY individual symbol separately, never one entry for a group. Scan the image systematically: top row left-to-right, then the next row down, and so on. It is better to include a doubtful symbol than to miss one (a human reviews your list). Map each to one of these types: " + AI_TYPE_LIST +
-                ". Do NOT include symbols that are inside the legend box or title block. Ignore power sockets, lights, switches, dimensions and room labels." +
-                " For each symbol give its centre as x and y percentages (0-100) of THIS image's width and height, and a short label (the legend text or symbol code, e.g. FDC, T, smoke detector). Use type \"other\" for symbols that fit none of the types (satellite, detectors, alarms). Be precise. Reply with JSON only: {\"points\":[{\"type\":\"type\",\"label\":\"text\",\"x\":12.3,\"y\":45.6}]}";
-              return callClaude(key, systemText, [
-                { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 } },
-                { type:"text", text:prompt }
-              ]);
-            }).then(function(res){
-              ((res && res.points) || []).forEach(function(p){
-                var px = parseFloat(p.x), py = parseFloat(p.y);
-                if (isNaN(px) || isNaN(py)) return;
-                var type = String(p.type||"").toLowerCase();
-                var known = !!getTypeDef(type);
-                raw.push({ type: known ? type : "network", known: known, desc: String(p.label||"").slice(0,40),
-                  xRatio: t.x0 + (px/100)*(t.x1-t.x0), yRatio: t.y0 + (py/100)*(t.y1-t.y0) });
-              });
+    f.pdfDoc.getPage(pageNum).then(function(p){
+      page = p;
+      // Text in the PDF (labels such as CAM.1 / WIFI 2) — used to merge duplicates of the same labelled point
+      var tc = page.getTextContent ? page.getTextContent().catch(function(){ return null; }) : Promise.resolve(null);
+      return Promise.all([renderRegionJpeg(page, { x0:0, y0:0, x1:1, y1:1 }), tc]);
+    }).then(function(res){
+      var img = res[0];
+      if (res[1] && res[1].items){
+        var vp1 = page.getViewport({ scale:1 });
+        res[1].items.forEach(function(it){
+          var s = String(it.str || "").trim(); if (!s || !it.transform) return;
+          var pt = vp1.convertToViewportPoint ? vp1.convertToViewportPoint(it.transform[4], it.transform[5]) : [it.transform[4], vp1.height - it.transform[5]];
+          texts.push({ n: normLabel(s), x: pt[0] / vp1.width, y: pt[1] / vp1.height });
+        });
+      }
+      // 1) Where are the plan, the legend and the title block?
+      var prompt = "This is a full architectural drawing sheet. Give bounding boxes as percentages (0-100) of the image width and height for: " +
+        "\"plan\" = the floor plan drawing itself (walls and rooms), \"legend\" = the symbol legend / key table (null if none), " +
+        "\"title\" = the title block / notes / stamp area (null if none), \"other\" = any other schedules, tables or key plans (list, may be empty). " +
+        "Reply with JSON only: {\"plan\":{\"x0\":0,\"y0\":0,\"x1\":100,\"y1\":100},\"legend\":{...}|null,\"title\":{...}|null,\"other\":[{...}]}";
+      return callClaude(key, systemText, [
+        { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:img.b64 } },
+        { type:"text", text:prompt }
+      ]);
+    }).then(function(res){
+      layout.plan = boxFromPct(res && res.plan, 0.01) || { x0:0, y0:0, x1:1, y1:1 };
+      layout.legend = boxFromPct(res && res.legend, 0.005);
+      layout.skip = [layout.legend, boxFromPct(res && res.title, 0.005)].concat(((res && res.other) || []).map(function(b){ return boxFromPct(b, 0.005); })).filter(Boolean);
+      if (!layout.legend) return { legend: [] };
+      // 2) Read the legend close up
+      showStatus("Reading the drawing's legend…");
+      return renderRegionJpeg(page, layout.legend);
+    }).then(function(img){
+      if (img && img.legend) return img;
+      var prompt = "This is the symbol LEGEND of a floor plan. List every low-voltage / ELV symbol it defines (ignore power, lighting and plumbing). " +
+        "Give each an id L1, L2, … For each, describe the symbol's exact shape so it can be recognised on the plan, copy the legend text, and map it to ONE type from this list: " + AI_TYPE_LIST +
+        ". Cameras: use cctvoutdoor for a BULLET camera symbol or a legend text saying bullet/outdoor/external; use cctv only for a DOME/turret camera symbol or text saying dome/indoor/internal. " +
+        "If a camera symbol says neither, use \"camera\" as the type. Use \"other\" for symbols that fit no type. " +
+        "Reply with JSON only: {\"legend\":[{\"id\":\"L1\",\"symbol\":\"shape description\",\"label\":\"legend text\",\"code\":\"letter code shown inside/next to the symbol, if any\",\"type\":\"type\"}]}";
+      return callClaude(key, systemText, [
+        { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:img.b64 } },
+        { type:"text", text:prompt }
+      ]);
+    }).then(function(res){
+      legend = ((res && res.legend) || []).filter(function(l){ return l && l.id; });
+      var byId = {}; legend.forEach(function(l){ byId[String(l.id).toUpperCase()] = l; });
+      // 3) Scan the plan in overlapping sections at full resolution
+      var P = layout.plan, N = 3, OV = 0.06, tiles = [];
+      var tw = (P.x1 - P.x0) / N, th = (P.y1 - P.y0) / N;
+      for (var r = 0; r < N; r++) for (var c = 0; c < N; c++){
+        tiles.push({ x0:Math.max(0, P.x0 + c*tw - tw*OV), y0:Math.max(0, P.y0 + r*th - th*OV),
+                     x1:Math.min(1, P.x0 + (c+1)*tw + tw*OV), y1:Math.min(1, P.y0 + (r+1)*th + th*OV) });
+      }
+      var legendText = legend.length ? JSON.stringify(legend.map(function(l){ return { id:l.id, symbol:l.symbol, label:l.label, code:l.code }; })) : "none found — identify symbols by their shape and code";
+      var chain = Promise.resolve();
+      tiles.forEach(function(t, i){
+        chain = chain.then(function(){
+          showStatus("Scanning section " + (i+1) + " of " + tiles.length + "…");
+          var img;
+          return renderRegionJpeg(page, t).then(function(im){
+          img = im;
+          var prompt = "This image is ONE SECTION (" + img.w + " × " + img.h + " pixels) of a floor plan; sections overlap slightly. The drawing's legend is: " + legendText + ". " +
+            "Find EVERY symbol on the plan in this image that matches one of those legend entries. Outlets are often drawn in tight groups of 2-4 along a wall — list each symbol separately. " +
+            "Match each symbol to the legend entry with the SAME SHAPE — look at the symbol itself, not only the nearby text; a bullet camera and a dome camera are different entries. " +
+            "Ignore anything that is not a legend symbol (furniture, doors, dimensions, room names, power sockets, lights). Skip symbols cut off at the image edge. " +
+            "For each symbol give its centre in PIXELS of this image (x from the left, y from the top), the legend id, and the text label written next to it if any (e.g. CAM.3, WIFI 2, D4). " +
+            (legend.length ? "" : "Also give a type from this list: " + AI_TYPE_LIST + ". ") +
+            "Reply with JSON only: {\"points\":[{\"id\":\"L1\",\"label\":\"CAM.3\",\"x\":512,\"y\":300" + (legend.length ? "" : ",\"type\":\"cctv\"") + "}]}";
+          return callClaude(key, systemText, [
+            { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:img.b64 } },
+            { type:"text", text:prompt }
+          ]).then(function(res){
+            ((res && res.points) || []).forEach(function(p){
+              var px = parseFloat(p.x), py = parseFloat(p.y);
+              if (isNaN(px) || isNaN(py) || px < 0 || py < 0 || px > img.w || py > img.h) return;
+              var lg = byId[String(p.id || "").toUpperCase()];
+              var type = String((lg ? lg.type : p.type) || "").toLowerCase();
+              var desc = String(p.label || (lg && (lg.code || lg.label)) || "").slice(0, 40);
+              var x = t.x0 + (px / img.w) * (t.x1 - t.x0), y = t.y0 + (py / img.h) * (t.y1 - t.y0);
+              // how central the hit is in its section (edge hits are less reliable)
+              var cx = Math.min(px, img.w - px) / img.w, cy = Math.min(py, img.h - py) / img.h;
+              raw.push({ type:type, desc:desc, legendLabel: lg ? lg.label : "", xRatio:x, yRatio:y, centr: Math.min(cx, cy) });
             });
           });
+          });
         });
-        return chain;
       });
+      return chain;
     }).then(function(){
-      // De-duplicate symbols seen twice in tile overlaps
+      // Drop anything outside the plan or inside the legend / title block / schedules
+      var kept = raw.filter(function(c){
+        if (c.xRatio < 0 || c.xRatio > 1 || c.yRatio < 0 || c.yRatio > 1) return false;
+        if (!inBox(layout.plan, c.xRatio, c.yRatio)) return false;
+        return !layout.skip.some(function(b){ return inBox(b, c.xRatio, c.yRatio); });
+      });
+      // Tie each point to its label text in the PDF when there is one
+      kept.forEach(function(c){
+        var n = normLabel(c.desc); if (!n || n.length < 2) return;
+        var best = null;
+        texts.forEach(function(t, i){ if (t.n !== n) return; var d = Math.hypot(t.x - c.xRatio, t.y - c.yRatio); if (d < 0.05 && (!best || d < best.d)) best = { d:d, i:i }; });
+        if (best) c.textId = best.i;
+      });
+      // Merge duplicates from overlapping sections: same label text, or the same spot whatever the type
+      kept.sort(function(a, b){ return b.centr - a.centr; });
       var merged = [];
-      raw.forEach(function(c){
+      kept.forEach(function(c){
         var dup = merged.some(function(m){
-          return m.type===c.type && m.known===c.known && Math.abs(m.xRatio-c.xRatio) < 0.008 && Math.abs(m.yRatio-c.yRatio) < 0.008;
+          if (c.textId != null && m.textId === c.textId) return true;
+          return Math.hypot(m.xRatio - c.xRatio, m.yRatio - c.yRatio) < 0.012;
         });
         if (!dup) merged.push(c);
       });
-      merged.forEach(function(c, i){ c.label = "#" + (i+1); });
+      merged.sort(function(a, b){ return a.yRatio - b.yRatio || a.xRatio - b.xRatio; });
+      merged.forEach(function(c, i){
+        var known = !!getTypeDef(c.type);
+        c.known = known || c.type === "camera";
+        c.needsCheck = c.type === "camera";
+        if (c.type === "camera") c.type = "cctvoutdoor";
+        else if (!known) c.type = "network";
+        c.label = "#" + (i + 1);
+      });
       el.aiScanBtn.disabled = false;
       if (!merged.length){ showStatus("The AI didn't find any low-voltage symbols on this page."); return; }
-      showStatus("Found " + merged.length + " possible point(s) \u2014 review them");
+      showStatus("Found " + merged.length + " possible point(s) — review them");
       showDetectPointsModal(merged);
     }).catch(function(err){
       console.error(err);
       el.aiScanBtn.disabled = false;
-      showStatus(err && err.message ? err.message : "AI scan failed \u2014 please try again");
+      showStatus(err && err.message ? err.message : "AI scan failed — please try again");
     });
   }
   el.aiScanBtn.addEventListener("click", runAiScan);
@@ -2584,7 +2659,7 @@
     el.detectPointsList.innerHTML = candidates.map(function(c, idx){
       var opts = typeOptions.map(function(o){ return '<option value="'+o.key+'"'+(o.key===c.type?" selected":"")+'>'+escapeHtml(o.label)+'</option>'; }).join("");
       var unmatched = c.known === false;
-      var text = c.label + (c.desc ? " \u00b7 " + c.desc : "") + (unmatched ? " (not an LV type)" : "");
+      var text = c.label + (c.desc ? " \u00b7 " + c.desc : "") + (unmatched ? " (not an LV type)" : "") + (c.needsCheck ? " (camera \u2014 check bullet or dome)" : "");
       return '<div class="detect-row" data-idx="'+idx+'"'+(unmatched?' style="opacity:0.7;"':'')+'>'+
         '<input type="checkbox" class="dp-check"'+(unmatched?'':' checked')+'>'+
         '<span class="dp-label" style="white-space:normal;">'+escapeHtml(text)+'</span>'+
