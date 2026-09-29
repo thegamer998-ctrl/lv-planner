@@ -662,7 +662,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.5</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.6</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -847,7 +847,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.5</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.6</p>
     </section>
   </aside>
 
@@ -1713,7 +1713,7 @@
       '<p class="popover-hint" style="margin-top:6px;">Updates every '+escapeHtml(typeDef.label)+' point already on this floor.</p>'+
       (CABLED_TYPES[key] ? '<span class="mini-label" style="margin:10px 0 4px;display:block;">Cable for new '+escapeHtml(typeDef.label)+' points</span>'+
         '<select class="select-input type-cable-sel" data-cable-sel="'+key+'" style="margin-bottom:4px;">'+cableOptionsHtml(cableDefaultFor(key))+'</select>'+
-        '<button type="button" class="link-btn type-cable-apply" style="font-size:11.5px;">Also change the '+escapeHtml(typeDef.label)+' points already on this floor</button>' : '')+
+        '<button type="button" class="action-btn type-cable-apply" style="font-size:11.5px;margin:4px 0 0;">Change all '+escapeHtml(typeDef.label)+' points already placed (all floors)</button>' : '')+
       '<div class="toggle-row" style="margin-top:9px;margin-bottom:0;">'+
       '<span class="toggle-label">Show on plan</span>'+
       '<button type="button" class="toggle-switch type-visibility-toggle on" role="switch" aria-checked="true">'+
@@ -1732,10 +1732,10 @@
     if (cSel){
       cSel.addEventListener("change", function(e){ e.stopPropagation(); setCableDefault(key, cSel.value); });
       panel.querySelector(".type-cable-apply").addEventListener("click", function(e){
-        e.stopPropagation(); var f = floor(); if (!f) return; var n = 0, k = cableDefaultFor(key);
-        f.markers.forEach(function(m){ if (m.type === key){ if (k === "cat6") delete m.cable; else m.cable = k; n++; } });
+        e.stopPropagation(); var n = 0, k = cableDefaultFor(key);
+        project.floors.forEach(function(fl){ fl.markers.forEach(function(m){ if (m.type === key){ if (k === "cat6") delete m.cable; else m.cable = k; n++; } }); });
         renderMarkers(); updateAllReadouts(); renderHardwareList(); histSoon();
-        showStatus(n + " " + typeDef.label + " point(s) on " + f.name + " set to " + CABLE_CATS[k].label);
+        showStatus(n + " " + typeDef.label + " point(s) on all floors set to " + CABLE_CATS[k].label);
       });
     }
     var visToggle = panel.querySelector(".type-visibility-toggle");
