@@ -756,7 +756,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.3</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.4</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -947,7 +947,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.3</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.4</p>
     </section>
   </aside>
 
@@ -1136,7 +1136,7 @@
 
 <div class="overlay" id="multiPageOverlay">
   <div class="confirm-box" style="width:340px;max-height:82vh;display:flex;flex-direction:column;">
-    <p style="margin-bottom:8px;">This PDF has <span id="multiPageCount">0</span> pages. Choose which to import as floors \u2014 names are guessed from the drawing text, edit any that need fixing.</p>
+    <p style="margin-bottom:8px;">This PDF has <span id="multiPageCount">0</span> pages. Choose which to import as floors &mdash; names are guessed from the drawing text, edit any that need fixing.</p>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
       <button type="button" class="rpt-selall" id="multiPageAllBtn"><span class="rpt-sck on"></span><span>Unselect all</span></button>
       <button type="button" class="link-btn" id="multiPageNoneBtn" style="display:none;">Select none</button>
@@ -1187,6 +1187,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -2597,13 +2598,16 @@
     var f = floor();
     if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)){ showStatus("Please choose a PDF file"); return; }
     if (!f || !(f.pdfDoc || f.markers.length)){ loadFileIntoFloor(file); return; }
+    var pic = f._pic === true;
     askChoice({ title:"Load \u201c" + file.name + "\u201d", message:"\u201c" + f.name + "\u201d already has a drawing" + (f.markers.length ? " with " + f.markers.length + " point" + (f.markers.length === 1 ? "" : "s") : "") + ". What would you like to do?",
-      buttons:[{ label:"Start a new project", value:"new", kind:"primary", sub:"Save this one and begin a fresh project" },
+      buttons:(pic ? [{ label:"Make this floor sharp", value:"sharpen", kind:"primary", sub:"Use this original PDF in place of the blurry copy \u2014 your points stay" }] : []).concat([
+               { label:"Start a new project", value:"new", kind:pic ? "" : "primary", sub:"Save this one and begin a fresh project" },
                { label:"Add it as a new floor", value:"floor", sub:"Keep everything and add a floor to this project" },
                { label:"Replace this floor\u2019s drawing", value:"replace", kind:"danger", sub:f.markers.length ? "Its points will be removed" : "" },
-               { label:"Cancel", value:null }] },
+               { label:"Cancel", value:null }]) },
       function(v){
-        if (v === "new") startNewProject(file);
+        if (v === "sharpen") sharpenFloorFromFile(f, file);
+        else if (v === "new") startNewProject(file);
         else if (v === "floor"){
           var nf = makeFloor("Floor " + (project.floors.length + 1)); project.floors.push(nf);
           project.activeFloorIndex = project.floors.length - 1; loadActiveFloorIntoView(); setTimeout(histReset, 0);
@@ -2626,7 +2630,9 @@
   el.fileInput.addEventListener("change", function(e){
     var file = e.target.files && e.target.files[0];
     e.target.value = "";
+    var sharpenId = ui.sharpenFloorId; ui.sharpenFloorId = null;
     if (!file) return;
+    if (sharpenId){ var sf = project.floors.find(function(x){ return x.id === sharpenId; }); if (sf){ sharpenFloorFromFile(sf, file); return; } }
     if (ui.replaceTargetFloorId) loadFileIntoFloor(file); else handleIncomingPdf(file);
   });
   ["dragover","drop"].forEach(function(evt){ el.canvasScroll.addEventListener(evt, function(e){ e.preventDefault(); }); });
@@ -2647,6 +2653,7 @@
     reader.onload = function(){
       var buf = reader.result;
       var base64Copy = arrayBufferToBase64(buf); // must happen before pdf.js touches buf — it transfers/detaches the buffer to its worker
+      var srcCopy = buf.slice(0);                // the original file, kept for splitting pages without losing vector quality
       var typedArray = new Uint8Array(buf);
       var loadingTask;
       var timedOut = false;
@@ -2661,7 +2668,7 @@
         clearTimeout(timeoutId);
         if (timedOut) showStatus("Loaded (took a while)");
         if (pdf.numPages > 1){
-          handleMultiPagePdf(pdf, file);
+          handleMultiPagePdf(pdf, file, srcCopy);
           return;
         }
         ui.replaceTargetFloorId = null;
@@ -2710,7 +2717,7 @@
     return "Page " + pageNum;
   }
 
-  function handleMultiPagePdf(pdf, file){
+  function handleMultiPagePdf(pdf, file, srcBuf){
     var numPages = pdf.numPages;
     var pageInfos = new Array(numPages);
     var jobs = [];
@@ -2733,11 +2740,11 @@
     };
     for (var i=1;i<=numPages;i++) _job(i);
     showStatus("Reading " + numPages + " pages\u2026");
-    Promise.all(jobs).then(function(){ showMultiPageModal(pdf, file, pageInfos); })
+    Promise.all(jobs).then(function(){ showMultiPageModal(pdf, file, pageInfos, srcBuf); })
       .catch(function(err){ console.error(err); showStatus("Couldn't read that multi-page PDF"); });
   }
 
-  function showMultiPageModal(pdf, file, pageInfos){
+  function showMultiPageModal(pdf, file, pageInfos, srcBuf){
     el.multiPageCount.textContent = pageInfos.length;
     el.multiPageList.innerHTML = pageInfos.map(function(info){
       return '<div class="multipage-row" data-page="'+info.pageNum+'">'+
@@ -2778,11 +2785,11 @@
       if (!selections.length){ ui.replaceTargetFloorId = null; cleanup(); return; }
       cleanup();
       showStatus("Importing " + selections.length + " floor(s)\u2026");
-      var newFloors = [];
+      var newFloors = [], splitCache = {};
       var chain = Promise.resolve();
       selections.forEach(function(sel){
         chain = chain.then(function(){
-          return splitPageToPdfDoc(pdf, sel.pageNum).then(function(result){
+          return splitPageToPdfDoc(pdf, sel.pageNum, srcBuf, splitCache).then(function(result){
             var nf = makeFloor(sel.name);
             nf.pdfDoc = result.pdfDoc; nf.numPages = result.pdfDoc.numPages; nf.currentPage = 1;
             nf.fileName = (file.name||"drawing").replace(/\.pdf$/i,"") + " \u2014 p" + sel.pageNum + ".pdf";
@@ -2807,12 +2814,88 @@
         }
         project.activeFloorIndex = project.floors.indexOf(newFloors[0]);
         loadActiveFloorIntoView();
-        showStatus("Imported " + newFloors.length + " floor(s)" + (oldIdx>-1 ? " \u2014 replaced the old floor" : ""));
+        showStatus("Imported " + newFloors.length + " floor(s)" + (oldIdx>-1 ? " \u2014 replaced the old floor" : "") + (splitCache.raster ? " \u2014 as images (couldn't keep the original quality)" : ""));
       }).catch(function(err){ console.error(err); showStatus("Import failed \u2014 please try again"); });
     };
   }
 
-  function splitPageToPdfDoc(sourcePdf, pageNum){
+  /* ---- Floors saved as a picture by older versions (multi-page imports were rasterised) ---- */
+  function checkPictureFloor(f){
+    if (!f || !f.pdfDoc || f._pic !== undefined) return;
+    f._pic = null;
+    f.pdfDoc.getMetadata().then(function(md){
+      f._pic = /jsPDF/i.test(((md && md.info) || {}).Producer || "");
+      if (!f._pic || f._picAsked || floor() !== f) return;
+      f._picAsked = true;
+      askChoice({ title:"\u201c" + f.name + "\u201d looks blurry", message:"An older version of the app saved this floor\u2019s drawing as a picture, so it goes soft when you zoom in or export. Load the original PDF once to make it sharp \u2014 all your points, cables and walls stay where they are.",
+        buttons:[{ label:"Choose the original PDF", value:"pick", kind:"primary" }, { label:"Not now", value:null }] },
+        function(v){ if (v === "pick"){ ui.replaceTargetFloorId = null; ui.sharpenFloorId = f.id; el.fileInput.click(); } });
+    }).catch(function(){});
+  }
+  function sharpenFloorFromFile(f, file){
+    if (!window.PDFLib){ showStatus("Couldn't load the PDF tools \u2014 check your internet connection and try again"); return; }
+    var m = /\u2014 p(\d+)\.pdf$/.exec(f.fileName || ""), pageNum = m ? parseInt(m[1], 10) : 1;
+    var oldDims;
+    showStatus("Making \u201c" + f.name + "\u201d sharp\u2026");
+    file.arrayBuffer().then(function(buf){
+      return f.pdfDoc.getPage(1).then(function(op){ var v = op.getViewport({ scale:1 }); oldDims = { w:v.width, h:v.height }; })
+        .then(function(){ return PDFLib.PDFDocument.load(buf, { ignoreEncryption:true, updateMetadata:false }); });
+    }).then(function(src){
+      var n = src.getPageCount();
+      if (n === 1) pageNum = 1;
+      if (pageNum > n) throw new Error("That PDF has only " + n + " page" + (n === 1 ? "" : "s") + " \u2014 this floor came from page " + pageNum);
+      return PDFLib.PDFDocument.create().then(function(nd){
+        return nd.copyPages(src, [pageNum - 1]).then(function(pages){ nd.addPage(pages[0]); nd.setProducer("ExpressTech Villa LV Planner"); return nd.save(); });
+      });
+    }).then(function(bytes){
+      var base64 = arrayBufferToBase64(bytes.slice().buffer);
+      return workerReadyPromise.then(function(){ return pdfjsLib.getDocument({ data:bytes }).promise; }).then(function(doc){
+        return doc.getPage(1).then(function(np){
+          var v = np.getViewport({ scale:1 });
+          var ra = oldDims.w / oldDims.h, rb = v.width / v.height;
+          if (Math.abs(ra - rb) / ra > 0.02){ doc.destroy(); throw new Error("Page " + pageNum + " of that PDF isn't the same drawing as \u201c" + f.name + "\u201d \u2014 nothing was changed"); }
+          var k = oldDims.w / v.width;          // the old picture copy had a different page size; keep the drawing scale and zoom the same
+          Object.keys(f.scaleByPage || {}).forEach(function(pg){ f.scaleByPage[pg] *= k; });
+          f.scale = f.scale * k;
+          var old = f.pdfDoc;
+          f.pdfDoc = doc; f.numPages = 1; f.currentPage = 1; f.pdfBase64 = base64;
+          f.nativeDims = {}; f.heatmapCache = {}; f._pic = false;
+          f.fileName = (file.name || "drawing").replace(/\.pdf$/i, "") + (src_pages_label(pageNum)) + ".pdf";
+          try { old.destroy(); } catch(e){}
+          if (floor() === f) renderPage(1);
+          showStatus("\u201c" + f.name + "\u201d is now sharp \u2014 " + f.markers.length + " point" + (f.markers.length === 1 ? "" : "s") + " kept");
+        });
+      });
+    }).catch(function(err){ console.error(err); showStatus(err && err.message ? err.message : "Couldn't use that PDF"); });
+  }
+  function src_pages_label(n){ return " \u2014 p" + n; }
+
+  // Each floor gets its own one-page PDF copied straight out of the original file:
+  // lines and text stay vector, so the drawing is as sharp as the original at any zoom and in every export.
+  function splitPageToPdfDoc(sourcePdf, pageNum, srcBuf, cache){
+    cache = cache || {};
+    if (!srcBuf || !window.PDFLib) return rasterSplitPage(sourcePdf, pageNum, cache);
+    if (!cache.src) cache.src = PDFLib.PDFDocument.load(srcBuf.slice(0), { ignoreEncryption:true, updateMetadata:false });
+    return cache.src.then(function(src){
+      if (src.isEncrypted) throw new Error("encrypted PDF");
+      return PDFLib.PDFDocument.create().then(function(nd){
+        return nd.copyPages(src, [pageNum - 1]).then(function(pages){
+          nd.addPage(pages[0]); nd.setProducer("ExpressTech Villa LV Planner"); nd.setCreator("ExpressTech Villa LV Planner");
+          return nd.save();
+        });
+      });
+    }).then(function(bytes){
+      var copy = bytes.slice();                      // pdf.js takes ownership of the bytes it is given
+      var base64 = arrayBufferToBase64(copy.buffer);
+      return workerReadyPromise.then(function(){ return pdfjsLib.getDocument({ data:bytes }).promise; })
+        .then(function(newPdfDoc){ return { pdfDoc:newPdfDoc, base64:base64 }; });
+    }).catch(function(err){
+      console.warn("Vector page split failed, falling back to an image", err);
+      return rasterSplitPage(sourcePdf, pageNum, cache);
+    });
+  }
+  function rasterSplitPage(sourcePdf, pageNum, cache){
+    if (cache) cache.raster = true;
     return sourcePdf.getPage(pageNum).then(function(page){
       var exportScale = safeExportScale(page);
       var viewport = page.getViewport({ scale:exportScale });
@@ -3202,6 +3285,7 @@
     }).then(function(){
       if (myToken !== renderToken) return;
       f.currentPage = num;
+      checkPictureFloor(f);
       scheduleSharpTile();
       renderMarkers(); renderOverlay(); paintHeatmap();
       el.pageReadout.textContent = num + " / " + f.numPages;
@@ -4860,55 +4944,86 @@
     return Math.max(safeExportScale(page), Math.min(300/72, Math.sqrt(EXPORT_MAX_PX / (vp1.width * vp1.height)), 16000 / Math.max(vp1.width, vp1.height)));
   }
 
-  function renderFloorPagesData(f){
+  // The marks drawn on a page (points, cables, walls, legend…), laid out on the normal sheet size.
+  function drawFloorOverlays(ctx, f, p, viewport, exportScale){
+    var nativeW=viewport.width/exportScale, nativeH=viewport.height/exportScale;
+    var pageMarkers=f.markers.filter(function(m){return m.page===p;});
+    var pageWalls=f.walls.filter(function(w){return w.page===p;});
+    var pageMeasurements=f.measurements.filter(function(m){return m.page===p;});
+    var pageCables=f.cableRoutes.filter(function(c){return c.page===p;});
+
+    if (f.heatmapOn){
+      var hm = buildHeatmapCanvas(f, p, nativeW, nativeH);
+      if (hm){ ctx.save(); ctx.imageSmoothingEnabled=true; ctx.drawImage(hm.canvas,0,0,viewport.width,viewport.height); ctx.restore();
+        drawHeatmapLegendOnCanvas(ctx, viewport.width, viewport.height, hm.usingDefault); }
+    }
+    if (f.showRuns) drawRunsOnCanvas(ctx, f, p, viewport.width, viewport.height);
+    pageWalls.forEach(function(w){ drawWallOnCanvas(ctx, w, viewport.width, viewport.height); });
+    if (f.showCameraCones && FEATURES.cones){
+      var wallsPxExport = pageWalls.map(function(w){ return { x1:w.x1Ratio*viewport.width, y1:w.y1Ratio*viewport.height, x2:w.x2Ratio*viewport.width, y2:w.y2Ratio*viewport.height }; });
+      var metersPerUnitExport = getMetersPerUnit(f, p);
+      pageMarkers.filter(function(m){ return isCameraType(m.type); }).forEach(function(m){
+        var t = getTypeDef(m.type); if (!t) return;
+        var camX=m.xRatio*viewport.width, camY=m.yRatio*viewport.height;
+        var facingDeg = getFacingAngleDeg(m.type, m.rotation);
+        var fovAngle = m.fovAngle||80, fovRange = m.fovRange||8;
+        var rangePx = metersPerUnitExport ? (fovRange/metersPerUnitExport)*exportScale : Math.min(viewport.width,viewport.height)*0.22;
+        var pts = buildFovConePoints(camX, camY, facingDeg, fovAngle, rangePx, wallsPxExport);
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(camX,camY);
+        pts.forEach(function(pt){ ctx.lineTo(pt.x, pt.y); });
+        ctx.closePath();
+        ctx.fillStyle = t.color; ctx.globalAlpha = 0.18; ctx.fill();
+        ctx.globalAlpha = 0.5; ctx.strokeStyle = t.color; ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.restore();
+      });
+    }
+    pageMeasurements.forEach(function(m){ drawMeasurementOnCanvas(ctx, m, viewport.width, viewport.height, nativeW, nativeH, f); });
+    pageCables.forEach(function(c){ drawCableOnCanvas(ctx, c, viewport.width, viewport.height, nativeW, nativeH, f); });
+    pageMarkers.forEach(function(m){ drawMarkerOnCanvas(ctx, m, viewport.width, viewport.height); });
+    drawSideLegend(ctx, viewport.width, viewport.height, pageMarkers, getLegendConfig(f, p));
+  }
+
+  // Exported drawings keep the ORIGINAL vector drawing (exactly like the source PDF, sharp at any zoom);
+  // only the marks on top are drawn as a high-resolution transparent layer.
+  var OVERLAY_MAX_PX = IS_IOS ? 12e6 : 24e6;
+  function canExportVector(f){ return !!(window.PDFLib && f && f.pdfBase64); }
+  function canvasToPngBytes(c){
+    return new Promise(function(res, rej){
+      if (c.toBlob) c.toBlob(function(b){ if (!b) return rej(new Error("Overlay too large for this browser")); b.arrayBuffer().then(function(ab){ res(new Uint8Array(ab)); }, rej); }, "image/png");
+      else res(base64ToUint8Array(c.toDataURL("image/png").split(",")[1]));
+    });
+  }
+  function renderFloorPagesData(f, opts){
+    var vector = !!(opts && opts.vector) && canExportVector(f);
     var pageChain = Promise.resolve(); var pagesData = [];
     var _loop = function(p){
       pageChain = pageChain.then(function(){
         return f.pdfDoc.getPage(p).then(function(page){
-          var exportScale = safeExportScale(page), hiScale = printScale(page), kx = hiScale / exportScale;
-          var viewport = page.getViewport({ scale:exportScale }), hiVp = page.getViewport({ scale:hiScale });
+          var exportScale = safeExportScale(page), vp1 = page.getViewport({ scale:1 });
+          var viewport = page.getViewport({ scale:exportScale });
+          if (vector){
+            var ovScale = Math.max(exportScale, Math.min(4, Math.sqrt(OVERLAY_MAX_PX / (vp1.width * vp1.height))));
+            var ov = document.createElement("canvas"); ov.width = Math.round(vp1.width * ovScale); ov.height = Math.round(vp1.height * ovScale);
+            var octx = ov.getContext("2d");
+            octx.save(); octx.scale(ov.width / viewport.width, ov.height / viewport.height);
+            drawFloorOverlays(octx, f, p, viewport, exportScale);
+            octx.restore();
+            return canvasToPngBytes(ov).then(function(png){
+              ov.width = ov.height = 1;
+              pagesData.push({ w:viewport.width, h:viewport.height, vec:{ floor:f, page:p, png:png } });
+              showStatus("Prepared page " + p + " of " + f.numPages + "\u2026");
+            });
+          }
+          var hiScale = printScale(page);
+          var hiVp = page.getViewport({ scale:hiScale });
           var off = document.createElement("canvas"); off.width=Math.round(hiVp.width); off.height=Math.round(hiVp.height);
           var ctx = off.getContext("2d");
           ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, off.width, off.height);
           return page.render({ canvasContext:ctx, viewport:hiVp }).promise.then(function(){
-            // points, legend and lines are laid out on the normal sheet size, just drawn kx times sharper
+            // points, legend and lines are laid out on the normal sheet size, just drawn sharper
             ctx.save(); ctx.scale(off.width / viewport.width, off.height / viewport.height);
-            var nativeW=viewport.width/exportScale, nativeH=viewport.height/exportScale;
-            var pageMarkers=f.markers.filter(function(m){return m.page===p;});
-            var pageWalls=f.walls.filter(function(w){return w.page===p;});
-            var pageMeasurements=f.measurements.filter(function(m){return m.page===p;});
-            var pageCables=f.cableRoutes.filter(function(c){return c.page===p;});
-
-            if (f.heatmapOn){
-              var hm = buildHeatmapCanvas(f, p, nativeW, nativeH);
-              if (hm){ ctx.save(); ctx.imageSmoothingEnabled=true; ctx.drawImage(hm.canvas,0,0,viewport.width,viewport.height); ctx.restore();
-                drawHeatmapLegendOnCanvas(ctx, viewport.width, viewport.height, hm.usingDefault); }
-            }
-            if (f.showRuns) drawRunsOnCanvas(ctx, f, p, viewport.width, viewport.height);
-            pageWalls.forEach(function(w){ drawWallOnCanvas(ctx, w, viewport.width, viewport.height); });
-            if (f.showCameraCones && FEATURES.cones){
-              var wallsPxExport = pageWalls.map(function(w){ return { x1:w.x1Ratio*viewport.width, y1:w.y1Ratio*viewport.height, x2:w.x2Ratio*viewport.width, y2:w.y2Ratio*viewport.height }; });
-              var metersPerUnitExport = getMetersPerUnit(f, p);
-              pageMarkers.filter(function(m){ return isCameraType(m.type); }).forEach(function(m){
-                var t = getTypeDef(m.type); if (!t) return;
-                var camX=m.xRatio*viewport.width, camY=m.yRatio*viewport.height;
-                var facingDeg = getFacingAngleDeg(m.type, m.rotation);
-                var fovAngle = m.fovAngle||80, fovRange = m.fovRange||8;
-                var rangePx = metersPerUnitExport ? (fovRange/metersPerUnitExport)*exportScale : Math.min(viewport.width,viewport.height)*0.22;
-                var pts = buildFovConePoints(camX, camY, facingDeg, fovAngle, rangePx, wallsPxExport);
-                ctx.save();
-                ctx.beginPath(); ctx.moveTo(camX,camY);
-                pts.forEach(function(pt){ ctx.lineTo(pt.x, pt.y); });
-                ctx.closePath();
-                ctx.fillStyle = t.color; ctx.globalAlpha = 0.18; ctx.fill();
-                ctx.globalAlpha = 0.5; ctx.strokeStyle = t.color; ctx.lineWidth = 1.2; ctx.stroke();
-                ctx.restore();
-              });
-            }
-            pageMeasurements.forEach(function(m){ drawMeasurementOnCanvas(ctx, m, viewport.width, viewport.height, nativeW, nativeH, f); });
-            pageCables.forEach(function(c){ drawCableOnCanvas(ctx, c, viewport.width, viewport.height, nativeW, nativeH, f); });
-            pageMarkers.forEach(function(m){ drawMarkerOnCanvas(ctx, m, viewport.width, viewport.height); });
-            drawSideLegend(ctx, viewport.width, viewport.height, pageMarkers, getLegendConfig(f, p));
+            drawFloorOverlays(ctx, f, p, viewport, exportScale);
             ctx.restore();
             var img = off.toDataURL("image/jpeg", 0.95);
             if (!img || img.length < 100) throw new Error("Page " + p + " rendered empty (canvas too large for this browser)");
@@ -4922,23 +5037,62 @@
     for (var p=1; p<=f.numPages; p++) _loop(p);
     return pageChain.then(function(){ return pagesData; });
   }
+  // Put a page into a jsPDF document: vector pages are left blank here and filled in by finishVectorPdf.
+  function addDrawingPageToDoc(doc, pd, vecList, pageNo){
+    if (pd.vec) vecList.push({ n:pageNo, vec:pd.vec });
+    else doc.addImage(pd.img, pd.fmt || "PNG", 0, 0, pd.w, pd.h);
+  }
+  // jsPDF document + the original drawing pages -> final PDF (an object with .output("blob" | "arraybuffer")).
+  function finishVectorPdf(doc, vecList){
+    if (!vecList || !vecList.length) return Promise.resolve(doc);
+    var L = window.PDFLib, srcCache = {};
+    showStatus("Placing the original drawings\u2026");
+    return L.PDFDocument.load(doc.output("arraybuffer")).then(function(out){
+      var chain = Promise.resolve();
+      vecList.forEach(function(v){
+        chain = chain.then(function(){
+          var fl = v.vec.floor, key = fl.id + ":" + fl.pdfBase64.length;
+          if (!srcCache[key]) srcCache[key] = L.PDFDocument.load(base64ToUint8Array(fl.pdfBase64), { ignoreEncryption:true, updateMetadata:false });
+          return srcCache[key].then(function(src){
+            var sp = src.getPage(v.vec.page - 1), box = sp.getCropBox();
+            return out.embedPage(sp, { left:box.x, bottom:box.y, right:box.x + box.width, top:box.y + box.height }).then(function(emb){
+              var pg = out.getPage(v.n - 1), sz = pg.getSize(), W = sz.width, H = sz.height;
+              var rot = ((sp.getRotation().angle % 360) + 360) % 360;
+              // same orientation as on screen (pdf.js applies the page's rotation too)
+              if (rot === 90) pg.drawPage(emb, { x:0, y:H, width:H, height:W, rotate:L.degrees(-90) });
+              else if (rot === 180) pg.drawPage(emb, { x:W, y:H, width:W, height:H, rotate:L.degrees(180) });
+              else if (rot === 270) pg.drawPage(emb, { x:W, y:0, width:H, height:W, rotate:L.degrees(90) });
+              else pg.drawPage(emb, { x:0, y:0, width:W, height:H });
+              return out.embedPng(v.vec.png).then(function(img){ pg.drawImage(img, { x:0, y:0, width:W, height:H }); });
+            });
+          });
+        });
+      });
+      return chain.then(function(){ return out.save(); });
+    }).then(function(bytes){
+      return { output:function(type){
+        if (type === "arraybuffer") return bytes.slice().buffer;
+        return new Blob([bytes], { type:"application/pdf" });
+      } };
+    });
+  }
 
   function exportAnnotatedPdf(scope, flt){
     var floorsToExport = (scope === "all" ? project.floors.filter(function(f){ return f.pdfDoc; }) : [floor()])
       .filter(Boolean).map(function(f){ return filteredFloor(f, flt); });
     if (!floorsToExport.length || !floorsToExport[0]) return;
     el.exportBtn.disabled = true; showStatus("Preparing export\u2026");
-    var jsPDFCtor = window.jspdf.jsPDF; var doc=null;
+    var jsPDFCtor = window.jspdf.jsPDF; var doc=null, vecList=[];
 
     var chain = Promise.resolve();
     floorsToExport.forEach(function(f){
       chain = chain.then(function(){
-        return renderFloorPagesData(f).then(function(pagesData){
+        return renderFloorPagesData(f, { vector:true }).then(function(pagesData){
           pagesData.forEach(function(pd){
             var orientation = pd.w>pd.h ? "l":"p";
             if (!doc) doc = new jsPDFCtor({ orientation:orientation, unit:"px", format:[pd.w,pd.h] });
             else doc.addPage([pd.w,pd.h], orientation);
-            doc.addImage(pd.img, pd.fmt || "PNG", 0, 0, pd.w, pd.h);
+            addDrawingPageToDoc(doc, pd, vecList, doc.internal.getNumberOfPages());
           });
         });
       });
@@ -4956,12 +5110,14 @@
         suffix += " (" + (names.length > 3 ? names.slice(0,3).join(", ") + " +" + (names.length-3) : names.join(", ")) + ")";
       }
       var plainName = base + suffix + ".pdf";
-      var plainBlob = doc.output("blob");
+      return finishVectorPdf(doc, vecList).then(function(plainDoc){
+      var plainBlob = plainDoc.output("blob");
       // Same document plus one combined summary page at the very end
       addCombinedSummaryPage(doc, floorsToExport);
       if (scope === "all" || project.floors.filter(function(x){ return x.pdfDoc; }).length <= 1){ addRackPage(doc); addNetworkPages(doc); }
       var withName = base + suffix + "-with-summary.pdf";
-      var withBlob = doc.output("blob");
+      return finishVectorPdf(doc, vecList).then(function(withDoc){
+      var withBlob = withDoc.output("blob");
       ui.pendingPdf = { plain:{ blob:plainBlob, name:plainName }, summary:{ blob:withBlob, name:withName } };
 
       el.downloadReadyLink.href = "#";
@@ -4971,6 +5127,7 @@
         showStatus("Ready \u2014 choose how to save");
         el.exportBtn.disabled = false;
       });
+      }); });
     }).catch(function(err){ console.error(err); showStatus("Export failed \u2014 please try again"); el.exportBtn.disabled=false; });
   }
   el.downloadReadyCloseBtn.addEventListener("click", function(){ el.downloadReadyOverlay.classList.remove("visible"); });
@@ -5477,8 +5634,8 @@
     var chain = Promise.resolve();
     floors.forEach(function(f){
       chain = chain.then(function(){
-        return renderFloorPagesData(filteredFloor(f, flt)).then(function(pages){
-          pages.forEach(function(pd){ var n = rNewDocPage(pd.w, pd.h); R.drawingPages.push({ n:n, f:f }); R.doc.addImage(pd.img, pd.fmt || "PNG", 0, 0, pd.w, pd.h); });
+        return renderFloorPagesData(filteredFloor(f, flt), { vector:true }).then(function(pages){
+          pages.forEach(function(pd){ var n = rNewDocPage(pd.w, pd.h); R.drawingPages.push({ n:n, f:f }); addDrawingPageToDoc(R.doc, pd, R.vecPages, n); });
         });
       });
     });
@@ -5489,7 +5646,7 @@
   function buildReport(keys, reportName, ctx){
     ctx = ctx || {}; ctx.reportName = reportName;
     var k = rptPrefs.paper === "a3" ? Math.SQRT2 : 1;
-    R = { doc:null, k:k, W:Math.round(794*k), H:Math.round(1123*k), M:Math.round(48*k), y:0, pages:[], drawingPages:[], sections:[], date:new Date().toLocaleDateString(undefined, { day:"numeric", month:"long", year:"numeric" }), rackImgs:null };
+    R = { doc:null, k:k, W:Math.round(794*k), H:Math.round(1123*k), M:Math.round(48*k), y:0, pages:[], drawingPages:[], vecPages:[], sections:[], date:new Date().toLocaleDateString(undefined, { day:"numeric", month:"long", year:"numeric" }), rackImgs:null };
     var chain = Promise.resolve();
     if (keys.indexOf("racks") >= 0) chain = chain.then(function(){ return renderRackImages().then(function(m){ R.rackImgs = m; }); });
     keys.forEach(function(key){
@@ -5512,7 +5669,7 @@
         });
       }
       rFooters(reportName);
-      return R.doc;
+      return finishVectorPdf(R.doc, R.vecPages);
     });
   }
   function reportFileName(reportName){ return safeName((project.name || "Project") + " – " + reportName) + ".pdf"; }
