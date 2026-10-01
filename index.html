@@ -737,7 +737,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.1</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.2</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -928,7 +928,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.1</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.2</p>
     </section>
   </aside>
 
@@ -3154,13 +3154,19 @@
       var ratio = Math.max(0.5, Math.min(dpr, Math.sqrt(SCREEN_MAX_PX / (viewport.width * viewport.height))));
       var hv = page.getViewport({ scale:f.scale * ratio });
       var canvas = el.pdfCanvas;
-      canvas.width = Math.round(hv.width); canvas.height = Math.round(hv.height);
-      canvas.style.width = viewport.width+"px"; canvas.style.height = viewport.height+"px";
-      el.markerLayer.style.width = viewport.width+"px"; el.markerLayer.style.height = viewport.height+"px";
+      // Whole device pixels only: the canvas is shown at exactly 1 canvas pixel per screen pixel,
+      // so the browser never resamples (= softens) the drawing.
+      var bw = Math.max(1, Math.round(hv.width)), bh = Math.max(1, Math.round(hv.height));
+      canvas.width = bw; canvas.height = bh;
+      var cssW = bw / ratio, cssH = bh / ratio;
+      canvas.style.width = cssW+"px"; canvas.style.height = cssH+"px";
+      el.markerLayer.style.width = cssW+"px"; el.markerLayer.style.height = cssH+"px";
       var ctx = canvas.getContext("2d");
       ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
       sharp.page = page; sharp.ratio = ratio; sharp.dpr = dpr; sharp.scale = f.scale;
-      return page.render({ canvasContext:ctx, viewport:hv }).promise.then(function(){
+      snapStage();
+      // vector drawing stretched by the last fraction of a pixel so it fills the whole-pixel canvas exactly
+      return page.render({ canvasContext:ctx, viewport:hv, transform:[bw / hv.width, 0, 0, bh / hv.height, 0, 0] }).promise.then(function(){
         f.nativeDims[num] = { w: viewport.width/f.scale, h: viewport.height/f.scale };
       });
     }).then(function(){
@@ -3181,11 +3187,35 @@
     if (sharp.task && sharp.task.cancel){ try { sharp.task.cancel(); } catch(e){} } sharp.task = null;
     el.pdfSharp.style.display = "none";
   }
+  // Keep the drawing on whole screen pixels (centering can land it on half a pixel, which blurs everything).
+  function snapStage(){
+    var st = el.canvasStage; if (!st || st.style.display === "none" || st.style.transform) return;
+    st.style.left = "0px"; st.style.top = "0px";
+    var d = window.devicePixelRatio || 1, r = el.pdfCanvas.getBoundingClientRect();
+    var fx = r.left * d - Math.round(r.left * d), fy = r.top * d - Math.round(r.top * d);
+    if (Math.abs(fx) > 0.01) st.style.left = (-fx / d) + "px";
+    if (Math.abs(fy) > 0.01) st.style.top = (-fy / d) + "px";
+  }
   function scheduleSharpTile(){
     clearTimeout(sharp.timer);
-    if (!sharp.page || sharp.ratio >= (sharp.dpr || 1) - 0.01) return;   // the whole page is already at full density
-    sharp.timer = setTimeout(drawSharpTile, 140);
+    if (!sharp.page) return;
+    sharp.timer = setTimeout(function(){
+      snapStage();
+      if (sharp.ratio < (sharp.dpr || 1) - 0.01) drawSharpTile();   // otherwise the whole page is already at full density
+    }, 140);
   }
+  // Screen density changed (window moved between the Mac screen and a monitor, or browser zoom): redraw for the new density
+  function onDensityChange(){
+    var f = floor();
+    if (f && f.pdfDoc && Math.abs((window.devicePixelRatio || 1) - (sharp.dpr || 1)) > 0.01) renderPage(f.currentPage);
+    else scheduleSharpTile();
+  }
+  (function watchDensity(){
+    if (!window.matchMedia) return;
+    var mq = window.matchMedia("(resolution: " + (window.devicePixelRatio || 1) + "dppx)");
+    var h = function(){ if (mq.removeEventListener) mq.removeEventListener("change", h); watchDensity(); onDensityChange(); };
+    if (mq.addEventListener) mq.addEventListener("change", h);
+  })();
   function drawSharpTile(){
     var f = floor(); if (!f || !sharp.page || el.canvasStage.style.transform) return;
     var cw = pdfCssW(), ch = pdfCssH();
@@ -3208,7 +3238,7 @@
     }).catch(function(){});
   }
   el.canvasScroll.addEventListener("scroll", scheduleSharpTile, { passive:true });
-  window.addEventListener("resize", scheduleSharpTile);
+  window.addEventListener("resize", onDensityChange);
 
   // Icons on screen are drawn at the same share of the sheet as in the exported PDF,
   // so what you see at any zoom is what exports (see drawMarkerOnCanvas).
@@ -6874,6 +6904,15 @@
     if (mod && (e.key === "s" || e.key === "S")){
       e.preventDefault();
       if (FS_SUPPORTED && fsState.projectFile) saveProjectReplace(); else saveProjectAs();
+      return;
+    }
+    // Cmd/Ctrl + plus / minus / 0 zoom the drawing itself (browser zoom would only stretch the pixels and blur it)
+    if (mod && !e.altKey && /^(=|\+|-|_|0)$/.test(e.key)){
+      e.preventDefault();
+      var zf = floor(); if (!zf || !zf.pdfDoc) return;
+      if (e.key === "0"){ el.fitZoomBtn.click(); return; }
+      var zr = el.canvasScroll.getBoundingClientRect();
+      zoomAt((e.key === "-" || e.key === "_") ? 1/1.18 : 1.18, zr.left + zr.width/2, zr.top + zr.height/2);
       return;
     }
     if (typing) return;
