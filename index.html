@@ -281,6 +281,25 @@
   .rpt-card.on{ border-color:var(--accent); background:var(--accent-soft); }
   .rpt-card .ic{ width:32px; height:32px; border-radius:8px; color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; flex-shrink:0; }
   .rpt-card b{ display:block; font-size:13px; } .rpt-card small{ display:block; color:var(--text-muted); font-size:11.5px; line-height:1.35; }
+  .rpt-acts{ display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; } .rpt-acts .rpt-more{ margin-top:0; }
+  .rpt-eye{ height:24px; padding:0 8px; border-radius:7px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-muted); font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; gap:4px; }
+  .rpt-eye svg{ width:13px; height:13px; } .rpt-eye:hover{ color:var(--accent); border-color:var(--accent); }
+  #rptPreview{ display:inline-flex; align-items:center; gap:6px; } #rptPreview svg{ width:15px; height:15px; }
+  #rpvOverlay{ z-index:61; }
+  .rpv-box{ width:min(920px, calc(100vw - 24px)); height:calc(100vh - 32px); background:var(--bg-panel); border:1px solid var(--hairline); border-radius:var(--radius-lg); display:flex; flex-direction:column; overflow:hidden; box-shadow:var(--shadow-lg); }
+  .rpv-top{ display:flex; align-items:center; gap:12px; padding:10px 12px; border-bottom:1px solid var(--hairline); }
+  .rpv-top .rpv-t{ flex:1; min-width:0; } .rpv-t b{ display:block; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .rpv-t small{ display:block; color:var(--text-muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rpv-back{ height:34px; padding:0 12px; border-radius:9px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:4px; }
+  .rpv-back svg{ width:15px; height:15px; }
+  #rpvGo{ height:34px; padding:0 16px; display:inline-flex; align-items:center; gap:6px; } #rpvGo svg{ width:14px; height:14px; }
+  .rpv-body{ flex:1; min-height:0; overflow:auto; background:#d1d5db; padding:20px 16px 28px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .rpv-page{ position:relative; width:100%; max-width:780px; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.18); flex-shrink:0; }
+  .rpv-page.land{ max-width:880px; }
+  .rpv-page canvas{ display:block; width:100%; height:100%; }
+  .rpv-page .pn{ position:absolute; right:0; bottom:-17px; font-size:11px; color:#4b5563; }
+  .rpv-wait{ margin:auto; display:flex; flex-direction:column; align-items:center; gap:12px; color:#374151; font-size:13.5px; font-weight:600; }
+  .rpv-wait i{ width:30px; height:30px; border-radius:50%; border:3px solid rgba(0,0,0,.15); border-top-color:var(--accent); animation:rpvspin .8s linear infinite; }
+  @keyframes rpvspin{ to{ transform:rotate(360deg); } }
   .rpt-opts{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-muted); border-top:1px solid var(--hairline); padding-top:10px; margin-top:8px; }
   .rpt-opts select{ width:auto; height:30px; margin:0; } .rpt-opts span{ margin-left:auto; font-size:11.5px; }
   .rpt-info{ font-size:12px; color:var(--text-muted); margin:8px 0 0; word-break:break-word; }
@@ -737,7 +756,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.2</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.3</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -928,7 +947,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.2</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.3</p>
     </section>
   </aside>
 
@@ -1085,8 +1104,19 @@
     <p class="rpt-info" id="rptInfo"></p>
     <div class="confirm-actions">
       <button class="btn-cancel" id="rptCancel">Cancel</button>
+      <button class="btn-cancel" id="rptPreview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Preview</button>
       <button class="btn-save" id="rptGo">Export PDF</button>
     </div>
+  </div>
+</div>
+<div class="overlay" id="rpvOverlay">
+  <div class="rpv-box">
+    <div class="rpv-top">
+      <button type="button" class="rpv-back" id="rpvBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Back</button>
+      <div class="rpv-t"><b id="rpvTitle">Preview</b><small id="rpvSub"></small></div>
+      <button type="button" class="btn-save" id="rpvGo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Download</button>
+    </div>
+    <div class="rpv-body" id="rpvBody"></div>
   </div>
 </div>
 
@@ -5486,21 +5516,104 @@
     });
   }
   function reportFileName(reportName){ return safeName((project.name || "Project") + " – " + reportName) + ".pdf"; }
-  function runReport(keys, reportName, ctx){
-    if (!project.floors.some(function(f){ return f.markers.length || f.pdfDoc; })){ showStatus("Load a drawing and place points first"); return; }
+  function reportKeysToBuild(keys){
+    if (!project.floors.some(function(f){ return f.markers.length || f.pdfDoc; })){ showStatus("Load a drawing and place points first"); return null; }
     if (keys.indexOf("drawings") >= 0 && !project.floors.some(function(f){ return f.pdfDoc && !rptPrefs.floorsOff[f.id]; })) keys = keys.filter(function(x){ return x !== "drawings"; });
-    if (!keys.length){ showStatus("Nothing to export"); return; }
+    if (!keys.length){ showStatus("Nothing to export"); return null; }
+    return keys;
+  }
+  function deliverReport(doc, reportName){
+    var name = reportFileName(reportName);
+    ui.pendingPdf = { plain:{ blob:doc.output("blob"), name:name } };
+    el.downloadReadyLink.textContent = "Save " + name;
+    el.downloadReadySummaryLink.style.display = "none";
+    ensureProjectDir().then(function(){ el.downloadReadyOverlay.classList.add("visible"); showStatus("Ready — " + name); });
+  }
+  function runReport(keys, reportName, ctx){
+    keys = reportKeysToBuild(keys); if (!keys) return;
     el.exportBtn.disabled = true; showStatus("Preparing " + reportName.toLowerCase() + "…");
     buildReport(keys, reportName, ctx).then(function(doc){
       el.exportBtn.disabled = false;
       if (!doc){ showStatus("Nothing to export"); return; }
-      var name = reportFileName(reportName);
-      ui.pendingPdf = { plain:{ blob:doc.output("blob"), name:name } };
-      el.downloadReadyLink.textContent = "Save " + name;
-      el.downloadReadySummaryLink.style.display = "none";
-      ensureProjectDir().then(function(){ el.downloadReadyOverlay.classList.add("visible"); showStatus("Ready — " + name); });
+      deliverReport(doc, reportName);
     }).catch(function(err){ console.error(err); el.exportBtn.disabled = false; showStatus("Export failed — please try again"); });
   }
+
+  // ---------- preview: the real PDF, page by page, before deciding to download ----------
+  var rpv = { token:0, doc:null, name:"", pdf:null, obs:null, busy:false };
+  function closePreview(){
+    rpv.token++; rpv.doc = null;
+    if (rpv.obs){ rpv.obs.disconnect(); rpv.obs = null; }
+    if (rpv.pdf){ try { rpv.pdf.destroy(); } catch(e){} rpv.pdf = null; }
+    document.getElementById("rpvBody").innerHTML = "";
+    document.getElementById("rpvOverlay").classList.remove("visible");
+  }
+  function previewReport(keys, reportName, ctx){
+    if (rpv.busy) return;
+    keys = reportKeysToBuild(keys); if (!keys) return;
+    var tok = ++rpv.token, body = document.getElementById("rpvBody"), go = document.getElementById("rpvGo");
+    rpv.doc = null; go.disabled = true;
+    document.getElementById("rpvTitle").textContent = reportName;
+    document.getElementById("rpvSub").textContent = "Building preview…";
+    body.innerHTML = '<div class="rpv-wait"><i></i>' + (keys.indexOf("drawings") >= 0 ? "Rendering the drawings at full quality…" : "Building the report…") + '</div>';
+    document.getElementById("rpvOverlay").classList.add("visible");
+    rpv.busy = true; el.exportBtn.disabled = true;
+    buildReport(keys, reportName, ctx).then(function(doc){
+      rpv.busy = false; el.exportBtn.disabled = false;
+      if (tok !== rpv.token) return;
+      if (!doc){ closePreview(); showStatus("Nothing to export"); return; }
+      rpv.doc = doc; rpv.name = reportName;
+      return pdfjsLib.getDocument({ data:new Uint8Array(doc.output("arraybuffer")) }).promise.then(function(pdf){
+        if (tok !== rpv.token){ pdf.destroy(); return; }
+        rpv.pdf = pdf; go.disabled = false;
+        document.getElementById("rpvSub").textContent = pdf.numPages + " page" + (pdf.numPages === 1 ? "" : "s") + " · " + reportFileName(reportName);
+        return showPreviewPages(pdf, tok);
+      });
+    }).catch(function(err){
+      console.error(err); rpv.busy = false; el.exportBtn.disabled = false;
+      if (tok === rpv.token){ closePreview(); showStatus("Preview failed — please try again"); }
+    });
+  }
+  function showPreviewPages(pdf, tok){
+    var body = document.getElementById("rpvBody"); body.innerHTML = ""; body.scrollTop = 0;
+    var holders = [], chain = Promise.resolve();
+    for (var i = 1; i <= pdf.numPages; i++) (function(n){
+      chain = chain.then(function(){ return pdf.getPage(n); }).then(function(page){
+        if (tok !== rpv.token) return;
+        var vp = page.getViewport({ scale:1 }), d = document.createElement("div");
+        d.className = "rpv-page" + (vp.width > vp.height ? " land" : "");
+        d.style.aspectRatio = vp.width + " / " + vp.height;
+        d.innerHTML = '<span class="pn">Page ' + n + ' of ' + pdf.numPages + '</span>';
+        d._page = page; body.appendChild(d); holders.push(d);
+      });
+    })(i);
+    return chain.then(function(){
+      if (tok !== rpv.token) return;
+      // draw a page only when it scrolls near the view, so long drawing sets stay light (iPad too)
+      var draw = function(d){
+        if (d._done) return; d._done = true;
+        var dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+        var page = d._page, vp1 = page.getViewport({ scale:1 });
+        var k = Math.min((d.clientWidth * dpr) / vp1.width, Math.sqrt((IS_IOS ? 6e6 : 12e6) / (vp1.width * vp1.height)));
+        var vp = page.getViewport({ scale:k }), c = document.createElement("canvas");
+        c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        page.render({ canvasContext:c.getContext("2d"), viewport:vp }).promise.then(function(){ if (tok === rpv.token) d.insertBefore(c, d.firstChild); }).catch(function(){});
+      };
+      if (window.IntersectionObserver){
+        rpv.obs = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) draw(e.target); }); }, { root:body, rootMargin:"800px 0px" });
+        holders.forEach(function(d){ rpv.obs.observe(d); });
+      } else holders.forEach(draw);
+    });
+  }
+  document.getElementById("rpvBack").addEventListener("click", closePreview);
+  document.getElementById("rpvGo").addEventListener("click", function(){
+    if (!rpv.doc) return;
+    var doc = rpv.doc, name = rpv.name;
+    saveRptPrefs(); closePreview(); el.rptOverlay.classList.remove("visible");
+    deliverReport(doc, name);
+  });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && document.getElementById("rpvOverlay").classList.contains("visible")){ e.stopPropagation(); closePreview(); } }, true);
+  function singleReportName(key){ var r = REPORT_BY_KEY[key]; return key === "drawings" ? "Drawings" : (r.singleLabel || r.label); }
   // One-click report from a panel
   function exportSingle(key){ var r = REPORT_BY_KEY[key]; runReport([key], r.singleLabel || r.label, { filter:null }); }
 
@@ -5508,6 +5621,7 @@
   var rptSel = {}, rptPickOpen = false;
   var CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   var CARD_LABEL = { cover:"Cover page", drawings:"Drawings" };
+  var EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   function renderReportDialog(){
     var box = document.getElementById("rptBody"); if (!box) return;
     var floors = project.floors, pts = 0; floors.forEach(function(f){ pts += f.markers.length; });
@@ -5515,7 +5629,8 @@
     var pdfFloors = floors.filter(function(f){ return f.pdfDoc; }), nOn = pdfFloors.filter(function(f){ return !rptPrefs.floorsOff[f.id]; }).length;
     var types = {}; floors.forEach(function(f){ f.markers.forEach(function(m){ types[m.type] = (types[m.type] || 0) + 1; }); });
     var cards = REPORTS.map(function(r){
-      var more = r.key === "drawings" && pdfFloors.length ? '<button type="button" class="rpt-more'+(rptPickOpen?' open':'')+'" data-rmore>'+(nOn === pdfFloors.length ? (pdfFloors.length > 1 ? "All floors" : pdfFloors[0].name) : nOn + " of " + pdfFloors.length + " floors")+' '+CHEV+'</button>' : '';
+      var more = '<span class="rpt-acts">' + (r.key === "drawings" && pdfFloors.length ? '<button type="button" class="rpt-more'+(rptPickOpen?' open':'')+'" data-rmore>'+(nOn === pdfFloors.length ? (pdfFloors.length > 1 ? "All floors" : pdfFloors[0].name) : nOn + " of " + pdfFloors.length + " floors")+' '+CHEV+'</button>' : '') +
+        '<button type="button" class="rpt-eye" data-rpv="'+r.key+'" title="See how this report looks">'+EYE+'Preview</button></span>';
       return '<div class="rpt-card'+(rptSel[r.key]?' on':'')+'" data-rs="'+r.key+'" role="button" tabindex="0"><span class="ic" style="background:'+(r.color || "#334155")+'">'+(r.icon || "◧")+'</span><span><b>'+(CARD_LABEL[r.key] || r.label)+'</b><small>'+r.sub+'</small>'+more+'</span><span class="rpt-tick"></span></div>';
     });
     if (rptPickOpen){
@@ -5528,7 +5643,8 @@
       cards.splice(di + (di % 2 === 0 ? 2 : 1), 0, pick);   // right after the row the Drawings card is in
     }
     box.innerHTML = '<div class="rpt-cards">' + cards.join("") + '</div>';
-    box.querySelectorAll("[data-rs]").forEach(function(c){ c.onclick = function(e){ if (e.target.closest("[data-rmore]")) return; var k = c.getAttribute("data-rs"); if (rptSel[k]) delete rptSel[k]; else rptSel[k] = true; renderReportDialog(); }; });
+    box.querySelectorAll("[data-rs]").forEach(function(c){ c.onclick = function(e){ if (e.target.closest("[data-rmore],[data-rpv]")) return; var k = c.getAttribute("data-rs"); if (rptSel[k]) delete rptSel[k]; else rptSel[k] = true; renderReportDialog(); }; });
+    box.querySelectorAll("[data-rpv]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); var k = b.getAttribute("data-rpv"); previewReport([k], singleReportName(k), { filter:drawingFilter() }); }; });
     var mo = box.querySelector("[data-rmore]"); if (mo) mo.onclick = function(e){ e.stopPropagation(); rptPickOpen = !rptPickOpen; renderReportDialog(); };
     box.querySelectorAll("[data-fl]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-fl"); if (rptPrefs.floorsOff[k]) delete rptPrefs.floorsOff[k]; else rptPrefs.floorsOff[k] = true; renderReportDialog(); }; });
     box.querySelectorAll("[data-ty]").forEach(function(b){ b.onclick = function(){ var k = b.getAttribute("data-ty"); if (rptPrefs.typesOff[k]) delete rptPrefs.typesOff[k]; else rptPrefs.typesOff[k] = true; renderReportDialog(); }; });
@@ -5545,6 +5661,7 @@
     document.getElementById("rptPaper").value = rptPrefs.paper;
     document.getElementById("rptInfo").textContent = n ? "Saves as " + reportFileName(currentReportName()) : "Pick at least one report";
     document.getElementById("rptGo").disabled = !n;
+    document.getElementById("rptPreview").disabled = !n;
   }
   function selectedReportKeys(){ return REPORTS.filter(function(r){ return rptSel[r.key]; }).map(function(r){ return r.key; }); }
   function currentReportName(){
@@ -5575,6 +5692,10 @@
   });
   document.getElementById("rptPaper").addEventListener("change", function(){ rptPrefs.paper = this.value; saveRptPrefs(); });
   document.getElementById("rptCancel").addEventListener("click", function(){ el.rptOverlay.classList.remove("visible"); });
+  document.getElementById("rptPreview").addEventListener("click", function(){
+    var keys = selectedReportKeys(); if (!keys.length) return;
+    previewReport(keys, currentReportName(), { filter:drawingFilter() });
+  });
   document.getElementById("rptGo").addEventListener("click", function(){
     var keys = selectedReportKeys(); if (!keys.length) return;
     saveRptPrefs(); el.rptOverlay.classList.remove("visible");
