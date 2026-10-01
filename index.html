@@ -756,7 +756,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.4</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.5</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -947,7 +947,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.4</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.5</p>
     </section>
   </aside>
 
@@ -4921,9 +4921,16 @@
     if (usingDefault){ ctx.textAlign="left"; ctx.fillStyle="#b91c1c"; ctx.font=Math.max(9,h*0.008)+"px Arial"; ctx.fillText("Approximate \u2014 scale not calibrated", x, y+barH+32); }
     ctx.restore();
   }
+  // rounded-rectangle outline built from lines and arcs (works on screen canvases and inside PDFs)
+  function roundRectPath(ctx, x, y, w, h, r){
+    r = Math.max(0, Math.min(+r || 0, w/2, h/2)); var P = Math.PI;
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arc(x + w - r, y + r, r, -P/2, 0);
+    ctx.lineTo(x + w, y + h - r); ctx.arc(x + w - r, y + h - r, r, 0, P/2);
+    ctx.lineTo(x + r, y + h); ctx.arc(x + r, y + h - r, r, P/2, P);
+    ctx.lineTo(x, y + r); ctx.arc(x + r, y + r, r, P, P*1.5); ctx.closePath();
+  }
   function roundRect(ctx,x,y,w,h,r){
-    ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+    ctx.beginPath(); roundRectPath(ctx, x, y, w, h, r);
   }
   function hexToRgb(hex){ var v=parseInt(hex.slice(1),16); return { r:(v>>16)&255, g:(v>>8)&255, b:v&255 }; }
 
@@ -5003,17 +5010,20 @@
           var exportScale = safeExportScale(page), vp1 = page.getViewport({ scale:1 });
           var viewport = page.getViewport({ scale:exportScale });
           if (vector){
-            var ovScale = Math.max(exportScale, Math.min(4, Math.sqrt(OVERLAY_MAX_PX / (vp1.width * vp1.height))));
-            var ov = document.createElement("canvas"); ov.width = Math.round(vp1.width * ovScale); ov.height = Math.round(vp1.height * ovScale);
-            var octx = ov.getContext("2d");
-            octx.save(); octx.scale(ov.width / viewport.width, ov.height / viewport.height);
-            drawFloorOverlays(octx, f, p, viewport, exportScale);
-            octx.restore();
-            return canvasToPngBytes(ov).then(function(png){
-              ov.width = ov.height = 1;
-              pagesData.push({ w:viewport.width, h:viewport.height, vec:{ floor:f, page:p, png:png } });
-              showStatus("Prepared page " + p + " of " + f.numPages + "\u2026");
-            });
+            pagesData.push({ w:viewport.width, h:viewport.height, vec:{ floor:f, page:p,
+              // the marks are drawn straight into the PDF as vector shapes and text
+              draw:function(c2d){ drawFloorOverlays(c2d, f, p, viewport, exportScale); },
+              // fallback: a high-resolution transparent picture of the marks
+              makePng:function(){
+                var ovScale = Math.max(exportScale, Math.min(4, Math.sqrt(OVERLAY_MAX_PX / (vp1.width * vp1.height))));
+                var ov = document.createElement("canvas"); ov.width = Math.round(vp1.width * ovScale); ov.height = Math.round(vp1.height * ovScale);
+                var octx = ov.getContext("2d");
+                octx.save(); octx.scale(ov.width / viewport.width, ov.height / viewport.height);
+                drawFloorOverlays(octx, f, p, viewport, exportScale);
+                octx.restore();
+                return canvasToPngBytes(ov).then(function(png){ ov.width = ov.height = 1; return png; });
+              } } });
+            return;
           }
           var hiScale = printScale(page);
           var hiVp = page.getViewport({ scale:hiScale });
@@ -5039,15 +5049,34 @@
   }
   // Put a page into a jsPDF document: vector pages are left blank here and filled in by finishVectorPdf.
   function addDrawingPageToDoc(doc, pd, vecList, pageNo){
-    if (pd.vec) vecList.push({ n:pageNo, vec:pd.vec });
-    else doc.addImage(pd.img, pd.fmt || "PNG", 0, 0, pd.w, pd.h);
+    if (!pd.vec){ doc.addImage(pd.img, pd.fmt || "PNG", 0, 0, pd.w, pd.h); return; }
+    var entry = { n:pageNo, vec:pd.vec, marks:"vector" };
+    try {
+      doc.setPage(pageNo);
+      var c2d = doc.context2d;
+      if (!c2d.roundRect) c2d.roundRect = function(x, y, w, h, r){ roundRectPath(this, x, y, w, h, Array.isArray(r) ? r[0] : r); };
+      // jsPDF over-measures text in px documents (~1.8x); measure with the browser so label pills fit like on screen
+      if (!c2d.__measureFixed){
+        var mctx = document.createElement("canvas").getContext("2d");
+        c2d.measureText = function(t){ mctx.font = this.font; return mctx.measureText(t); };
+        c2d.__measureFixed = true;
+      }
+      c2d.save(); c2d.globalAlpha = 1; c2d.setLineDash && c2d.setLineDash([]);
+      pd.vec.draw(c2d);
+      c2d.restore();
+    } catch(err){
+      console.warn("Vector marks failed on page " + pageNo + ", using a picture instead", err);
+      entry.marks = "png";
+    }
+    vecList.push(entry);
   }
   // jsPDF document + the original drawing pages -> final PDF (an object with .output("blob" | "arraybuffer")).
   function finishVectorPdf(doc, vecList){
     if (!vecList || !vecList.length) return Promise.resolve(doc);
-    var L = window.PDFLib, srcCache = {};
+    var L = window.PDFLib, srcCache = {}, jsBytes = doc.output("arraybuffer");
     showStatus("Placing the original drawings\u2026");
-    return L.PDFDocument.load(doc.output("arraybuffer")).then(function(out){
+    return Promise.all([L.PDFDocument.load(jsBytes), L.PDFDocument.load(jsBytes.slice(0))]).then(function(docs){
+      var out = docs[0], marksDoc = docs[1];
       var chain = Promise.resolve();
       vecList.forEach(function(v){
         chain = chain.then(function(){
@@ -5055,15 +5084,21 @@
           if (!srcCache[key]) srcCache[key] = L.PDFDocument.load(base64ToUint8Array(fl.pdfBase64), { ignoreEncryption:true, updateMetadata:false });
           return srcCache[key].then(function(src){
             var sp = src.getPage(v.vec.page - 1), box = sp.getCropBox();
-            return out.embedPage(sp, { left:box.x, bottom:box.y, right:box.x + box.width, top:box.y + box.height }).then(function(emb){
-              var pg = out.getPage(v.n - 1), sz = pg.getSize(), W = sz.width, H = sz.height;
+            var marksP = v.marks === "vector" ? out.embedPage(marksDoc.getPage(v.n - 1)) : v.vec.makePng().then(function(png){ return out.embedPng(png); });
+            return Promise.all([out.embedPage(sp, { left:box.x, bottom:box.y, right:box.x + box.width, top:box.y + box.height }), marksP]).then(function(r){
+              var emb = r[0], marks = r[1];
+              // a fresh page: the original drawing first, the marks on top
+              var sz = out.getPage(v.n - 1).getSize(), W = sz.width, H = sz.height;
+              out.removePage(v.n - 1);
+              var pg = out.insertPage(v.n - 1, [W, H]);
               var rot = ((sp.getRotation().angle % 360) + 360) % 360;
               // same orientation as on screen (pdf.js applies the page's rotation too)
               if (rot === 90) pg.drawPage(emb, { x:0, y:H, width:H, height:W, rotate:L.degrees(-90) });
               else if (rot === 180) pg.drawPage(emb, { x:W, y:H, width:W, height:H, rotate:L.degrees(180) });
               else if (rot === 270) pg.drawPage(emb, { x:W, y:0, width:H, height:W, rotate:L.degrees(90) });
               else pg.drawPage(emb, { x:0, y:0, width:W, height:H });
-              return out.embedPng(v.vec.png).then(function(img){ pg.drawImage(img, { x:0, y:0, width:W, height:H }); });
+              if (v.marks === "vector") pg.drawPage(marks, { x:0, y:0, width:W, height:H });
+              else pg.drawImage(marks, { x:0, y:0, width:W, height:H });
             });
           });
         });
