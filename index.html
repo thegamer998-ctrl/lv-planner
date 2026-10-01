@@ -737,7 +737,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-09-29.13</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -928,7 +928,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-09-29.13</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.1</p>
     </section>
   </aside>
 
@@ -936,6 +936,7 @@
     <div class="canvas-scroll" id="canvasScroll">
       <div class="canvas-stage" id="canvasStage" style="display:none;">
         <canvas id="pdfCanvas"></canvas>
+        <canvas id="pdfSharp" class="layer-canvas" style="display:none;"></canvas>
         <canvas id="heatmapCanvas" class="layer-canvas" style="display:none;"></canvas>
         <svg id="overlaySvg" class="layer-svg"></svg>
         <div class="marker-layer tool-off" id="markerLayer"></div>
@@ -1774,7 +1775,7 @@
    "measureToolList","unitToggle","scaleReadout","cableTypeSelect","cableToolList",
    "prevPageBtn","nextPageBtn","pageReadout","zoomOutBtn","zoomInBtn","zoomReadout","fitZoomBtn",
    "undoBtn","clearPageBtn","clearAllBtn","exportBtn","totalCount","hintText","statusText",
-   "canvasScroll","canvasStage","pdfCanvas","heatmapCanvas","overlaySvg","markerLayer","emptyState","legendOverlay","legendToggle",
+   "canvasScroll","canvasStage","pdfCanvas","pdfSharp","heatmapCanvas","overlaySvg","markerLayer","emptyState","legendOverlay","legendToggle",
    "editorPopover","saveMenu","saveAsBtn","saveReplaceBtn","saveReplaceSub","markerQuickBar","qbRotL","qbRotR","qbSmaller","qbBigger","qbDelete","qbMore","qbClose","popoverDot","popoverTypeLabel","popoverBody","popoverCloseBtn",
    "confirmOverlay","confirmMessage","confirmCancelBtn","confirmOkBtn","choiceOverlay","choiceTitle","choiceMsg","choiceInput","choiceBtns","newProjectBtn","detectSelAll","detectSelCount","sumCables",
    "exportScopeOverlay","exportCurrentBtn","exportAllBtn","exportScopeCancelBtn","exportFloorsBlock","exportTypesAll","exportTypesNone",
@@ -3059,7 +3060,7 @@
     // Numbered ghost markers on the plan so you can see where each candidate would land
     var ghost = document.createElementNS("http://www.w3.org/2000/svg","g");
     ghost.setAttribute("id","aiGhostLayer");
-    var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
+    var w = pdfCssW(), h = pdfCssH();
     candidates.forEach(function(c, i){
       var t = getTypeDef(c.type); var color = t ? t.color : "#38bdf8";
       var cx = c.xRatio*w, cy = c.yRatio*h;
@@ -3136,23 +3137,36 @@
 
   /* ============== Rendering ============== */
   var renderToken = 0;
+  // The drawing on screen: the canvas holds pixels at the screen's real density (Retina = 2×),
+  // and when zoomed in past what one canvas can hold, the visible part is re-drawn sharp on top.
+  function pdfCssW(){ return parseFloat(el.pdfCanvas.style.width) || el.pdfCanvas.width; }
+  function pdfCssH(){ return parseFloat(el.pdfCanvas.style.height) || el.pdfCanvas.height; }
+  var SCREEN_MAX_PX = IS_IOS ? 12e6 : 40e6;
+  var sharp = { page:null, ratio:1, task:null, timer:null, token:0 };
   function renderPage(num){
     var f = floor(); if (!f || !f.pdfDoc) return;
     var myToken = ++renderToken;
     if (!(qb && qb.id != null)) closeEditor();
+    hideSharpTile();
     return f.pdfDoc.getPage(num).then(function(page){
       var viewport = page.getViewport({ scale:f.scale });
+      var dpr = Math.max(1, window.devicePixelRatio || 1);
+      var ratio = Math.max(0.5, Math.min(dpr, Math.sqrt(SCREEN_MAX_PX / (viewport.width * viewport.height))));
+      var hv = page.getViewport({ scale:f.scale * ratio });
       var canvas = el.pdfCanvas;
-      canvas.width = viewport.width; canvas.height = viewport.height;
+      canvas.width = Math.round(hv.width); canvas.height = Math.round(hv.height);
       canvas.style.width = viewport.width+"px"; canvas.style.height = viewport.height+"px";
       el.markerLayer.style.width = viewport.width+"px"; el.markerLayer.style.height = viewport.height+"px";
       var ctx = canvas.getContext("2d");
-      return page.render({ canvasContext:ctx, viewport:viewport }).promise.then(function(){
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      sharp.page = page; sharp.ratio = ratio; sharp.dpr = dpr; sharp.scale = f.scale;
+      return page.render({ canvasContext:ctx, viewport:hv }).promise.then(function(){
         f.nativeDims[num] = { w: viewport.width/f.scale, h: viewport.height/f.scale };
       });
     }).then(function(){
       if (myToken !== renderToken) return;
       f.currentPage = num;
+      scheduleSharpTile();
       renderMarkers(); renderOverlay(); paintHeatmap();
       el.pageReadout.textContent = num + " / " + f.numPages;
       el.zoomReadout.textContent = Math.round(f.scale*100) + "%";
@@ -3161,6 +3175,40 @@
       return true;
     });
   }
+
+  function hideSharpTile(){
+    clearTimeout(sharp.timer); sharp.token++;
+    if (sharp.task && sharp.task.cancel){ try { sharp.task.cancel(); } catch(e){} } sharp.task = null;
+    el.pdfSharp.style.display = "none";
+  }
+  function scheduleSharpTile(){
+    clearTimeout(sharp.timer);
+    if (!sharp.page || sharp.ratio >= (sharp.dpr || 1) - 0.01) return;   // the whole page is already at full density
+    sharp.timer = setTimeout(drawSharpTile, 140);
+  }
+  function drawSharpTile(){
+    var f = floor(); if (!f || !sharp.page || el.canvasStage.style.transform) return;
+    var cw = pdfCssW(), ch = pdfCssH();
+    var sr = el.canvasScroll.getBoundingClientRect(), cr = el.pdfCanvas.getBoundingClientRect();
+    var x0 = Math.max(0, Math.floor(sr.left - cr.left)), y0 = Math.max(0, Math.floor(sr.top - cr.top));
+    var x1 = Math.min(cw, Math.ceil(sr.right - cr.left)), y1 = Math.min(ch, Math.ceil(sr.bottom - cr.top));
+    if (x1 - x0 < 4 || y1 - y0 < 4){ el.pdfSharp.style.display = "none"; return; }
+    var dpr = sharp.dpr, k = sharp.scale * dpr, token = ++sharp.token;
+    var vp = sharp.page.getViewport({ scale:k, offsetX:-x0 * dpr, offsetY:-y0 * dpr });
+    var c = document.createElement("canvas"); c.width = Math.round((x1 - x0) * dpr); c.height = Math.round((y1 - y0) * dpr);
+    var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    if (sharp.task && sharp.task.cancel){ try { sharp.task.cancel(); } catch(e){} }
+    sharp.task = sharp.page.render({ canvasContext:ctx, viewport:vp });
+    sharp.task.promise.then(function(){
+      if (token !== sharp.token) return;
+      var t = el.pdfSharp; t.width = c.width; t.height = c.height;
+      t.getContext("2d").drawImage(c, 0, 0);
+      t.style.left = x0 + "px"; t.style.top = y0 + "px"; t.style.width = (x1 - x0) + "px"; t.style.height = (y1 - y0) + "px";
+      t.style.display = "block";
+    }).catch(function(){});
+  }
+  el.canvasScroll.addEventListener("scroll", scheduleSharpTile, { passive:true });
+  window.addEventListener("resize", scheduleSharpTile);
 
   // Icons on screen are drawn at the same share of the sheet as in the exported PDF,
   // so what you see at any zoom is what exports (see drawMarkerOnCanvas).
@@ -3175,7 +3223,7 @@
   }
   function renderMarkers(){
     var f = floor(); el.markerLayer.innerHTML = ""; if (!f) return;
-    var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
+    var w = pdfCssW(), h = pdfCssH();
     f.markers.filter(function(m){ return m.page===f.currentPage && !ui.hiddenTypes[m.type]; }).forEach(function(m){
       var t = getTypeDef(m.type); if (!t) return;
       var wrap = document.createElement("div");
@@ -3253,7 +3301,7 @@
   function updateLegendPosition(){
     var f = floor(); if (!f) return;
     var cfg = getLegendConfig(f, f.currentPage);
-    var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
+    var w = pdfCssW(), h = pdfCssH();
     if (!w || !h) return;
     var boxW = cfg.widthRatio*w;
     el.legendOverlay.style.left = (cfg.xRatio*w) + "px";
@@ -3538,7 +3586,7 @@
 
   function renderOverlay(){
     var f = floor(); if (!f || !f.pdfDoc) { if (el.overlaySvg) el.overlaySvg.innerHTML=""; return; }
-    var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
+    var w = pdfCssW(), h = pdfCssH();
     el.overlaySvg.setAttribute("width", w); el.overlaySvg.setAttribute("height", h); el.overlaySvg.setAttribute("viewBox","0 0 "+w+" "+h);
     var parts = [];
     if (ui.showRuns && typeof runsSvg === "function") parts.push(runsSvg(f, w, h));
@@ -4150,14 +4198,14 @@
   /* ============== Page nav / zoom ============== */
   el.prevPageBtn.addEventListener("click", function(){ var f=floor(); if (f && f.currentPage>1){ ui.measureFirstPoint=null; ui.wallFirstPoint=null; ui.cableFirstPoint=null; renderPage(f.currentPage-1); } });
   el.nextPageBtn.addEventListener("click", function(){ var f=floor(); if (f && f.currentPage<f.numPages){ ui.measureFirstPoint=null; ui.wallFirstPoint=null; ui.cableFirstPoint=null; renderPage(f.currentPage+1); } });
-  el.zoomInBtn.addEventListener("click", function(){ var f=floor(); if (!f) return; f.scale=Math.min(3.5,f.scale*1.18); renderPage(f.currentPage); });
+  el.zoomInBtn.addEventListener("click", function(){ var f=floor(); if (!f) return; f.scale=Math.min(MAX_ZOOM,f.scale*1.18); renderPage(f.currentPage); });
   el.zoomOutBtn.addEventListener("click", function(){ var f=floor(); if (!f) return; f.scale=Math.max(0.25,f.scale/1.18); renderPage(f.currentPage); });
 
   /* ---- Ctrl + mouse wheel: zoom around the cursor ---- */
   var zoomBusy = false;
   function zoomAt(factor, clientX, clientY){
     var f = floor(); if (!f || !f.pdfDoc || zoomBusy) return;
-    var newScale = Math.max(0.25, Math.min(3.5, f.scale*factor));
+    var newScale = Math.max(0.25, Math.min(MAX_ZOOM, f.scale*factor));
     if (Math.abs(newScale - f.scale) < 0.0001) return;
     var stageRect = el.canvasStage.getBoundingClientRect();
     var ratioX = (clientX - stageRect.left) / stageRect.width;
@@ -4168,7 +4216,7 @@
     f.scale = newScale;
     var p = renderPage(f.currentPage);
     (p && p.then ? p : Promise.resolve()).then(function(){
-      var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
+      var w = pdfCssW(), h = pdfCssH();
       el.canvasScroll.scrollLeft = el.canvasStage.offsetLeft + ratioX*w - offX;
       el.canvasScroll.scrollTop  = el.canvasStage.offsetTop  + ratioY*h - offY;
     }).then(function(){ zoomBusy = false; }, function(){ zoomBusy = false; });
@@ -4230,11 +4278,12 @@
       ratioX:(m.x-r.left)/r.width, ratioY:(m.y-r.top)/r.height };
     el.canvasStage.style.transformOrigin = (m.x-r.left) + "px " + (m.y-r.top) + "px";
     el.canvasStage.style.willChange = "transform";
+    hideSharpTile();
     onePan = null; gestureSeq = true; ui.suppressTap = true;
   }
   function updateTouchGesture(){
     var m = touchMid(); tg.cur = m;
-    var target = Math.max(0.25, Math.min(3.5, tg.startScale * (m.d / Math.max(1, tg.startMid.d))));
+    var target = Math.max(0.25, Math.min(MAX_ZOOM, tg.startScale * (m.d / Math.max(1, tg.startMid.d))));
     tg.s = target / tg.startScale;
     el.canvasStage.style.transform = "translate(" + (m.x-tg.startMid.x) + "px," + (m.y-tg.startMid.y) + "px) scale(" + tg.s + ")";
   }
@@ -4257,7 +4306,7 @@
     var p = renderPage(g.f.currentPage);
     (p && p.then ? p : Promise.resolve()).then(function(){
       clearStageTransform();
-      var w = el.pdfCanvas.width, h = el.pdfCanvas.height;
+      var w = pdfCssW(), h = pdfCssH();
       el.canvasScroll.scrollLeft = el.canvasStage.offsetLeft + g.ratioX*w - offX;
       el.canvasScroll.scrollTop  = el.canvasStage.offsetTop  + g.ratioY*h - offY;
     }).then(function(){ zoomBusy = false; }, function(){ clearStageTransform(); zoomBusy = false; });
@@ -4426,7 +4475,7 @@
       f.heatmapCache[f.currentPage] = cache;
     }
     if (!cache){ el.heatmapCanvas.style.display="none"; updateHeatmapNote("none"); return; }
-    el.heatmapCanvas.width = el.pdfCanvas.width; el.heatmapCanvas.height = el.pdfCanvas.height;
+    el.heatmapCanvas.width = Math.round(pdfCssW()); el.heatmapCanvas.height = Math.round(pdfCssH());
     el.heatmapCanvas.style.width = el.pdfCanvas.style.width; el.heatmapCanvas.style.height = el.pdfCanvas.style.height;
     el.heatmapCanvas.style.display = "block";
     var ctx = el.heatmapCanvas.getContext("2d");
@@ -4738,10 +4787,17 @@
   // Floors created by the multi-page splitter are already rasterised at ~2.2x, so a fixed 2.2x
   // on top of that would compound to ~4.8x and can silently fail in toDataURL.
   var MAX_EXPORT_EDGE = 3600;
+  var MAX_ZOOM = 8;
   function exportScaleForDims(w, h){ return Math.max(1, Math.min(2.2, MAX_EXPORT_EDGE / Math.max(w, h))); }
   function safeExportScale(page){
     var vp1 = page.getViewport({ scale:1 });
     return exportScaleForDims(vp1.width, vp1.height);
+  }
+  // Drawings are exported at print resolution (up to 300 dpi), as large as this device's canvas allows
+  var EXPORT_MAX_PX = IS_IOS ? 16e6 : 64e6;
+  function printScale(page){
+    var vp1 = page.getViewport({ scale:1 });
+    return Math.max(safeExportScale(page), Math.min(300/72, Math.sqrt(EXPORT_MAX_PX / (vp1.width * vp1.height)), 16000 / Math.max(vp1.width, vp1.height)));
   }
 
   function renderFloorPagesData(f){
@@ -4749,11 +4805,14 @@
     var _loop = function(p){
       pageChain = pageChain.then(function(){
         return f.pdfDoc.getPage(p).then(function(page){
-          var exportScale = safeExportScale(page);
-          var viewport = page.getViewport({ scale:exportScale });
-          var off = document.createElement("canvas"); off.width=viewport.width; off.height=viewport.height;
+          var exportScale = safeExportScale(page), hiScale = printScale(page), kx = hiScale / exportScale;
+          var viewport = page.getViewport({ scale:exportScale }), hiVp = page.getViewport({ scale:hiScale });
+          var off = document.createElement("canvas"); off.width=Math.round(hiVp.width); off.height=Math.round(hiVp.height);
           var ctx = off.getContext("2d");
-          return page.render({ canvasContext:ctx, viewport:viewport }).promise.then(function(){
+          ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, off.width, off.height);
+          return page.render({ canvasContext:ctx, viewport:hiVp }).promise.then(function(){
+            // points, legend and lines are laid out on the normal sheet size, just drawn kx times sharper
+            ctx.save(); ctx.scale(off.width / viewport.width, off.height / viewport.height);
             var nativeW=viewport.width/exportScale, nativeH=viewport.height/exportScale;
             var pageMarkers=f.markers.filter(function(m){return m.page===p;});
             var pageWalls=f.walls.filter(function(w){return w.page===p;});
@@ -4790,9 +4849,11 @@
             pageCables.forEach(function(c){ drawCableOnCanvas(ctx, c, viewport.width, viewport.height, nativeW, nativeH, f); });
             pageMarkers.forEach(function(m){ drawMarkerOnCanvas(ctx, m, viewport.width, viewport.height); });
             drawSideLegend(ctx, viewport.width, viewport.height, pageMarkers, getLegendConfig(f, p));
-            var img = off.toDataURL("image/png");
+            ctx.restore();
+            var img = off.toDataURL("image/jpeg", 0.95);
             if (!img || img.length < 100) throw new Error("Page " + p + " rendered empty (canvas too large for this browser)");
-            pagesData.push({ w:viewport.width, h:viewport.height, img: img });
+            off.width = off.height = 1;   // free the memory straight away
+            pagesData.push({ w:viewport.width, h:viewport.height, img: img, fmt:"JPEG" });
             showStatus("Rendered page " + p + " of " + f.numPages + "\u2026");
           });
         });
@@ -4817,7 +4878,7 @@
             var orientation = pd.w>pd.h ? "l":"p";
             if (!doc) doc = new jsPDFCtor({ orientation:orientation, unit:"px", format:[pd.w,pd.h] });
             else doc.addPage([pd.w,pd.h], orientation);
-            doc.addImage(pd.img, "PNG", 0, 0, pd.w, pd.h);
+            doc.addImage(pd.img, pd.fmt || "PNG", 0, 0, pd.w, pd.h);
           });
         });
       });
@@ -5357,7 +5418,7 @@
     floors.forEach(function(f){
       chain = chain.then(function(){
         return renderFloorPagesData(filteredFloor(f, flt)).then(function(pages){
-          pages.forEach(function(pd){ var n = rNewDocPage(pd.w, pd.h); R.drawingPages.push({ n:n, f:f }); R.doc.addImage(pd.img, "PNG", 0, 0, pd.w, pd.h); });
+          pages.forEach(function(pd){ var n = rNewDocPage(pd.w, pd.h); R.drawingPages.push({ n:n, f:f }); R.doc.addImage(pd.img, pd.fmt || "PNG", 0, 0, pd.w, pd.h); });
         });
       });
     });
