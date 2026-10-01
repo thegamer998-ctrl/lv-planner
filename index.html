@@ -251,7 +251,7 @@
   .rpt-selall{ height:32px; padding:0 12px; border-radius:8px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
   .rpt-selall.sm{ height:26px; padding:0 9px; font-size:11.5px; gap:6px; } .rpt-selall.sm .rpt-sck{ width:13px; height:13px; }
   #choiceOverlay .confirm-box.choice-box{ width:400px; max-width:calc(100vw - 32px); }
-  .choice-title{ font-weight:700; font-size:16px; margin:0 0 4px; word-break:break-word; } .choice-msg{ color:var(--text-muted); font-size:13px; margin:0 0 14px; line-height:1.45; }
+  .choice-title{ font-weight:700; font-size:16px; margin:0 0 4px; word-break:break-word; } .choice-msg{ color:var(--text-muted); font-size:13px; margin:0 0 14px; line-height:1.45; white-space:pre-line; word-break:break-word; }
   #choiceInput{ margin:0 0 14px; height:38px; font-size:14px; }
   .choice-btns{ display:flex; flex-direction:column; gap:8px; }
   .choice-btns button{ min-height:42px; border-radius:10px; border:1px solid var(--hairline-2); background:var(--bg-panel); color:var(--text-main); font-weight:600; font-size:14px; padding:8px 14px; text-align:center; }
@@ -756,7 +756,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.5</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.6</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -947,7 +947,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.5</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.6</p>
     </section>
   </aside>
 
@@ -2820,55 +2820,96 @@
   }
 
   /* ---- Floors saved as a picture by older versions (multi-page imports were rasterised) ---- */
-  function checkPictureFloor(f){
-    if (!f || !f.pdfDoc || f._pic !== undefined) return;
-    f._pic = null;
-    f.pdfDoc.getMetadata().then(function(md){
-      f._pic = /jsPDF/i.test(((md && md.info) || {}).Producer || "");
-      if (!f._pic || f._picAsked || floor() !== f) return;
-      f._picAsked = true;
-      askChoice({ title:"\u201c" + f.name + "\u201d looks blurry", message:"An older version of the app saved this floor\u2019s drawing as a picture, so it goes soft when you zoom in or export. Load the original PDF once to make it sharp \u2014 all your points, cables and walls stay where they are.",
-        buttons:[{ label:"Choose the original PDF", value:"pick", kind:"primary" }, { label:"Not now", value:null }] },
-        function(v){ if (v === "pick"){ ui.replaceTargetFloorId = null; ui.sharpenFloorId = f.id; el.fileInput.click(); } });
-    }).catch(function(){});
+  // Which original file (and page) a floor came from, read from its file name: "<original> — p23.pdf"
+  function originalOf(f){
+    var m = /^(.*) \u2014 p(\d+)\.pdf$/.exec((f && f.fileName) || "");
+    return m ? { base:m[1], page:parseInt(m[2], 10) } : { base:((f && f.fileName) || "").replace(/\.pdf$/i, ""), page:1 };
   }
+  function isPictureFloor(f){
+    if (!f || !f.pdfDoc) return Promise.resolve(false);
+    if (f._pic === true || f._pic === false) return Promise.resolve(f._pic);
+    return f.pdfDoc.getMetadata().then(function(md){ f._pic = /jsPDF/i.test(((md && md.info) || {}).Producer || ""); return f._pic; }, function(){ return false; });
+  }
+  function checkPictureFloor(f){
+    if (!f || !f.pdfDoc || f._picChecking || f._picAsked) return;
+    f._picChecking = true;
+    isPictureFloor(f).then(function(pic){
+      f._picChecking = false;
+      if (!pic || f._picAsked || floor() !== f || pendingChoice) return;
+      f._picAsked = true;
+      var o = originalOf(f);
+      var same = project.floors.filter(function(x){ return x !== f && x.pdfDoc && originalOf(x).base === o.base; }).length;
+      askChoice({ title:"\u201c" + f.name + "\u201d looks blurry", message:"An older version of the app saved this drawing as a picture, so it goes soft when you zoom in or export. Pick the original PDF once to make it sharp \u2014 your points, cables and walls stay exactly where they are." +
+          "\n\nPick: \u201c" + o.base + ".pdf\u201d" + (same ? " \u2014 this fixes all " + (same + 1) + " floors from that file in one go." : "."),
+        buttons:[{ label:"Choose the original PDF", value:"pick", kind:"primary", sub:o.base + ".pdf" }, { label:"Not now", value:null }] },
+        function(v){ if (v === "pick"){ ui.replaceTargetFloorId = null; ui.sharpenFloorId = f.id; el.fileInput.click(); } });
+    });
+  }
+  // Swap the blurry picture for the original vector page; every floor that came from the same file is done in one go.
   function sharpenFloorFromFile(f, file){
     if (!window.PDFLib){ showStatus("Couldn't load the PDF tools \u2014 check your internet connection and try again"); return; }
-    var m = /\u2014 p(\d+)\.pdf$/.exec(f.fileName || ""), pageNum = m ? parseInt(m[1], 10) : 1;
-    var oldDims;
-    showStatus("Making \u201c" + f.name + "\u201d sharp\u2026");
+    var want = originalOf(f);
+    showStatus("Making the drawings sharp\u2026");
+    var src, results = [];
     file.arrayBuffer().then(function(buf){
-      return f.pdfDoc.getPage(1).then(function(op){ var v = op.getViewport({ scale:1 }); oldDims = { w:v.width, h:v.height }; })
-        .then(function(){ return PDFLib.PDFDocument.load(buf, { ignoreEncryption:true, updateMetadata:false }); });
-    }).then(function(src){
-      var n = src.getPageCount();
-      if (n === 1) pageNum = 1;
-      if (pageNum > n) throw new Error("That PDF has only " + n + " page" + (n === 1 ? "" : "s") + " \u2014 this floor came from page " + pageNum);
-      return PDFLib.PDFDocument.create().then(function(nd){
-        return nd.copyPages(src, [pageNum - 1]).then(function(pages){ nd.addPage(pages[0]); nd.setProducer("ExpressTech Villa LV Planner"); return nd.save(); });
+      return PDFLib.PDFDocument.load(buf, { ignoreEncryption:true, updateMetadata:false });
+    }).then(function(s){
+      src = s;
+      var group = project.floors.filter(function(x){ return x === f || (x.pdfDoc && originalOf(x).base === want.base); });
+      return Promise.all(group.map(function(x){ return isPictureFloor(x).then(function(pic){ return (pic || x === f) ? x : null; }); }));
+    }).then(function(targets){
+      var chain = Promise.resolve();
+      targets.filter(Boolean).forEach(function(x){
+        chain = chain.then(function(){
+          return sharpenOneFloor(x, src, file).then(function(){ results.push({ f:x, ok:true }); }, function(err){ results.push({ f:x, ok:false, msg:(err && err.message) || "couldn't use that PDF" }); });
+        });
       });
-    }).then(function(bytes){
+      return chain;
+    }).then(function(){
+      var ok = results.filter(function(r){ return r.ok; }), bad = results.filter(function(r){ return !r.ok; });
+      if (ok.length){
+        AUTOSAVE.savedSig = null; updateDirtyDot();
+        var cur = floor(); if (cur && ok.some(function(r){ return r.f === cur; })) renderPage(cur.currentPage || 1); else if (cur) renderPage(cur.currentPage || 1);
+        renderFloorList(); updateAllReadouts();
+      }
+      var pts = 0; ok.forEach(function(r){ pts += r.f.markers.length; });
+      if (!bad.length){
+        showStatus((ok.length === 1 ? "\u201c" + ok[0].f.name + "\u201d is" : ok.length + " floors are") + " now sharp \u2014 " + pts + " point" + (pts === 1 ? "" : "s") + " kept. Press Save to keep it.");
+        return;
+      }
+      askChoice({ title: ok.length ? ok.length + " floor" + (ok.length === 1 ? "" : "s") + " made sharp, " + bad.length + " not" : "That PDF couldn\u2019t be used",
+        message: bad.map(function(r){ return "\u2022 " + r.f.name + ": " + r.msg; }).join("\n") + "\n\nThe right file is \u201c" + want.base + ".pdf\u201d.",
+        buttons:[{ label:"Choose another PDF", value:"pick", kind:"primary" }, { label:"Close", value:null }] },
+        function(v){ if (v === "pick"){ ui.replaceTargetFloorId = null; ui.sharpenFloorId = bad[0].f.id; el.fileInput.click(); } });
+    }).catch(function(err){
+      console.error(err);
+      askChoice({ title:"That PDF couldn\u2019t be read", message:((err && err.message) || "Unknown error") + "\n\nThe right file is \u201c" + want.base + ".pdf\u201d.", buttons:[{ label:"Close", value:null }] }, function(){});
+    });
+  }
+  function sharpenOneFloor(f, src, file){
+    var o = originalOf(f), n = src.getPageCount(), pageNum = n === 1 ? 1 : o.page, oldDims;
+    if (pageNum > n) return Promise.reject(new Error("this PDF has " + n + " page" + (n === 1 ? "" : "s") + ", but the floor came from page " + pageNum + " of \u201c" + o.base + ".pdf\u201d"));
+    return f.pdfDoc.getPage(1).then(function(op){ var v = op.getViewport({ scale:1 }); oldDims = { w:v.width, h:v.height }; })
+    .then(function(){ return PDFLib.PDFDocument.create(); })
+    .then(function(nd){ return nd.copyPages(src, [pageNum - 1]).then(function(pages){ nd.addPage(pages[0]); nd.setProducer("ExpressTech Villa LV Planner"); return nd.save(); }); })
+    .then(function(bytes){
       var base64 = arrayBufferToBase64(bytes.slice().buffer);
       return workerReadyPromise.then(function(){ return pdfjsLib.getDocument({ data:bytes }).promise; }).then(function(doc){
         return doc.getPage(1).then(function(np){
-          var v = np.getViewport({ scale:1 });
-          var ra = oldDims.w / oldDims.h, rb = v.width / v.height;
-          if (Math.abs(ra - rb) / ra > 0.02){ doc.destroy(); throw new Error("Page " + pageNum + " of that PDF isn't the same drawing as \u201c" + f.name + "\u201d \u2014 nothing was changed"); }
-          var k = oldDims.w / v.width;          // the old picture copy had a different page size; keep the drawing scale and zoom the same
+          var v = np.getViewport({ scale:1 }), ra = oldDims.w / oldDims.h, rb = v.width / v.height;
+          if (Math.abs(ra - rb) / ra > 0.02){ doc.destroy(); throw new Error("page " + pageNum + " of this PDF isn\u2019t the same drawing (different page shape)"); }
+          var k = oldDims.w / v.width;     // keep the drawing scale and zoom the same on the new page size
           Object.keys(f.scaleByPage || {}).forEach(function(pg){ f.scaleByPage[pg] *= k; });
           f.scale = f.scale * k;
           var old = f.pdfDoc;
           f.pdfDoc = doc; f.numPages = 1; f.currentPage = 1; f.pdfBase64 = base64;
           f.nativeDims = {}; f.heatmapCache = {}; f._pic = false;
-          f.fileName = (file.name || "drawing").replace(/\.pdf$/i, "") + (src_pages_label(pageNum)) + ".pdf";
+          f.fileName = (file.name || "drawing").replace(/\.pdf$/i, "") + " \u2014 p" + pageNum + ".pdf";
           try { old.destroy(); } catch(e){}
-          if (floor() === f) renderPage(1);
-          showStatus("\u201c" + f.name + "\u201d is now sharp \u2014 " + f.markers.length + " point" + (f.markers.length === 1 ? "" : "s") + " kept");
         });
       });
-    }).catch(function(err){ console.error(err); showStatus(err && err.message ? err.message : "Couldn't use that PDF"); });
+    });
   }
-  function src_pages_label(n){ return " \u2014 p" + n; }
 
   // Each floor gets its own one-page PDF copied straight out of the original file:
   // lines and text stay vector, so the drawing is as sharp as the original at any zoom and in every export.
@@ -3279,8 +3320,15 @@
       sharp.page = page; sharp.ratio = ratio; sharp.dpr = dpr; sharp.scale = f.scale;
       snapStage();
       // vector drawing stretched by the last fraction of a pixel so it fills the whole-pixel canvas exactly
-      return page.render({ canvasContext:ctx, viewport:hv, transform:[bw / hv.width, 0, 0, bh / hv.height, 0, 0] }).promise.then(function(){
+      // a newer redraw replaces any one still running on the same canvas
+      if (sharp.mainTask && sharp.mainTask.cancel){ try { sharp.mainTask.cancel(); } catch(e){} }
+      var task = sharp.mainTask = page.render({ canvasContext:ctx, viewport:hv, transform:[bw / hv.width, 0, 0, bh / hv.height, 0, 0] });
+      return task.promise.then(function(){
+        if (sharp.mainTask === task) sharp.mainTask = null;
         f.nativeDims[num] = { w: viewport.width/f.scale, h: viewport.height/f.scale };
+      }, function(err){
+        if (err && err.name === "RenderingCancelledException") return;
+        throw err;
       });
     }).then(function(){
       if (myToken !== renderToken) return;
@@ -5073,10 +5121,14 @@
   // jsPDF document + the original drawing pages -> final PDF (an object with .output("blob" | "arraybuffer")).
   function finishVectorPdf(doc, vecList){
     if (!vecList || !vecList.length) return Promise.resolve(doc);
-    var L = window.PDFLib, srcCache = {}, jsBytes = doc.output("arraybuffer");
+    var L = window.PDFLib, srcCache = {};
     showStatus("Placing the original drawings\u2026");
-    return Promise.all([L.PDFDocument.load(jsBytes), L.PDFDocument.load(jsBytes.slice(0))]).then(function(docs){
-      var out = docs[0], marksDoc = docs[1];
+    // move the content just drawn by pdf-lib to the very beginning of the page = underneath everything else
+    function sendLastToBack(pg){
+      var C = pg.node.Contents();
+      if (C instanceof L.PDFArray && C.size() > 1){ var last = C.get(C.size() - 1); C.remove(C.size() - 1); C.insert(0, last); }
+    }
+    return L.PDFDocument.load(doc.output("arraybuffer")).then(function(out){
       var chain = Promise.resolve();
       vecList.forEach(function(v){
         chain = chain.then(function(){
@@ -5084,21 +5136,18 @@
           if (!srcCache[key]) srcCache[key] = L.PDFDocument.load(base64ToUint8Array(fl.pdfBase64), { ignoreEncryption:true, updateMetadata:false });
           return srcCache[key].then(function(src){
             var sp = src.getPage(v.vec.page - 1), box = sp.getCropBox();
-            var marksP = v.marks === "vector" ? out.embedPage(marksDoc.getPage(v.n - 1)) : v.vec.makePng().then(function(png){ return out.embedPng(png); });
-            return Promise.all([out.embedPage(sp, { left:box.x, bottom:box.y, right:box.x + box.width, top:box.y + box.height }), marksP]).then(function(r){
-              var emb = r[0], marks = r[1];
-              // a fresh page: the original drawing first, the marks on top
-              var sz = out.getPage(v.n - 1).getSize(), W = sz.width, H = sz.height;
-              out.removePage(v.n - 1);
-              var pg = out.insertPage(v.n - 1, [W, H]);
+            var pngP = v.marks === "vector" ? Promise.resolve(null) : v.vec.makePng().then(function(png){ return out.embedPng(png); });
+            return Promise.all([out.embedPage(sp, { left:box.x, bottom:box.y, right:box.x + box.width, top:box.y + box.height }), pngP]).then(function(r){
+              var emb = r[0], png = r[1];
+              var pg = out.getPage(v.n - 1), sz = pg.getSize(), W = sz.width, H = sz.height;
               var rot = ((sp.getRotation().angle % 360) + 360) % 360;
               // same orientation as on screen (pdf.js applies the page's rotation too)
               if (rot === 90) pg.drawPage(emb, { x:0, y:H, width:H, height:W, rotate:L.degrees(-90) });
               else if (rot === 180) pg.drawPage(emb, { x:W, y:H, width:W, height:H, rotate:L.degrees(180) });
               else if (rot === 270) pg.drawPage(emb, { x:W, y:0, width:H, height:W, rotate:L.degrees(90) });
               else pg.drawPage(emb, { x:0, y:0, width:W, height:H });
-              if (v.marks === "vector") pg.drawPage(marks, { x:0, y:0, width:W, height:H });
-              else pg.drawImage(marks, { x:0, y:0, width:W, height:H });
+              if (png) pg.drawImage(png, { x:0, y:0, width:W, height:H });
+              sendLastToBack(pg);       // the original drawing goes underneath the points already on this page
             });
           });
         });
@@ -5111,6 +5160,7 @@
       } };
     });
   }
+
 
   function exportAnnotatedPdf(scope, flt){
     var floorsToExport = (scope === "all" ? project.floors.filter(function(f){ return f.pdfDoc; }) : [floor()])
