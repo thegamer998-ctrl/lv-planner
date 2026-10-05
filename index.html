@@ -383,6 +383,17 @@
   .overlay{ position:fixed; inset:0; background:var(--overlay-bg); display:none; align-items:center; justify-content:center; z-index:60; }
   .overlay.visible{ display:flex; }
   .st-box{ width:520px; }
+  .site-pin{ position:absolute; width:28px; height:28px; margin:-28px 0 0 -14px; cursor:pointer; z-index:6; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+  .site-pin svg{ width:100%; height:100%; display:block; }
+  .site-pop{ position:fixed; z-index:80; width:310px; max-width:calc(100vw - 20px); background:var(--bg-panel-raised); border:1px solid var(--hairline); border-radius:14px; box-shadow:0 12px 34px rgba(0,0,0,.28); padding:12px; display:none; font-size:12.5px; }
+  .site-pop.on{ display:block; }
+  .site-pop h4{ margin:0 0 2px; font-size:14px; } .site-pop .sub{ color:var(--text-muted); font-size:11.5px; margin-bottom:8px; }
+  .site-pop .txt{ background:var(--bg-panel); border-radius:9px; padding:8px; margin-bottom:8px; white-space:pre-wrap; }
+  .site-pop .ph{ display:flex; gap:5px; margin-bottom:8px; flex-wrap:wrap; } .site-pop .ph img{ width:62px; height:62px; object-fit:cover; border-radius:8px; cursor:zoom-in; }
+  .site-pop .acts{ display:flex; flex-direction:column; gap:6px; } .site-pop .acts button{ height:34px; justify-content:center; }
+  .site-pop .x{ position:absolute; right:8px; top:8px; border:0; background:none; font-size:16px; color:var(--text-muted); cursor:pointer; }
+  .st-rep{ border:1px solid var(--hairline); border-radius:10px; overflow:hidden; } .st-rep div{ display:flex; gap:8px; align-items:center; padding:7px 10px; border-top:1px solid var(--hairline); font-size:12px; cursor:pointer; } .st-rep div:first-child{ border-top:0; }
+  .st-rep i{ width:9px; height:9px; border-radius:50%; flex-shrink:0; } .st-rep span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .st-rep small{ color:var(--text-muted); }
   .st-sum{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:4px 0; }
   .st-sum div{ border:1px solid var(--hairline); border-radius:10px; padding:8px 10px; } .st-sum b{ display:block; font-size:18px; } .st-sum small{ color:var(--text-muted); font-size:11px; }
   .st-link{ border:1px solid var(--hairline); border-radius:10px; padding:9px 10px; display:flex; align-items:center; gap:8px; }
@@ -789,7 +800,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.11</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.12</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -982,7 +993,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.11</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.12</p>
     </section>
   </aside>
 
@@ -2587,6 +2598,7 @@
       project.racks = Array.isArray(parsed.racks) ? parsed.racks : [];
       project.vlans = parsed.vlans || null;
       project.site = parsed.site || null; if (typeof siteUi !== "undefined" && siteUi) { siteUi.status = null; siteUi.data = null; }
+      if (project.site) setTimeout(function(){ if (typeof loadSite === "function") loadSite(); }, 2500);
       project.cableCalc = parsed.cableCalc || null;
       mergeCableLib(parsed.cableLib);
       ui.placeRack = "";
@@ -3530,6 +3542,7 @@
       });
       el.markerLayer.appendChild(wrap);
     });
+    if (typeof renderSitePins === "function") renderSitePins(f, w, h);
     renderLegendContent();
   }
 
@@ -6446,6 +6459,75 @@
   /* ---------- Site app: publish the project for the installation team and the customer ---------- */
   var SITE_PAGE = "https://thegamer998-ctrl.github.io/lv-planner/site.html";
   var siteUi = { status:null, show:true, busy:false, data:null };
+  var SITE_KIND = { missing:"Extra point found on site", extra:"Point not on site", other:"Site issue" };
+  var SITE_SUG = { wifi:["wifi","Access point"], cctv:["cctv","Camera"], network:["network","Data point"], ipphone:["ipphone","IP phone"], intercom:["intercom","Intercom"], tv:["tv","TV point"], other:[null,"Other"] };
+  function siteSheetId(f){ return f.id + (f.numPages > 1 ? "-p" + f.currentPage : ""); }
+  function siteIssueColor(i){ return i.status === "open" ? "#ea580c" : i.status === "approved" ? "#2563eb" : "#12a150"; }
+  function sitePinSvg(c){ return '<svg viewBox="0 0 26 26"><path d="M13 25s-9-7.6-9-14a9 9 0 0 1 18 0c0 6.4-9 14-9 14z" fill="' + c + '" stroke="#fff" stroke-width="2"/><text x="13" y="14.5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">!</text></svg>'; }
+  function siteOpenIssues(){
+    var d = siteUi.data; if (!d || !d.issues) return [];
+    var res = (project.site && project.site.resolved) || [];
+    return d.issues.filter(function(i){ return (i.status === "open" || i.status === "approved") && !res.some(function(r){ return r.id === i.id; }); });
+  }
+  // technicians' reports as pins on the drawing (office only — this is the planner)
+  function renderSitePins(f, w, h){
+    if (!siteUi.data || !siteUi.show || !project.site || siteUi.data.project.id !== project.site.id) return;
+    var sid = siteSheetId(f);
+    siteOpenIssues().filter(function(i){ return i.floor_id === sid; }).forEach(function(i){
+      var pin = document.createElement("div"); pin.className = "site-pin"; pin.title = SITE_KIND[i.kind] + (i.text ? ": " + i.text : "");
+      pin.style.left = (i.x * w) + "px"; pin.style.top = (i.y * h) + "px"; pin.innerHTML = sitePinSvg(siteIssueColor(i));
+      pin.addEventListener("pointerdown", function(e){ e.stopPropagation(); });
+      pin.addEventListener("click", function(e){ e.stopPropagation(); openSiteIssue(i, pin); });
+      el.markerLayer.appendChild(pin);
+    });
+  }
+  var sitePop = null;
+  function closeSitePop(){ if (sitePop) sitePop.classList.remove("on"); }
+  function siteResolve(i, text){
+    project.site.resolved = (project.site.resolved || []).concat([{ id:i.id, text:text }]);
+    if (typeof autosaveTick === "function") autosaveTick();
+    closeSitePop(); renderMarkers();
+    showStatus(text + " — press Site → Update site to send it to the technicians");
+  }
+  function siteIssueStatus(i, status, reply){
+    return siteFetch("/site/p/" + project.site.id + "/issue/" + i.id + "/status", { method:"POST", headers:{ "Content-Type":"application/json", "X-By":"ExpressTech office" }, body:JSON.stringify({ status:status, reply:reply || "" }) })
+      .then(function(){ i.status = status; closeSitePop(); renderMarkers(); renderSiteDialog(""); showStatus(status === "rejected" ? "Report closed — the technician sees your reply" : "Saved"); })
+      .catch(function(e){ showStatus("Couldn't update the report: " + e.message); });
+  }
+  function openSiteIssue(i, anchor){
+    if (!sitePop){ sitePop = document.createElement("div"); sitePop.className = "site-pop"; document.body.appendChild(sitePop); document.addEventListener("pointerdown", function(e){ if (sitePop.classList.contains("on") && !sitePop.contains(e.target) && !(e.target.closest && e.target.closest(".site-pin"))) closeSitePop(); }); }
+    var f = floor(), sug = SITE_SUG[i.suggest_type] || null, m = i.point_id ? f.markers.find(function(x){ return x.id === i.point_id; }) : null;
+    var tk = siteUi.data.links.team_key, base = zRelay().url + "/site/p/" + project.site.id + "/photo/";
+    var h = '<button type="button" class="x" data-x>&times;</button><h4>' + escapeHtml(SITE_KIND[i.kind]) + (i.kind === "missing" && sug ? " · " + escapeHtml(sug[1]) : "") + "</h4>" +
+      '<div class="sub">' + escapeHtml(i.by) + " · " + new Date(i.at).toLocaleString() + " · " + (i.status === "open" ? "waiting for you" : "approved") + "</div>" +
+      (m ? '<div class="sub">Point in the drawing: <b>' + escapeHtml(getTypeDef(m.type).label) + "</b></div>" : "") +
+      (i.text ? '<div class="txt">' + escapeHtml(i.text) + "</div>" : "") +
+      (i.photos.length ? '<div class="ph">' + i.photos.map(function(ph){ return '<img src="' + base + ph.id + "?k=" + tk + '" data-big="' + base + ph.id + "?k=" + tk + '" alt="">'; }).join("") + "</div>" : "") +
+      (i.notes.length ? '<div class="sub">' + i.notes.map(function(n){ return "<b>" + escapeHtml(n.by) + ":</b> " + escapeHtml(n.text); }).join("<br>") + "</div>" : "") +
+      '<input type="text" class="select-input" data-reply placeholder="Reply to the technician (optional)" style="height:32px;margin:0 0 8px;">' +
+      '<div class="acts">' +
+      (i.kind === "missing" && sug && sug[0] ? '<button type="button" class="tbtn primary" data-add>Add ' + escapeHtml(sug[1].toLowerCase()) + " here</button>" : "") +
+      (i.kind === "missing" && (!sug || !sug[0]) ? '<button type="button" class="tbtn primary" data-addpick>Add a point here…</button>' : "") +
+      (i.kind === "extra" && m ? '<button type="button" class="tbtn primary" data-del>Remove this point from the drawing</button>' : "") +
+      (i.kind === "other" ? '<button type="button" class="tbtn primary" data-done>Mark as done</button>' : "") +
+      (i.status !== "approved" ? '<button type="button" class="tbtn" data-ok>Approve — I\u2019ll update the drawing</button>' : "") +
+      '<button type="button" class="tbtn" data-no>' + (i.kind === "extra" ? "Keep the point (it must be installed)" : "Not needed") + "</button></div>";
+    sitePop.innerHTML = h;
+    var r = anchor.getBoundingClientRect(), pw = 310;
+    sitePop.style.left = Math.max(10, Math.min(window.innerWidth - pw - 10, r.left + r.width/2 - pw/2)) + "px";
+    sitePop.style.top = Math.max(10, Math.min(window.innerHeight - 380, r.bottom + 8)) + "px";
+    sitePop.classList.add("on");
+    var reply = function(){ return sitePop.querySelector("[data-reply]").value.trim(); };
+    sitePop.querySelector("[data-x]").onclick = closeSitePop;
+    sitePop.querySelectorAll("[data-big]").forEach(function(im){ im.onclick = function(){ window.open(im.dataset.big, "_blank"); }; });
+    var b;
+    if ((b = sitePop.querySelector("[data-add]"))) b.onclick = function(){ var mk = placePointMarker(sug[0], i.x, i.y); siteResolve(i, "Point added: " + getTypeDef(mk.type).label + (reply() ? " — " + reply() : "")); };
+    if ((b = sitePop.querySelector("[data-addpick]"))) b.onclick = function(){ closeSitePop(); showStatus("Pick a point type on the left, then click on the orange pin to place it"); };
+    if ((b = sitePop.querySelector("[data-del]"))) b.onclick = function(){ handlePopoverDelete("marker", m.id); siteResolve(i, "Point removed from the drawing" + (reply() ? " — " + reply() : "")); };
+    if ((b = sitePop.querySelector("[data-done]"))) b.onclick = function(){ siteIssueStatus(i, "done", reply()); };
+    if ((b = sitePop.querySelector("[data-ok]"))) b.onclick = function(){ siteIssueStatus(i, "approved", reply()); };
+    if ((b = sitePop.querySelector("[data-no]"))) b.onclick = function(){ siteIssueStatus(i, "rejected", reply() || (i.kind === "extra" ? "The point stays in the drawing — please install it." : "")); };
+  }
   function siteLink(key){ var r = zRelay(); return SITE_PAGE + "#p=" + project.site.id + "&k=" + key + "&s=" + encodeURIComponent(r.url); }
   function siteFetch(path, opts){
     var r = zRelay(); opts = opts || {};
@@ -6491,10 +6573,12 @@
     if (siteUi.busy) return; siteUi.busy = true; if (btn) btn.disabled = true;
     var sheets = siteSheets(), pts = sitePoints();
     msg.textContent = "Publishing " + pts.length + " points…";
-    var body = { id: project.site && project.site.id, name: project.name, meta:{ planner: (document.querySelector(".ver") || {}).textContent || "" }, floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts };
+    var resolved = (project.site && project.site.resolved) || [];
+    var body = { id: project.site && project.site.id, name: project.name, meta:{ planner: (document.querySelector(".ver") || {}).textContent || "" }, floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
     siteFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(function(r){
       var isNew = !project.site || project.site.id !== r.id;
       project.site = Object.assign({}, project.site || {}, { id:r.id }); project.site.sig = isNew ? {} : (project.site.sig || {});
+      project.site.resolved = [];
       var todo = sheets.filter(function(sh){ return r.needFloors.indexOf(sh.id) >= 0 || project.site.sig[sh.id] !== sheetSig(sh); });
       var chain = Promise.resolve();
       todo.forEach(function(sh, i){ chain = chain.then(function(){
@@ -6537,6 +6621,13 @@
           '<button type="button" class="tbtn" data-wa="' + escapeHtml(link) + '" data-who="' + x[0] + '">WhatsApp</button>' +
           '<button type="button" class="tbtn" data-open="' + escapeHtml(link) + '">Open</button></div>';
       });
+      var openR = siteOpenIssues(), pendR = (project.site.resolved || []).length;
+      if (openR.length || pendR){
+        h += '<div class="st-rep">' + openR.map(function(i){ var fl = project.floors.find(function(f){ return i.floor_id === f.id || i.floor_id.indexOf(f.id + "-p") === 0; });
+          return '<div data-goissue="' + escapeHtml(i.id) + '"><i style="background:' + siteIssueColor(i) + '"></i><span><b>' + escapeHtml(SITE_KIND[i.kind]) + '</b> · ' + escapeHtml(i.text || "") + '</span><small>' + escapeHtml(fl ? fl.name : "") + ' · ' + escapeHtml(i.by) + '</small></div>'; }).join("") +
+          (pendR ? '<div style="cursor:default"><i style="background:#12a150"></i><span>' + pendR + ' report' + (pendR > 1 ? 's' : '') + ' answered in the drawing — press <b>Update site</b> to send</span></div>' : "") + '</div>';
+      }
+      h += '<div class="st-row"><button type="button" class="tbtn" id="stOffice" style="flex:1">Open office view (all projects)</button></div>';
       h += '<div class="st-row"><input type="text" class="select-input" id="stAsana" placeholder="Asana project link (app.asana.com/…/project/…)" value="' + escapeHtml(d.project.asana_gid ? "Linked: project " + d.project.asana_gid : "") + '"><button type="button" class="tbtn" id="stAsanaBtn">' + (d.project.asana_gid ? "Change" : "Link Asana") + '</button></div>';
     }
     h += '<p class="st-msg" id="stMsg">' + escapeHtml(note || (project.site ? "" : "Not published yet.")) + '</p>';
@@ -6551,6 +6642,14 @@
         ? "Dear customer, you can follow the installation progress of your villa here (photos of every point as we install): " + b.dataset.wa + "\n— ExpressTech"
         : "Site app for " + project.name + ": tick each point when installed and add a photo. " + b.dataset.wa;
       window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank"); }; });
+    body.querySelectorAll("[data-goissue]").forEach(function(row){ row.onclick = function(){
+      var i = siteOpenIssues().find(function(x){ return x.id === row.dataset.goissue; }); if (!i) return;
+      var fi = project.floors.findIndex(function(f){ return i.floor_id === f.id || i.floor_id.indexOf(f.id + "-p") === 0; });
+      document.getElementById("siteOverlay").classList.remove("visible");
+      if (fi >= 0 && fi !== project.activeFloorIndex) switchFloor(fi);
+      setTimeout(function(){ renderMarkers(); var pins = el.markerLayer.querySelectorAll(".site-pin"); pins.forEach(function(pn){ pn.animate && pn.animate([{ transform:"scale(1)" }, { transform:"scale(1.8)" }, { transform:"scale(1)" }], { duration:700, iterations:2 }); }); }, 400);
+    }; });
+    var ob = document.getElementById("stOffice"); if (ob) ob.onclick = function(){ window.open(SITE_PAGE + "#office&s=" + encodeURIComponent(zRelay().url) + "&p=" + project.site.id, "_blank"); };
     var ab = document.getElementById("stAsanaBtn");
     if (ab) ab.onclick = function(){
       var v = document.getElementById("stAsana").value, m = v.match(/project\/(\d{6,})/) || v.match(/(\d{10,})/);
@@ -6561,6 +6660,8 @@
         .catch(function(e){ document.getElementById("stMsg").textContent = "Couldn't link Asana: " + e.message; });
     };
   }
+  // keep reports and ticks fresh on the drawing while a published project is open
+  setInterval(function(){ if (!document.hidden && project.site && zRelay().url && !siteUi.busy) loadSite(); }, 120000);
   (function(){
     var ov = document.getElementById("siteOverlay"); if (!ov) return;
     document.getElementById("siteBtn").addEventListener("click", function(){ renderSiteDialog(""); ov.classList.add("visible"); loadSite(); });

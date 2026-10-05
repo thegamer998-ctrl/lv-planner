@@ -44,6 +44,16 @@ In the Worker, go to **Settings → Variables and Secrets** and add:
 
 Click **Deploy** after adding them. You can start with only `ADMIN_KEY` and `ALLOWED_ORIGIN`, so the site app works, and add Asana and Zoho later.
 
+## 3b. Keep Asana mirrored every 2 minutes
+1. In the Worker, go to **Settings → Triggers → Cron Triggers** and click **Add**.
+2. Enter `*/2 * * * *` and save.
+
+The server then reads every linked Asana project every 2 minutes on its own:
+- stages, steps, who is assigned, due dates, completions and comments
+- the project status update
+
+Projects marked complete in Asana are checked every 6 hours. Opening a project in the app also refreshes it, and there's a **Refresh** button in the Progress tab.
+
 ## 4. Asana token (for the sync)
 1. In Asana, click your photo, then **Settings → Apps → Developer apps → Personal access tokens**. On some accounts the page is at https://app.asana.com/0/my-apps.
 2. Click **Create new token**, name it `ExpressTech Site`, and copy it into `ASANA_TOKEN`.
@@ -75,10 +85,33 @@ Do this once on each office device. The **Quote** dialog uses the same server.
 2. **Send the links.**
    - **Team link:** for technicians. They can tick, take photos and add notes. The first time, the phone asks for their name.
    - **Customer link:** view only, with progress, photos and stages. It never shows the team link or payment tasks.
-3. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
+3. **Office view (all projects).** In the planner, open **Site → Open office view**, or bookmark `https://thegamer998-ctrl.github.io/lv-planner/site.html#office&s=<server address>`.
+   - Enter the office key once on each device.
+   - It lists every project with progress, open site reports, Asana stages, the next stage and the status.
+   - Open a project to see everything, including office-only tasks such as payments.
+4. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
    - When every point of a kind is ticked, the matching subtask is completed with a comment. For example, all APs ticked completes **Ceiling Access Points Installation**, and all cameras ticked completes a subtask with "camera install" in its name.
    - Unticking reopens it.
-   - The Asana stages show in the site app's **Progress** tab, refreshed every 5 minutes. Payment and invoice tasks are hidden.
-4. **Changes to the design.** Click **Update site**. Ticks, photos and notes on existing points are kept.
-5. **No signal on site** (basements). Ticks, notes and photos wait on the phone and upload by themselves when the signal returns.
-6. **Lost a link?** Open **Site** in the planner to copy it again. Links can be reset from the server if one is shared by mistake.
+   - The Asana stages show in the site app's **Progress** tab and stay mirrored every 2 minutes (see step 3b).
+5. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.
+   - Technicians see the work stages.
+   - Customers see the stages without comments.
+   - Payment and invoice tasks are office only.
+6. **Site reports.** A technician taps **Report** on the plan and taps the spot, then chooses one of:
+   - **Extra point found here**, with the kind of point (AP, camera…)
+   - **Point not on site**
+   - **Other issue**
+
+   They add a comment and an optional photo. You see it:
+   - in the office view, under **Reports**
+   - on your drawing in the planner, as an orange pin
+
+   Click the pin and choose:
+   - **Add camera here**: the point is placed exactly there
+   - **Remove this point**
+   - **Not needed / Keep the point**, with a reply
+
+   Press **Update site**. The technician sees the new or removed point and your answer.
+7. **Changes to the design.** Click **Update site**. Ticks, photos and notes on existing points are kept.
+8. **No signal on site** (basements). Ticks, notes and photos wait on the phone and upload by themselves when the signal returns.
+9. **Lost a link?** Open **Site** in the planner to copy it again. Links can be reset from the server if one is shared by mistake.

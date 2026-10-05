@@ -13,13 +13,13 @@
 <style>
   :root{
     --bg:#f3f5f8; --panel:#ffffff; --panel-2:#f7f8fa; --text:#111827; --muted:#6b7280; --line:#e5e7eb; --line-2:#d1d5db;
-    --accent:#006fff; --accent-soft:#e8f1ff; --ok:#12a150; --ok-soft:#e7f7ee; --warn:#d97706; --danger:#dc2626;
+    --accent:#006fff; --accent-soft:#e8f1ff; --ok:#12a150; --ok-soft:#e7f7ee; --warn:#ea580c; --warn-soft:#fff1e6; --danger:#dc2626;
     --shadow:0 8px 28px rgba(15,23,42,.12); --radius:14px;
     --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px);
   }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#0d1117; --panel:#161b22; --panel-2:#1c2330; --text:#e6edf3; --muted:#8b949e; --line:#2a313c; --line-2:#3a4250;
-      --accent:#3b8bff; --accent-soft:#132744; --ok:#2fbf6a; --ok-soft:#10301f; --shadow:0 10px 30px rgba(0,0,0,.45); }
+      --accent:#3b8bff; --accent-soft:#132744; --ok:#2fbf6a; --ok-soft:#10301f; --warn:#fb923c; --warn-soft:#3a210f; --shadow:0 10px 30px rgba(0,0,0,.45); }
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font:15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
@@ -27,21 +27,20 @@
   button{ font:inherit; color:inherit; cursor:pointer; }
   input, textarea{ font:inherit; color:inherit; }
 
-  /* top */
   .top{ padding:calc(10px + var(--safe-t)) 14px 10px; background:var(--panel); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-shrink:0; }
-  .logo{ width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#006fff,#00a3ff); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; flex-shrink:0; }
-  .ttl{ min-width:0; flex:1; } .ttl b{ display:block; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .ttl small{ color:var(--muted); font-size:12px; }
+  .logo{ width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#006fff,#00a3ff); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; flex-shrink:0; border:0; }
+  .ttl{ min-width:0; flex:1; } .ttl b{ display:block; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .ttl small{ color:var(--muted); font-size:12px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .role{ font-size:11px; font-weight:700; padding:4px 8px; border-radius:20px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; }
-  .role.customer{ background:var(--ok-soft); color:var(--ok); }
+  .role.customer{ background:var(--ok-soft); color:var(--ok); } .role.office{ background:#111827; color:#fff; }
+  .back{ width:34px; height:34px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-size:18px; flex-shrink:0; }
   .prog{ padding:10px 14px 12px; background:var(--panel); border-bottom:1px solid var(--line); flex-shrink:0; }
-  .prog .row{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:7px; }
-  .prog .pct{ font-size:22px; font-weight:800; letter-spacing:-.02em; } .prog .cnt{ color:var(--muted); font-size:13px; }
+  .prog .row{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:7px; gap:8px; }
+  .prog .pct{ font-size:22px; font-weight:800; letter-spacing:-.02em; } .prog .cnt{ color:var(--muted); font-size:13px; text-align:right; }
   .bar{ height:8px; background:var(--panel-2); border-radius:6px; overflow:hidden; border:1px solid var(--line); } .bar i{ display:block; height:100%; background:linear-gradient(90deg,#12a150,#4ade80); border-radius:6px; transition:width .4s; }
   .queue{ display:none; margin:8px 14px 0; padding:8px 10px; border-radius:10px; background:#fff7e6; color:#92400e; font-size:12.5px; }
   .queue.on{ display:flex; align-items:center; gap:8px; } .queue button{ margin-left:auto; border:0; background:#92400e; color:#fff; border-radius:8px; padding:4px 10px; font-size:12px; }
   @media (prefers-color-scheme: dark){ .queue{ background:#3a2a08; color:#fbbf24; } }
 
-  /* views */
   main{ flex:1; min-height:0; position:relative; }
   .view{ position:absolute; inset:0; display:none; overflow:auto; -webkit-overflow-scrolling:touch; }
   .view.on{ display:block; }
@@ -58,55 +57,66 @@
        border-radius:50%; border:calc(2.2px * var(--inv, 1)) solid var(--c); background:#fff; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.35); padding:0; }
   .mk span{ font-size:calc(7.5px * var(--inv, 1)); font-weight:800; color:var(--c); letter-spacing:-.02em; line-height:1; }
   .mk.done{ background:var(--c); } .mk.done span{ color:#fff; }
-  .mk.done::after{ content:""; position:absolute; right:calc(-5px * var(--inv, 1)); top:calc(-5px * var(--inv, 1)); width:calc(13px * var(--inv, 1)); height:calc(13px * var(--inv, 1)); border-radius:50%;
+  .mk.done::after{ content:""; position:absolute; right:calc(-5px * var(--inv, 1)); top:calc(-5px * var(--inv, 1)); width:calc(12px * var(--inv, 1)); height:calc(12px * var(--inv, 1)); border-radius:50%;
        background:#12a150 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/70% no-repeat; border:calc(1.5px * var(--inv, 1)) solid #fff; }
-  .mk.ph::before{ content:""; position:absolute; left:calc(-4px * var(--inv, 1)); bottom:calc(-4px * var(--inv, 1)); width:calc(9px * var(--inv, 1)); height:calc(9px * var(--inv, 1)); border-radius:50%; background:#111827; border:calc(1.5px * var(--inv, 1)) solid #fff; }
+  .mk.ph::before{ content:""; position:absolute; left:calc(-4px * var(--inv, 1)); bottom:calc(-4px * var(--inv, 1)); width:calc(8px * var(--inv, 1)); height:calc(8px * var(--inv, 1)); border-radius:50%; background:#111827; border:calc(1.5px * var(--inv, 1)) solid #fff; }
   .mk.dim{ opacity:.22; }
   .mk.sel{ outline:calc(3px * var(--inv, 1)) solid var(--accent); outline-offset:calc(2px * var(--inv, 1)); }
+  .mk .lb{ position:absolute; top:calc(100% + 2px * var(--inv, 1)); left:50%; transform:translateX(-50%); white-space:nowrap; font-size:calc(9px * var(--inv, 1)); font-weight:700; color:#111827;
+       background:rgba(255,255,255,.92); font-style:normal; padding:calc(1px * var(--inv, 1)) calc(4px * var(--inv, 1)); border-radius:calc(4px * var(--inv, 1)); display:none; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+  .labels .mk .lb{ display:block; }
+  .pin{ position:absolute; width:calc(26px * var(--inv, 1)); height:calc(26px * var(--inv, 1)); margin:calc(-26px * var(--inv, 1)) 0 0 calc(-13px * var(--inv, 1)); border:0; padding:0; background:none; }
+  .pin svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+  .planbar{ position:absolute; left:12px; right:12px; top:10px; display:none; align-items:center; gap:8px; background:#111827; color:#fff; border-radius:12px; padding:10px 12px; font-size:13.5px; font-weight:600; box-shadow:var(--shadow); }
+  .planbar.on{ display:flex; } .planbar button{ margin-left:auto; border:0; background:rgba(255,255,255,.18); color:#fff; border-radius:8px; padding:5px 10px; font-weight:600; }
+  .fab{ position:absolute; left:12px; top:10px; height:38px; border-radius:19px; border:0; background:var(--warn); color:#fff; font-weight:700; font-size:13px; padding:0 14px 0 10px; display:flex; align-items:center; gap:6px; box-shadow:var(--shadow); }
+  .fab svg{ width:18px; height:18px; }
   .zoom{ position:absolute; right:12px; bottom:12px; display:flex; flex-direction:column; gap:6px; }
   .zoom button{ width:40px; height:40px; border-radius:12px; border:1px solid var(--line-2); background:var(--panel); font-size:20px; font-weight:600; box-shadow:var(--shadow); }
   .legend{ position:absolute; left:10px; bottom:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:6px 9px; font-size:11.5px; box-shadow:var(--shadow); display:flex; flex-wrap:wrap; gap:4px 10px; max-width:calc(100% - 80px); }
   .legend span{ display:inline-flex; align-items:center; gap:5px; } .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
   .empty{ padding:40px 24px; text-align:center; color:var(--muted); }
 
-  /* list */
   .search{ margin:10px 12px 0; display:flex; gap:8px; }
   .search input{ flex:1; height:40px; border-radius:12px; border:1px solid var(--line-2); background:var(--panel); padding:0 12px; }
   .grp{ margin:12px 12px 4px; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; display:flex; justify-content:space-between; }
   .card{ margin:0 12px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
   .rowi{ display:flex; align-items:center; gap:11px; padding:11px 12px; border-top:1px solid var(--line); background:none; border-left:0; border-right:0; border-bottom:0; width:100%; text-align:left; }
   .rowi:first-child{ border-top:0; }
-  .dot{ width:12px; height:12px; border-radius:50%; flex-shrink:0; }
-  .rowi .t{ flex:1; min-width:0; } .rowi .t b{ display:block; font-size:14px; font-weight:600; } .rowi .t small{ color:var(--muted); font-size:12px; }
-  .pc{ font-size:11.5px; color:var(--muted); display:inline-flex; align-items:center; gap:3px; }
-  .ck{ width:30px; height:30px; border-radius:9px; border:2px solid var(--line-2); display:grid; place-items:center; flex-shrink:0; background:var(--panel); }
+  .dot{ width:12px; height:12px; border-radius:50%; flex-shrink:0; display:inline-block; }
+  .rowi .t{ flex:1; min-width:0; } .rowi .t b{ display:block; font-size:14px; font-weight:600; } .rowi .t small{ color:var(--muted); font-size:12px; display:block; }
+  .pc{ font-size:11.5px; color:var(--muted); display:inline-flex; align-items:center; gap:3px; white-space:nowrap; }
+  .ck{ width:30px; height:30px; border-radius:9px; border:2px solid var(--line-2); display:grid; place-items:center; flex-shrink:0; background:var(--panel); padding:0; }
   .ck.on{ background:var(--ok); border-color:var(--ok); }
   .ck svg{ width:17px; height:17px; opacity:0; } .ck.on svg{ opacity:1; }
-
-  /* progress */
-  .sec{ margin:14px 12px 6px; font-size:13px; font-weight:700; }
+  .sec{ margin:14px 12px 6px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
+  .sec button{ border:0; background:none; color:var(--accent); font-weight:600; font-size:12.5px; padding:0; }
   .catc{ padding:12px; border-top:1px solid var(--line); } .catc:first-child{ border-top:0; }
   .catc .h{ display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; font-size:14px; font-weight:600; } .catc .h small{ color:var(--muted); font-weight:500; }
-  .stg{ padding:10px 12px; border-top:1px solid var(--line); } .stg:first-child{ border-top:0; }
-  .stg .s1{ display:flex; align-items:center; gap:9px; font-weight:600; font-size:14px; }
-  .stg .subs{ margin:6px 0 0 29px; display:flex; flex-direction:column; gap:4px; } .stg .subs div{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); }
-  .tick{ width:20px; height:20px; border-radius:50%; border:2px solid var(--line-2); flex-shrink:0; display:grid; place-items:center; }
+  .stg{ padding:11px 12px; border-top:1px solid var(--line); display:flex; gap:10px; align-items:flex-start; width:100%; background:none; border-left:0; border-right:0; border-bottom:0; text-align:left; }
+  .stg:first-child{ border-top:0; }
+  .stg .s1{ flex:1; min-width:0; } .stg .s1 b{ display:block; font-size:14px; } .stg .s1 small{ display:block; color:var(--muted); font-size:12px; margin-top:1px; }
+  .stg .subs{ margin-top:6px; display:flex; flex-direction:column; gap:4px; } .stg .subs div{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); }
+  .tick{ width:20px; height:20px; border-radius:50%; border:2px solid var(--line-2); flex-shrink:0; display:grid; place-items:center; background:var(--panel); padding:0; }
   .tick.on{ background:var(--ok); border-color:var(--ok); } .tick svg{ width:12px; height:12px; opacity:0; } .tick.on svg{ opacity:1; }
   .tick.sm{ width:15px; height:15px; border-width:1.5px; } .tick.sm svg{ width:9px; height:9px; }
+  .pill{ display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 7px; border-radius:20px; background:var(--panel-2); color:var(--muted); white-space:nowrap; }
+  .pill.open{ background:var(--warn-soft); color:var(--warn); } .pill.approved{ background:var(--accent-soft); color:var(--accent); } .pill.done{ background:var(--ok-soft); color:var(--ok); } .pill.rejected{ background:var(--panel-2); color:var(--muted); }
+  .pill.ok{ background:var(--ok-soft); color:var(--ok); } .pill.late{ background:#fee2e2; color:#b91c1c; }
+  .status-card{ margin:12px 12px 0; padding:12px; border-radius:var(--radius); background:var(--panel); border:1px solid var(--line); }
+  .status-card b{ font-size:14px; } .status-card p{ margin:5px 0 0; font-size:13px; color:var(--muted); white-space:pre-wrap; }
   .note{ font-size:12px; color:var(--muted); margin:8px 14px 18px; }
-
-  /* activity */
   .act{ display:flex; gap:10px; padding:11px 12px; border-top:1px solid var(--line); align-items:flex-start; } .act:first-child{ border-top:0; }
   .act .av{ width:30px; height:30px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; font-weight:700; font-size:12px; flex-shrink:0; }
-  .act .tx{ flex:1; font-size:13.5px; } .act .tx small{ display:block; color:var(--muted); font-size:12px; }
+  .act .av.as{ background:#fde7ef; color:#d6336c; }
+  .act .tx{ flex:1; font-size:13.5px; min-width:0; } .act .tx small{ display:block; color:var(--muted); font-size:12px; }
   .act img{ width:46px; height:46px; object-fit:cover; border-radius:8px; flex-shrink:0; }
 
-  /* tabs */
   .tabs{ display:flex; background:var(--panel); border-top:1px solid var(--line); padding-bottom:var(--safe-b); flex-shrink:0; }
-  .tabs button{ flex:1; border:0; background:none; padding:8px 0 7px; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; font-weight:600; color:var(--muted); }
+  .tabs button{ flex:1; border:0; background:none; padding:8px 0 7px; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:10.5px; font-weight:600; color:var(--muted); position:relative; }
   .tabs button svg{ width:22px; height:22px; } .tabs button.on{ color:var(--accent); }
+  .tabs .badge{ position:absolute; top:3px; left:calc(50% + 6px); min-width:17px; height:17px; border-radius:9px; background:var(--warn); color:#fff; font-size:10px; display:grid; place-items:center; padding:0 4px; }
 
-  /* sheet */
   .scrim{ position:fixed; inset:0; background:rgba(15,23,42,.35); opacity:0; pointer-events:none; transition:opacity .2s; z-index:20; }
   .scrim.on{ opacity:1; pointer-events:auto; }
   .sheet{ position:fixed; left:0; right:0; bottom:0; max-height:88vh; background:var(--panel); border-radius:20px 20px 0 0; box-shadow:var(--shadow); z-index:21;
@@ -117,29 +127,48 @@
   .sh-h{ display:flex; align-items:center; gap:10px; padding:8px 16px 10px; flex-shrink:0; }
   .sh-h .badge{ width:38px; height:38px; border-radius:11px; display:grid; place-items:center; color:#fff; font-weight:800; font-size:12px; flex-shrink:0; }
   .sh-h .t{ flex:1; min-width:0; } .sh-h .t b{ display:block; font-size:16px; } .sh-h .t small{ color:var(--muted); font-size:12.5px; }
-  .x{ width:34px; height:34px; border-radius:50%; border:0; background:var(--panel-2); font-size:18px; color:var(--muted); }
+  .x{ width:34px; height:34px; border-radius:50%; border:0; background:var(--panel-2); font-size:18px; color:var(--muted); flex-shrink:0; }
   .sh-b{ overflow:auto; padding:0 16px 16px; -webkit-overflow-scrolling:touch; }
   .status{ display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; background:var(--panel-2); margin-bottom:12px; font-size:14px; }
-  .status.done{ background:var(--ok-soft); color:var(--ok); font-weight:600; }
+  .status.done{ background:var(--ok-soft); color:var(--ok); font-weight:600; } .status.warn{ background:var(--warn-soft); color:var(--warn); font-weight:600; }
   .status small{ display:block; font-weight:400; color:var(--muted); font-size:12px; }
   .big{ width:100%; height:50px; border-radius:13px; border:0; font-weight:700; font-size:15.5px; display:flex; align-items:center; justify-content:center; gap:8px; }
-  .big.ok{ background:var(--ok); color:#fff; } .big.undo{ background:var(--panel-2); color:var(--text); border:1px solid var(--line-2); height:42px; font-size:14px; font-weight:600; }
-  .two{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 14px; }
+  .big.ok{ background:var(--ok); color:#fff; } .big.warn{ background:var(--warn); color:#fff; } .big.pri{ background:var(--accent); color:#fff; }
+  .big.undo{ background:var(--panel-2); color:var(--text); border:1px solid var(--line-2); height:42px; font-size:14px; font-weight:600; }
+  .big:disabled{ opacity:.5; }
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 14px; } .three{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:10px 0 14px; }
   .btn{ height:44px; border-radius:12px; border:1px solid var(--line-2); background:var(--panel); font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center; gap:7px; }
-  .btn.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.pri{ background:var(--accent); border-color:var(--accent); color:#fff; } .btn.ok{ background:var(--ok); border-color:var(--ok); color:#fff; }
   .btn svg{ width:18px; height:18px; }
   .lbl{ font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:4px 0 8px; }
+  .seg{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px; }
+  .seg button{ border:1.5px solid var(--line-2); background:var(--panel); border-radius:12px; padding:9px 6px; font-size:12.5px; font-weight:600; line-height:1.2; }
+  .seg button.on{ border-color:var(--warn); background:var(--warn-soft); color:var(--warn); }
+  .types{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .types button{ border:1.5px solid var(--line-2); background:var(--panel); border-radius:20px; padding:6px 11px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
+  .types button.on{ border-color:var(--text); background:var(--text); color:var(--panel); }
+  textarea.ta{ width:100%; min-height:70px; resize:vertical; border-radius:12px; border:1px solid var(--line-2); background:var(--panel); padding:10px; margin-bottom:12px; }
   .photos{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-bottom:14px; }
   .photos button{ position:relative; padding:0; border:0; border-radius:10px; overflow:hidden; aspect-ratio:1; background:var(--panel-2); }
   .photos img{ width:100%; height:100%; object-fit:cover; display:block; }
   .photos .pend{ position:absolute; inset:0; display:grid; place-items:center; background:rgba(0,0,0,.35); color:#fff; font-size:11px; font-weight:700; }
   .notes .n1{ padding:9px 11px; border-radius:11px; background:var(--panel-2); margin-bottom:6px; font-size:14px; white-space:pre-wrap; word-break:break-word; }
   .notes .n1 small{ display:block; color:var(--muted); font-size:11.5px; margin-top:3px; }
+  .notes .n1.sys{ background:none; border:1px dashed var(--line-2); font-size:12.5px; color:var(--muted); padding:6px 10px; }
   .addnote{ display:flex; gap:6px; margin-top:6px; } .addnote textarea{ flex:1; min-height:42px; max-height:120px; resize:none; border-radius:11px; border:1px solid var(--line-2); background:var(--panel); padding:10px; }
   .addnote button{ width:64px; border-radius:11px; border:0; background:var(--accent); color:#fff; font-weight:700; }
   .muted{ color:var(--muted); font-size:13px; }
+  .meta{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+  .desc{ font-size:13.5px; white-space:pre-wrap; background:var(--panel-2); border-radius:11px; padding:10px; margin-bottom:12px; }
+  .subrow{ display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line); font-size:14px; } .subrow:first-child{ border-top:0; }
+  .subrow .t{ flex:1; } .subrow small{ display:block; color:var(--muted); font-size:11.5px; }
 
-  /* viewer + modal */
+  .pcard{ display:block; width:calc(100% - 24px); margin:10px 12px 0; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:12px; }
+  .pcard .h{ display:flex; align-items:center; gap:8px; margin-bottom:8px; } .pcard .h b{ flex:1; font-size:15px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pcard .ft{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; align-items:center; } .pcard .ft small{ color:var(--muted); font-size:12px; margin-left:auto; }
+  .login{ max-width:380px; margin:40px auto; padding:0 20px; }
+  .login input{ width:100%; height:46px; border-radius:12px; border:1px solid var(--line-2); background:var(--panel); padding:0 12px; margin:10px 0 12px; }
+
   .viewer{ position:fixed; inset:0; background:#000; z-index:40; display:none; flex-direction:column; }
   .viewer.on{ display:flex; }
   .viewer .vt{ display:flex; align-items:center; gap:10px; padding:calc(10px + var(--safe-t)) 12px 10px; color:#fff; }
@@ -161,42 +190,48 @@
 </style>
 </head>
 <body>
-<div class="loading" id="loading"><div><div class="sp"></div><div id="loadMsg">Opening project…</div></div></div>
+<div class="loading" id="loading"><div><div class="sp"></div><div id="loadMsg">Opening…</div></div></div>
 
 <header class="top">
+  <button type="button" class="back hidden" id="backBtn" aria-label="All projects">‹</button>
   <div class="logo">ET</div>
   <div class="ttl"><b id="pName">ExpressTech</b><small id="pSub">Installation site</small></div>
   <span class="role" id="roleTag">Team</span>
 </header>
-<section class="prog">
+<section class="prog" id="progBar">
   <div class="row"><span class="pct" id="pct">0%</span><span class="cnt" id="cnt">0 of 0 installed</span></div>
   <div class="bar"><i id="barI" style="width:0%"></i></div>
 </section>
 <div class="queue" id="queue"><span id="queueTxt"></span><button type="button" id="queueRetry">Retry now</button></div>
 
 <main>
+  <section class="view" id="vHome"><div id="homeBody"></div></section>
   <section class="view on" id="vPlan">
     <div class="chips" id="floorChips"></div>
     <div class="plan" id="plan">
       <div class="stage" id="stage"><img id="floorImg" alt=""><div id="marks"></div></div>
+      <button type="button" class="fab hidden" id="reportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 7v4M12 13.5v.01"/></svg>Report</button>
+      <div class="planbar" id="placeBar"><span>Tap the exact spot on the drawing</span><button type="button" id="placeCancel">Cancel</button></div>
       <div class="legend" id="legend"></div>
       <div class="zoom"><button type="button" id="zIn" aria-label="Zoom in">+</button><button type="button" id="zOut" aria-label="Zoom out">−</button><button type="button" id="zFit" aria-label="Fit" style="font-size:15px;">⤢</button></div>
     </div>
   </section>
   <section class="view" id="vList">
-    <div class="search"><input id="q" type="search" placeholder="Search points (e.g. AP, Living, U7)"></div>
+    <div class="search"><input id="q" type="search" placeholder="Search points (e.g. AP, CCTV, U7)"></div>
     <div class="chips" id="listChips"></div>
     <div id="listBody"></div>
     <div style="height:20px"></div>
   </section>
   <section class="view" id="vProg"><div id="progBody"></div></section>
+  <section class="view" id="vRep"><div id="repBody"></div></section>
   <section class="view" id="vAct"><div id="actBody"></div></section>
 </main>
 
-<nav class="tabs">
+<nav class="tabs" id="tabs">
   <button type="button" class="on" data-v="vPlan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>Plan</button>
   <button type="button" data-v="vList"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Checklist</button>
   <button type="button" data-v="vProg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progress</button>
+  <button type="button" data-v="vRep" id="tabRep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 7v4M12 13.5v.01"/></svg>Reports</button>
   <button type="button" data-v="vAct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Activity</button>
 </nav>
 
@@ -214,7 +249,7 @@
 </div>
 
 <div class="modal" id="nameModal"><div class="box">
-  <h3>Your name</h3><p>So everyone can see who installed each point and took each photo. Asked once on this phone.</p>
+  <h3>Your name</h3><p>So everyone can see who installed each point, took each photo and wrote each note. Asked once on this phone.</p>
   <input id="nameIn" maxlength="40" placeholder="e.g. Kutbuddin" autocomplete="name">
   <button type="button" class="big ok" id="nameOk">Continue</button>
 </div></div>
@@ -229,12 +264,18 @@
   var $ = function(id){ return document.getElementById(id); };
   var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   var CHECK20 = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  var CAM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+  var GAL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>';
   var CATS = { ap:{ name:"Access points", tag:"AP" }, cam:{ name:"Cameras", tag:"CAM" }, data:{ name:"Data points", tag:"D" }, phone:{ name:"IP phones", tag:"PH" }, icom:{ name:"Intercom", tag:"IC" }, rack:{ name:"Cabinet", tag:"R" }, other:{ name:"TV & other", tag:"•" } };
+  var SUGGEST = [["wifi","Access point","#3b82f6"],["cctv","Camera","#ef4444"],["network","Data point","#22c55e"],["ipphone","IP phone","#a855f7"],["intercom","Intercom","#f59e0b"],["tv","TV point","#a16207"],["other","Other","#64748b"]];
+  var KIND = { missing:"Extra point found on site", extra:"Point not on site", other:"Site issue" };
+  var ISTAT = { open:"Waiting for office", approved:"Approved — will be added", rejected:"Not needed", done:"Done — drawing updated" };
 
-  // ---- link: site.html#p=<project>&k=<key>&s=<server>
+  // ---- links: site.html#p=<project>&k=<key>&s=<server>     office: site.html#office&s=<server>[&p=<project>]
   var hp = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
-  var P = hp.get("p"), K = hp.get("k"), S = (hp.get("s") || "").replace(/\/+$/, "");
-  var st = { data:null, floor:null, filter:"all", listFilter:"todo", sel:null, view:"vPlan", pending:{} };
+  var S = (hp.get("s") || "").replace(/\/+$/, ""), OFFICE = hp.has("office"), P = hp.get("p"), K = hp.get("k");
+  var st = { data:null, floor:null, filter:"all", listFilter:"todo", sel:null, view:"vPlan", pending:{}, placing:false, list:null };
+  function okey(){ try { return localStorage.getItem("et_office_key:" + S) || ""; } catch(e){ return ""; } }
   function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function toast(m){ var t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove("on"); }, 2600); }
   function when(ts){
@@ -242,29 +283,38 @@
     if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + " min ago"; if (s < 86400) return Math.floor(s/3600) + " h ago";
     return d.toLocaleDateString(undefined, { day:"numeric", month:"short" }) + " " + d.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit" });
   }
+  function day(iso){ if (!iso) return ""; var d = new Date(iso + "T00:00:00"); return d.toLocaleDateString(undefined, { day:"numeric", month:"short" }); }
+  function overdue(iso, done){ if (!iso || done) return false; return new Date(iso + "T23:59:59") < new Date(); }
   function name(){ try { return localStorage.getItem("et_site_name") || ""; } catch(e){ return ""; } }
+  function auth(){ return OFFICE ? { "X-Admin-Key":okey() } : { "X-Key":K }; }
   function api(path){ return S + "/site/p/" + P + path; }
-  function imgUrl(kind, id){ return api("/" + kind + "/" + encodeURIComponent(id)) + "?k=" + encodeURIComponent(K) + (kind === "floor" ? "&v=" + ((st.data.floors.find(function(f){ return f.id === id; }) || {}).v || 0) : ""); }
-  function canEdit(){ return st.data && (st.data.role === "team" || st.data.role === "office"); }
+  function imgKey(){ return OFFICE ? (st.data && st.data.links ? st.data.links.team_key : "") : K; }
+  function imgUrl(kind, id){ return api("/" + kind + "/" + encodeURIComponent(id)) + "?k=" + encodeURIComponent(imgKey()) + (kind === "floor" ? "&v=" + ((st.data.floors.find(function(f){ return f.id === id; }) || {}).v || 0) : ""); }
+  function role(){ return st.data ? st.data.role : ""; }
+  function canEdit(){ return role() === "team" || role() === "office"; }
+  function isOffice(){ return role() === "office"; }
   function req(method, path, body, type){
-    var h = { "X-Key":K, "X-By":name() || "Technician" };
+    var h = Object.assign({ "X-By":name() || (OFFICE ? "ExpressTech office" : "Technician") }, auth());
     if (type) h["Content-Type"] = type;
     return fetch(api(path), { method:method, headers:h, body:body }).then(function(r){
       return r.json().catch(function(){ return {}; }).then(function(j){ if (!r.ok) { var e = new Error(j.error || ("Error " + r.status)); e.status = r.status; throw e; } return j; });
     });
   }
 
-  // ---- offline queue (IndexedDB): ticks, notes and photos wait here when there is no signal
+  // ---- offline queue (IndexedDB): ticks, notes, photos and reports wait here when there is no signal
   var idb = null;
   function openDb(){ return idb || (idb = new Promise(function(res, rej){ var o = indexedDB.open("et-site", 1); o.onupgradeneeded = function(){ o.result.createObjectStore("q", { keyPath:"id" }); }; o.onsuccess = function(){ res(o.result); }; o.onerror = function(){ rej(o.error); }; })); }
   function qAll(){ return openDb().then(function(db){ return new Promise(function(res){ var out = []; var c = db.transaction("q").objectStore("q").openCursor(); c.onsuccess = function(){ var cur = c.result; if (cur){ if (cur.value.p === P) out.push(cur.value); cur.continue(); } else res(out.sort(function(a,b){ return a.t - b.t; })); }; c.onerror = function(){ res(out); }; }); }).catch(function(){ return []; }); }
   function qPut(item){ return openDb().then(function(db){ return new Promise(function(res){ var tx = db.transaction("q", "readwrite"); tx.objectStore("q").put(item); tx.oncomplete = res; tx.onerror = res; }); }).catch(function(){}); }
   function qDel(id){ return openDb().then(function(db){ return new Promise(function(res){ var tx = db.transaction("q", "readwrite"); tx.objectStore("q").delete(id); tx.oncomplete = res; tx.onerror = res; }); }).catch(function(){}); }
-  var flushing = false;
+  var flushing = false, issueMap = {};   // local report id → server id (photos taken before the report reached the server)
+  try { issueMap = JSON.parse(localStorage.getItem("et_issue_map") || "{}") || {}; } catch(e){}
   function send(item){
-    if (item.kind === "status") return req("POST", "/pt/" + encodeURIComponent(item.pt) + "/status", JSON.stringify({ installed:item.installed }), "application/json");
-    if (item.kind === "note") return req("POST", "/pt/" + encodeURIComponent(item.pt) + "/note", JSON.stringify({ text:item.text }), "application/json");
-    if (item.kind === "photo") return req("POST", "/pt/" + encodeURIComponent(item.pt) + "/photo?w=" + item.w + "&h=" + item.h, item.blob, "image/jpeg");
+    var base = item.issue ? "/issue/" + (issueMap[item.issue] || item.issue) : "/pt/" + encodeURIComponent(item.pt);
+    if (item.kind === "status") return req("POST", base + "/status", JSON.stringify({ installed:item.installed }), "application/json");
+    if (item.kind === "note") return req("POST", base + "/note", JSON.stringify({ text:item.text }), "application/json");
+    if (item.kind === "photo") return req("POST", base + "/photo?w=" + item.w + "&h=" + item.h, item.blob, "image/jpeg");
+    if (item.kind === "report") return req("POST", "/issue", JSON.stringify(item.body), "application/json").then(function(r){ issueMap[item.local] = r.id; try { localStorage.setItem("et_issue_map", JSON.stringify(issueMap)); } catch(e){} return r; });
     return Promise.resolve();
   }
   function flush(){
@@ -275,17 +325,58 @@
       return chain.then(function(){ return sent; });
     }).then(function(sent){ flushing = false; updateQueue(); if (sent) load(true); }, function(){ flushing = false; updateQueue(); });
   }
-  function updateQueue(){ qAll().then(function(items){ var q = $("queue"); st.pending = {}; items.forEach(function(it){ (st.pending[it.pt] = st.pending[it.pt] || []).push(it); }); q.classList.toggle("on", items.length > 0); $("queueTxt").textContent = items.length + " change" + (items.length > 1 ? "s" : "") + " waiting for signal — they upload automatically."; }); }
+  function updateQueue(){ return qAll().then(function(items){ var q = $("queue"); st.pending = {}; items.forEach(function(it){ var k = it.issue ? "issue:" + it.issue : it.kind === "report" ? "report" : it.pt; (st.pending[k] = st.pending[k] || []).push(it); }); q.classList.toggle("on", items.length > 0); $("queueTxt").textContent = items.length + " change" + (items.length > 1 ? "s" : "") + " waiting for signal — they upload automatically."; }); }
   function enqueue(item){
     item.id = Date.now() + "-" + Math.random().toString(36).slice(2); item.p = P; item.t = Date.now();
-    return qPut(item).then(function(){ updateQueue(); return flush(); });
+    return qPut(item).then(updateQueue).then(function(){ return flush(); });
   }
   window.addEventListener("online", function(){ flush(); });
   $("queueRetry").onclick = function(){ flush(); };
 
-  // ---- load project
+  // ================= office: all projects =================
+  function showHome(){
+    P = null; st.data = null; closeSheet();
+    history.replaceState(null, "", "#office&s=" + encodeURIComponent(S));
+    document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on", v.id === "vHome"); });
+    ["tabs","progBar","backBtn"].forEach(function(id){ $(id).classList.add("hidden"); });
+    $("pName").textContent = "ExpressTech projects"; $("pSub").textContent = "Office view · installations, reports and stages";
+    $("roleTag").textContent = "Office"; $("roleTag").className = "role office";
+    if (!okey()){
+      $("homeBody").innerHTML = '<div class="login"><h3 style="margin:0 0 4px">Office sign-in</h3><p class="muted">Enter the office key once on this device.</p><input id="okIn" type="password" placeholder="Office key"><button type="button" class="big pri" id="okGo">Open projects</button></div>';
+      $("loading").classList.add("hidden");
+      $("okGo").onclick = function(){ try { localStorage.setItem("et_office_key:" + S, $("okIn").value.trim()); } catch(e){} showHome(); };
+      return;
+    }
+    fetch(S + "/site/list", { headers:{ "X-Admin-Key":okey() }, cache:"no-store" }).then(function(r){ return r.json().then(function(j){ if (!r.ok){ if (r.status === 401){ try { localStorage.removeItem("et_office_key:" + S); } catch(e){} } throw new Error(j.error || "Error"); } return j; }); })
+      .then(function(j){
+        st.list = j.projects; $("loading").classList.add("hidden");
+        var open = j.projects.reduce(function(a,p){ return a + p.open_reports; }, 0);
+        $("homeBody").innerHTML = '<div class="sec"><span>' + j.projects.length + " project" + (j.projects.length === 1 ? "" : "s") + (open ? ' · <span style="color:var(--warn)">' + open + " open report" + (open > 1 ? "s" : "") + "</span>" : "") + '</span><button type="button" id="homeRef">Refresh</button></div>' +
+          (j.projects.map(function(p){
+            var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
+            return '<button type="button" class="pcard" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
+              '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+              '<div class="ft"><span class="pill">' + p.installed + " / " + p.points + " installed</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
+              (p.asana ? '<span class="pill">Stages ' + p.stages_done + " / " + p.stages_all + "</span>" + (p.next_stage ? '<span class="pill approved">Next: ' + esc(p.next_stage) + "</span>" : "") : '<span class="pill">Asana not linked</span>') +
+              "<small>" + when(p.updated_at) + "</small></div>" + (p.status ? '<div class="muted" style="margin-top:6px">' + esc(p.status.title) + "</div>" : "") + "</button>";
+          }).join("") || '<div class="empty">No projects yet. Publish one from the planner (Site button).</div>') + '<div style="height:20px"></div>';
+        $("homeBody").querySelectorAll("[data-p]").forEach(function(b){ b.onclick = function(){ openProject(b.dataset.p); }; });
+        $("homeRef").onclick = showHome;
+      }).catch(function(e){ $("loading").classList.add("hidden"); $("homeBody").innerHTML = '<div class="empty">' + esc(e.message) + '<br><br><button type="button" class="btn" id="homeRetry" style="margin:0 auto;padding:0 16px">Try again</button></div>'; $("homeRetry").onclick = showHome; });
+  }
+  function openProject(id){
+    P = id; st.floor = null; view.loadedFor = null; view.fitNext = true;
+    history.replaceState(null, "", "#office&s=" + encodeURIComponent(S) + "&p=" + encodeURIComponent(id));
+    ["tabs","progBar"].forEach(function(x){ $(x).classList.remove("hidden"); }); $("backBtn").classList.remove("hidden");
+    switchView("vPlan"); $("loading").classList.remove("hidden"); $("loadMsg").textContent = "Opening project…";
+    load().then(function(){ updateQueue(); flush(); });
+  }
+  $("backBtn").onclick = showHome;
+
+  // ================= project =================
   function load(quiet){
-    return fetch(api("") + "?k=" + encodeURIComponent(K), { headers:{ "X-Key":K }, cache:"no-store" }).then(function(r){
+    if (!P) return Promise.resolve();
+    return fetch(api("") + (OFFICE ? "" : "?k=" + encodeURIComponent(K)), { headers:auth(), cache:"no-store" }).then(function(r){
       return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || "Could not open the project"); return j; });
     }).then(function(d){
       st.data = d;
@@ -293,26 +384,32 @@
       $("loading").classList.add("hidden");
       render();
     }).catch(function(e){
-      if (!quiet || !st.data){ $("loadMsg").innerHTML = esc(e.message || "No connection") + '<br><br><button type="button" class="btn" onclick="location.reload()">Try again</button>'; }
+      if (!quiet || !st.data){ $("loading").classList.remove("hidden"); $("loadMsg").innerHTML = esc(e.message || "No connection") + '<br><br><button type="button" class="btn" onclick="location.reload()" style="margin:0 auto;padding:0 16px">Try again</button>'; }
     });
   }
-
-  // ---- derived
   function pts(){ return st.data ? st.data.points : []; }
+  function issues(){ return st.data && st.data.issues ? st.data.issues : []; }
   function isDone(p){ var q = (st.pending[p.point_id] || []).filter(function(i){ return i.kind === "status"; }); return q.length ? !!q[q.length-1].installed : !!p.installed; }
   function catOf(p){ return CATS[p.cat] ? p.cat : "other"; }
   function counts(list){ var n = list.length, d = list.filter(isDone).length; return { n:n, d:d, pct: n ? Math.round(d / n * 100) : 0 }; }
+  function floorName(id){ var f = st.data.floors.find(function(x){ return x.id === id; }); return f ? f.name : ""; }
+  function openReports(){ return issues().filter(function(i){ return i.status === "open"; }).length; }
 
   function render(){
     var d = st.data;
     document.title = d.project.name + " · ExpressTech Site";
     $("pName").textContent = d.project.name;
-    $("pSub").textContent = d.role === "customer" ? "Installation progress by ExpressTech" : "Installation · tap a point to update";
+    $("pSub").textContent = d.role === "customer" ? "Installation progress by ExpressTech" : d.role === "office" ? "Office view" : "Installation · tap a point to update";
     var rt = $("roleTag"); rt.textContent = d.role === "customer" ? "Customer view" : d.role === "office" ? "Office" : "Team";
-    rt.className = "role" + (d.role === "customer" ? " customer" : "");
+    rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" ? " office" : "");
     var c = counts(pts());
-    $("pct").textContent = c.pct + "%"; $("cnt").textContent = c.d + " of " + c.n + " installed"; $("barI").style.width = c.pct + "%";
-    renderFloors(); renderPlanMarks(); renderList(); renderProgress(); renderActivity();
+    $("pct").textContent = c.pct + "%"; $("cnt").textContent = c.d + " of " + c.n + " installed" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
+    $("barI").style.width = c.pct + "%";
+    $("tabRep").classList.toggle("hidden", !canEdit());
+    $("reportBtn").classList.toggle("hidden", !canEdit());
+    var n = openReports(); $("tabRep").querySelectorAll(".badge").forEach(function(b){ b.remove(); });
+    if (n && canEdit()) $("tabRep").insertAdjacentHTML("beforeend", '<span class="badge">' + n + "</span>");
+    renderFloors(); renderPlanMarks(); renderList(); renderProgress(); renderReports(); renderActivity();
     if (st.sel) renderSheet();
   }
 
@@ -323,16 +420,15 @@
       return '<button type="button" class="chip' + (f.id === st.floor ? " on" : "") + '" data-f="' + esc(f.id) + '">' + esc(f.name) + '<span class="n">' + c.d + "/" + c.n + "</span></button>"; }).join("") +
       '<span style="width:8px;flex-shrink:0"></span>' +
       ["all","todo","done"].map(function(k){ return '<button type="button" class="chip' + (st.filter === k ? " on" : "") + '" data-flt="' + k + '">' + { all:"All", todo:"To do", done:"Done" }[k] + "</button>"; }).join("");
-    $("floorChips").querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ if (st.floor !== b.dataset.f){ st.floor = b.dataset.f; view.fitNext = true; renderFloors(); showFloor(); } }; });
+    $("floorChips").querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ if (st.floor !== b.dataset.f){ st.floor = b.dataset.f; view.fitNext = true; renderFloors(); } }; });
     $("floorChips").querySelectorAll("[data-flt]").forEach(function(b){ b.onclick = function(){ st.filter = b.dataset.flt; renderFloors(); renderPlanMarks(); }; });
     showFloor();
     var cats = {}; pts().filter(function(p){ return p.floor_id === st.floor; }).forEach(function(p){ cats[catOf(p)] = p.color; });
     $("legend").innerHTML = Object.keys(cats).map(function(k){ return '<span><i style="background:' + esc(cats[k]) + '"></i>' + CATS[k].name + "</span>"; }).join("") || '<span class="muted">No points on this floor</span>';
   }
-  var view = { s:1, x:0, y:0, w:0, h:0, fitNext:true, loadedFor:null };
+  var view = { s:1, x:0, y:0, w:0, h:0, fitS:1, fitNext:true, loadedFor:null };
   function showFloor(){
-    var f = st.data.floors.find(function(x){ return x.id === st.floor; });
-    var img = $("floorImg");
+    var f = st.data.floors.find(function(x){ return x.id === st.floor; }), img = $("floorImg");
     if (!f){ img.removeAttribute("src"); return; }
     var src = imgUrl("floor", f.id);
     if (view.loadedFor !== src){
@@ -341,73 +437,129 @@
     }
     renderPlanMarks();
   }
+  function pinSvg(color, txt){ return '<svg viewBox="0 0 26 26"><path d="M13 25s-9-7.6-9-14a9 9 0 0 1 18 0c0 6.4-9 14-9 14z" fill="' + color + '" stroke="#fff" stroke-width="2"/><text x="13" y="14.5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">' + txt + "</text></svg>"; }
+  function issueColor(i){ return i.status === "open" ? "#ea580c" : i.status === "approved" ? "#2563eb" : i.status === "done" ? "#12a150" : "#94a3b8"; }
   function renderPlanMarks(){
     if (!view.w) return;
     var list = pts().filter(function(p){ return p.floor_id === st.floor; });
-    $("marks").innerHTML = list.map(function(p){
+    var html = list.map(function(p){
       var done = isDone(p), dim = (st.filter === "todo" && done) || (st.filter === "done" && !done);
       var hasPh = p.photos.length || (st.pending[p.point_id] || []).some(function(i){ return i.kind === "photo"; });
-      return '<button type="button" class="mk' + (done ? " done" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : "") + '" data-pt="' + esc(p.point_id) + '" style="left:' + (p.x * view.w).toFixed(1) + "px;top:" + (p.y * view.h).toFixed(1) + "px;--c:" + esc(p.color) + '" aria-label="' + esc(p.label) + '"><span>' + CATS[catOf(p)].tag + "</span></button>";
+      return '<button type="button" class="mk' + (done ? " done" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : "") + '" data-pt="' + esc(p.point_id) + '" style="left:' + (p.x * view.w).toFixed(1) + "px;top:" + (p.y * view.h).toFixed(1) + "px;--c:" + esc(p.color) + '" aria-label="' + esc(p.label) + '"><span>' + CATS[catOf(p)].tag + '</span><em class="lb">' + esc(p.label) + "</em></button>";
     }).join("");
+    if (canEdit()){
+      html += issues().filter(function(i){ return i.floor_id === st.floor && i.status !== "rejected" && i.status !== "done"; }).map(function(i){
+        return '<button type="button" class="pin" data-issue="' + esc(i.id) + '" style="left:' + (i.x * view.w).toFixed(1) + "px;top:" + (i.y * view.h).toFixed(1) + 'px" aria-label="Site report">' + pinSvg(issueColor(i), "!") + "</button>";
+      }).join("");
+      (st.pending.report || []).filter(function(r){ return r.body.floorId === st.floor; }).forEach(function(r){
+        html += '<button type="button" class="pin" style="left:' + (r.body.x * view.w).toFixed(1) + "px;top:" + (r.body.y * view.h).toFixed(1) + 'px;opacity:.6" aria-label="Report waiting for signal">' + pinSvg("#ea580c", "…") + "</button>";
+      });
+    }
+    $("marks").innerHTML = html;
     applyView();
   }
   function applyView(){
     $("stage").style.transform = "translate(" + view.x + "px," + view.y + "px) scale(" + view.s + ")";
     $("stage").style.setProperty("--inv", (1 / view.s).toFixed(4));
+    $("stage").classList.toggle("labels", view.s > view.fitS * 2.1);
   }
   function fit(){
     var r = $("plan").getBoundingClientRect(); if (!view.w || !r.width) return;
-    view.s = Math.min(r.width / view.w, (r.height - 8) / view.h);
+    view.s = view.fitS = Math.min(r.width / view.w, (r.height - 8) / view.h);
     view.x = (r.width - view.w * view.s) / 2; view.y = (r.height - view.h * view.s) / 2; applyView();
   }
   function zoomAt(cx, cy, k){
-    var ns = Math.max(minS(), Math.min(view.s * k, 6));
+    var ns = Math.max(view.fitS * 0.6, Math.min(view.s * k, 8));
     view.x = cx - (cx - view.x) * (ns / view.s); view.y = cy - (cy - view.y) * (ns / view.s); view.s = ns; applyView();
   }
-  function minS(){ var r = $("plan").getBoundingClientRect(); return view.w ? Math.min(r.width / view.w, r.height / view.h) * 0.6 : 0.05; }
   (function gestures(){
-    var plan = $("plan"), ptrs = {}, start = null, moved = false;
-    plan.addEventListener("pointerdown", function(e){
-      ptrs[e.pointerId] = { x:e.clientX, y:e.clientY }; plan.setPointerCapture(e.pointerId); moved = false;
-      start = snapshot();
-    });
+    var plan = $("plan"), ptrs = {}, start = null, moved = false, lastTap = 0;
     function snapshot(){ var ids = Object.keys(ptrs), r = plan.getBoundingClientRect();
       if (ids.length === 1){ var p = ptrs[ids[0]]; return { mode:1, px:p.x, py:p.y, x:view.x, y:view.y }; }
       var a = ptrs[ids[0]], b = ptrs[ids[1]];
       return { mode:2, d:Math.hypot(a.x-b.x, a.y-b.y), cx:(a.x+b.x)/2 - r.left, cy:(a.y+b.y)/2 - r.top, x:view.x, y:view.y, s:view.s }; }
+    plan.addEventListener("pointerdown", function(e){ if (e.target.closest && e.target.closest(".zoom,.fab,.planbar")) return; ptrs[e.pointerId] = { x:e.clientX, y:e.clientY }; plan.setPointerCapture(e.pointerId); moved = false; start = snapshot(); });
     plan.addEventListener("pointermove", function(e){
       if (!ptrs[e.pointerId]) return; ptrs[e.pointerId] = { x:e.clientX, y:e.clientY };
       var ids = Object.keys(ptrs), r = plan.getBoundingClientRect();
       if (ids.length === 1 && start && start.mode === 1){
         var dx = e.clientX - start.px, dy = e.clientY - start.py; if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
-        view.x = start.x + dx; view.y = start.y + dy; applyView();
+        if (moved){ view.x = start.x + dx; view.y = start.y + dy; applyView(); }
       } else if (ids.length >= 2){
         if (!start || start.mode !== 2) start = snapshot();
-        var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a.x-b.x, a.y-b.y), ns = Math.max(minS(), Math.min(start.s * d / start.d, 6));
+        var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a.x-b.x, a.y-b.y), ns = Math.max(view.fitS * 0.6, Math.min(start.s * d / start.d, 8));
         var cx = (a.x+b.x)/2 - r.left, cy = (a.y+b.y)/2 - r.top;
         view.s = ns; view.x = cx - (start.cx - start.x) * (ns / start.s); view.y = cy - (start.cy - start.y) * (ns / start.s); moved = true; applyView();
       }
     });
-    function up(e){
+    plan.addEventListener("pointerup", function(e){
+      if (!ptrs[e.pointerId]) return;
       var wasTap = !moved && Object.keys(ptrs).length === 1;
       delete ptrs[e.pointerId]; start = Object.keys(ptrs).length ? snapshot() : null;
-      if (wasTap){ var el = document.elementFromPoint(e.clientX, e.clientY), mk = el && el.closest && el.closest(".mk"); if (mk) openPoint(mk.dataset.pt); }
-    }
-    plan.addEventListener("pointerup", up); plan.addEventListener("pointercancel", function(e){ delete ptrs[e.pointerId]; start = null; });
+      if (!wasTap) return;
+      var r = plan.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+      if (st.placing){ placeReport((sx - view.x) / view.s / view.w, (sy - view.y) / view.s / view.h); return; }
+      var el = document.elementFromPoint(e.clientX, e.clientY);
+      var pin = el && el.closest && el.closest(".pin[data-issue]"); if (pin){ openIssue(pin.dataset.issue); return; }
+      var mk = el && el.closest && el.closest(".mk"); if (mk){ openPoint(mk.dataset.pt); return; }
+      var t = Date.now(); if (t - lastTap < 300) zoomAt(sx, sy, 2); lastTap = t;
+    });
+    plan.addEventListener("pointercancel", function(e){ delete ptrs[e.pointerId]; start = null; });
     plan.addEventListener("wheel", function(e){ e.preventDefault(); var r = plan.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.15 : 1/1.15); }, { passive:false });
-    var lastTap = 0;
-    plan.addEventListener("pointerup", function(e){ if (moved) return; var t = Date.now(); if (t - lastTap < 300 && !(e.target.closest && e.target.closest(".mk"))){ var r = plan.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, 2); } lastTap = t; });
-    $("zIn").onclick = function(e){ e.stopPropagation(); var r = plan.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1.4); };
-    $("zOut").onclick = function(e){ e.stopPropagation(); var r = plan.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1/1.4); };
-    $("zFit").onclick = function(e){ e.stopPropagation(); fit(); };
-    ["zIn","zOut","zFit"].forEach(function(id){ $(id).addEventListener("pointerdown", function(e){ e.stopPropagation(); }); });
+    $("zIn").onclick = function(){ var r = plan.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1.5); };
+    $("zOut").onclick = function(){ var r = plan.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1/1.5); };
+    $("zFit").onclick = function(){ fit(); };
     window.addEventListener("resize", function(){ if (st.view === "vPlan") fit(); });
   })();
 
+  // ---- site reports: technician drops a pin
+  $("reportBtn").onclick = function(){ needName(function(){ st.placing = true; $("placeBar").classList.add("on"); $("reportBtn").classList.add("hidden"); }); };
+  $("placeCancel").onclick = function(){ stopPlacing(); };
+  function stopPlacing(){ st.placing = false; $("placeBar").classList.remove("on"); $("reportBtn").classList.toggle("hidden", !canEdit()); }
+  function nearestPoint(x, y){
+    var best = null, bd = 1e9;
+    pts().filter(function(p){ return p.floor_id === st.floor; }).forEach(function(p){ var d = Math.hypot((p.x - x) * view.w, (p.y - y) * view.h) * view.s; if (d < bd){ bd = d; best = p; } });
+    return bd < 44 ? best : null;
+  }
+  var draft = null;
+  function placeReport(x, y){
+    if (x < 0 || y < 0 || x > 1 || y > 1){ toast("Tap inside the drawing"); return; }
+    stopPlacing();
+    var near = nearestPoint(x, y);
+    draft = { floorId:st.floor, x:x, y:y, kind: near ? "extra" : "missing", pointId: near ? near.point_id : null, suggestType:"wifi", text:"", photos:[] };
+    st.sel = "draft"; renderSheet(); openSheet();
+  }
+  function renderDraft(){
+    var d = draft, near = d.pointId ? pts().find(function(p){ return p.point_id === d.pointId; }) : null;
+    $("shBadge").style.background = "var(--warn)"; $("shBadge").textContent = "!";
+    $("shTitle").textContent = "New site report"; $("shSub").textContent = floorName(d.floorId) + " · sent to the ExpressTech office";
+    var h = '<div class="seg">' + ["missing","extra","other"].map(function(k){ return '<button type="button" data-kind="' + k + '"' + (d.kind === k ? ' class="on"' : "") + ">" + { missing:"Extra point<br>found here", extra:"Point not<br>on site", other:"Other<br>issue" }[k] + "</button>"; }).join("") + "</div>";
+    if (d.kind === "missing") h += '<div class="lbl">What is here?</div><div class="types">' + SUGGEST.map(function(s){ return '<button type="button" data-sug="' + s[0] + '"' + (d.suggestType === s[0] ? ' class="on"' : "") + '><span class="dot" style="background:' + s[2] + '"></span>' + s[1] + "</button>"; }).join("") + "</div>";
+    if (d.kind === "extra") h += near ? '<div class="status warn"><span class="dot" style="background:' + esc(near.color) + '"></span><div>' + esc(near.label) + "<small>" + esc(near.model || CATS[catOf(near)].name) + " — this point is in the drawing but not on site</small></div></div>"
+                                    : '<p class="muted">Tap “Cancel” and tap right on the point that isn’t on site, or describe it below.</p>';
+    h += '<div class="lbl">Comment</div><textarea class="ta" id="drText" placeholder="e.g. Client wants a camera over the side gate">' + esc(d.text) + "</textarea>";
+    h += '<div class="lbl">Photos (optional)</div>' + (d.photos.length ? '<div class="photos">' + d.photos.map(function(p){ return '<button type="button"><img src="' + URL.createObjectURL(p.blob) + '" alt=""></button>'; }).join("") + "</div>" : "");
+    h += '<div class="two" style="margin-top:0"><button type="button" class="btn" id="drCam">' + CAM_SVG + 'Take photo</button><button type="button" class="btn" id="drGal">' + GAL_SVG + "Gallery</button></div>";
+    h += '<button type="button" class="big warn" id="drSend">Send to office</button>';
+    $("shBody").innerHTML = h;
+    $("shBody").querySelectorAll("[data-kind]").forEach(function(b){ b.onclick = function(){ d.text = $("drText").value; d.kind = b.dataset.kind; if (d.kind === "extra" && !d.pointId){ var n = nearestPoint(d.x, d.y); if (n) d.pointId = n.point_id; } renderDraft(); }; });
+    $("shBody").querySelectorAll("[data-sug]").forEach(function(b){ b.onclick = function(){ d.text = $("drText").value; d.suggestType = b.dataset.sug; renderDraft(); }; });
+    $("drCam").onclick = function(){ d.text = $("drText").value; pickPhotos("cam", function(list){ d.photos = d.photos.concat(list); renderDraft(); }); };
+    $("drGal").onclick = function(){ d.text = $("drText").value; pickPhotos("gal", function(list){ d.photos = d.photos.concat(list); renderDraft(); }); };
+    $("drSend").onclick = function(){
+      d.text = $("drText").value.trim();
+      if (!d.text && d.kind !== "extra"){ toast("Add a short comment for the office"); $("drText").focus(); return; }
+      var local = "L" + Date.now().toString(36);
+      var body = { floorId:d.floorId, x:+d.x.toFixed(5), y:+d.y.toFixed(5), kind:d.kind, pointId: d.kind === "extra" ? d.pointId : null, suggestType: d.kind === "missing" ? d.suggestType : null, text:d.text };
+      var chain = enqueue({ kind:"report", local:local, body:body });
+      d.photos.forEach(function(p){ chain = chain.then(function(){ return enqueue({ kind:"photo", issue:local, blob:p.blob, w:p.w, h:p.h }); }); });
+      draft = null; closeSheet(); toast("Report sent to the office"); chain.then(function(){ load(true); });
+    };
+  }
+
   // ---- checklist
   function renderList(){
-    var q = ($("q").value || "").toLowerCase().trim(), d = st.data;
-    var all = pts(), c = counts(all);
+    var q = ($("q").value || "").toLowerCase().trim(), d = st.data, all = pts(), c = counts(all);
     $("listChips").innerHTML = [["todo","To do", c.n - c.d], ["done","Done", c.d], ["all","All", c.n]].map(function(x){ return '<button type="button" class="chip' + (st.listFilter === x[0] ? " on" : "") + '" data-lf="' + x[0] + '">' + x[1] + '<span class="n">' + x[2] + "</span></button>"; }).join("");
     $("listChips").querySelectorAll("[data-lf]").forEach(function(b){ b.onclick = function(){ st.listFilter = b.dataset.lf; renderList(); }; });
     var html = "";
@@ -417,7 +569,7 @@
         return !q || (p.label + " " + p.model + " " + f.name + " " + CATS[catOf(p)].name).toLowerCase().indexOf(q) >= 0; });
       if (!list.length) return;
       var fc = counts(all.filter(function(p){ return p.floor_id === f.id; }));
-      html += '<div class="grp"><span>' + esc(f.name) + "</span><span>" + fc.d + " / " + fc.n + "</span></div><div class=\"card\">" + list.map(function(p){
+      html += '<div class="grp"><span>' + esc(f.name) + "</span><span>" + fc.d + " / " + fc.n + '</span></div><div class="card">' + list.map(function(p){
         var done = isDone(p), nph = p.photos.length + (st.pending[p.point_id] || []).filter(function(i){ return i.kind === "photo"; }).length;
         return '<div class="rowi" data-open="' + esc(p.point_id) + '"><span class="dot" style="background:' + esc(p.color) + '"></span><span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) +
           (done && p.installed_by ? " · " + esc(p.installed_by) : "") + "</small></span>" + (nph ? '<span class="pc">📷 ' + nph + "</span>" : "") +
@@ -430,83 +582,213 @@
   }
   $("q").addEventListener("input", renderList);
 
-  // ---- progress
+  // ---- progress + Asana stages
+  function stageMeta(t){
+    var bits = [];
+    if (t.assignee) bits.push(esc(t.assignee));
+    if (t.completed && t.completed_at) bits.push("done " + when(t.completed_at));
+    else if (t.due_on) bits.push((overdue(t.due_on, t.completed) ? '<span style="color:#b91c1c;font-weight:600">overdue · ' : "due ") + day(t.due_on) + (overdue(t.due_on, t.completed) ? "</span>" : ""));
+    var nc = (t.stories || []).filter(function(s){ return s.kind === "comment_added"; }).length;
+    if (nc) bits.push("💬 " + nc);
+    return bits.join(" · ");
+  }
   function renderProgress(){
-    var d = st.data, all = pts(), html = "";
+    var d = st.data, all = pts(), html = "", S2 = d.stages;
+    if (S2 && S2.project && S2.project.status){
+      var ps = S2.project.status;
+      html += '<div class="status-card"><span class="pill ' + (ps.type === "on_track" || ps.type === "complete" ? "ok" : ps.type === "off_track" ? "late" : "open") + '">' + esc(ps.title || "Status") + "</span>" + (ps.text ? "<p>" + esc(ps.text) + "</p>" : "") + '<p style="font-size:11.5px">' + esc(ps.by || "") + (ps.at ? " · " + when(ps.at) : "") + "</p></div>";
+    }
+    if (S2 && S2.sections && S2.sections.length){
+      html += '<div class="sec"><span>Project stages</span>' + (canEdit() ? '<button type="button" id="stRef">Refresh</button>' : "") + "</div>";
+      S2.sections.forEach(function(s){
+        html += '<div class="grp" style="margin-top:4px"><span>' + esc(s.name) + '</span></div><div class="card">';
+        s.tasks.forEach(function(t){
+          var sd = (t.subtasks || []).filter(function(x){ return x.completed; }).length;
+          html += '<button type="button" class="stg" data-stage="' + esc(t.gid) + '"><span class="tick' + (t.completed ? " on" : "") + '">' + CHECK + '</span><span class="s1"><b>' + esc(t.name) + (t.private ? ' <span class="pill">office only</span>' : "") + "</b><small>" + stageMeta(t) + (t.subtasks && t.subtasks.length ? (stageMeta(t) ? " · " : "") + sd + "/" + t.subtasks.length + " steps" : "") + "</small>" +
+            (t.subtasks && t.subtasks.length ? '<span class="subs">' + t.subtasks.map(function(x){ return '<div><span class="tick sm' + (x.completed ? " on" : "") + '">' + CHECK + "</span>" + esc(x.name) + "</div>"; }).join("") + "</span>" : "") + "</span></button>";
+        });
+        html += "</div>";
+      });
+      html += '<p class="note">From Asana · updated ' + when(S2.at) + (canEdit() ? " · tap a stage to tick it or comment" : "") + ".</p>";
+    }
     html += '<div class="sec">By type</div><div class="card">' + Object.keys(CATS).map(function(k){
       var list = all.filter(function(p){ return catOf(p) === k; }); if (!list.length) return "";
       var c = counts(list), col = list[0].color;
-      return '<div class="catc"><div class="h"><span><span class="dot" style="display:inline-block;vertical-align:-1px;margin-right:7px;background:' + esc(col) + '"></span>' + CATS[k].name + "</span><small>" + c.d + " / " + c.n + "</small></div><div class=\"bar\"><i style=\"width:" + c.pct + "%\"></i></div></div>";
+      return '<div class="catc"><div class="h"><span><span class="dot" style="vertical-align:-1px;margin-right:7px;background:' + esc(col) + '"></span>' + CATS[k].name + "</span><small>" + c.d + " / " + c.n + '</small></div><div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
     }).join("") + "</div>";
     html += '<div class="sec">By floor</div><div class="card">' + d.floors.map(function(f){
       var c = counts(all.filter(function(p){ return p.floor_id === f.id; })); if (!c.n) return "";
-      return '<div class="catc"><div class="h"><span>' + esc(f.name) + "</span><small>" + c.d + " / " + c.n + "</small></div><div class=\"bar\"><i style=\"width:" + c.pct + "%\"></i></div></div>";
+      return '<div class="catc"><div class="h"><span>' + esc(f.name) + "</span><small>" + c.d + " / " + c.n + '</small></div><div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
     }).join("") + "</div>";
-    if (d.stages && d.stages.sections && d.stages.sections.length){
-      html += '<div class="sec">Project stages</div><div class="card">';
-      d.stages.sections.forEach(function(s){
-        s.tasks.forEach(function(t){
-          html += '<div class="stg"><div class="s1"><span class="tick' + (t.completed ? " on" : "") + '">' + CHECK + "</span>" + esc(t.name) + "</div>" +
-            (t.subtasks && t.subtasks.length ? '<div class="subs">' + t.subtasks.map(function(x){ return '<div><span class="tick sm' + (x.completed ? " on" : "") + '">' + CHECK + "</span>" + esc(x.name) + "</div>"; }).join("") + "</div>" : "") + "</div>";
-        });
-      });
-      html += "</div><p class=\"note\">Stages are updated by the ExpressTech team" + (d.stages.at ? " · checked " + when(d.stages.at) : "") + ".</p>";
-    }
     $("progBody").innerHTML = html + '<div style="height:16px"></div>';
+    $("progBody").querySelectorAll("[data-stage]").forEach(function(b){ b.onclick = function(){ openStage(b.dataset.stage); }; });
+    if ($("stRef")) $("stRef").onclick = function(){ toast("Checking Asana…"); req("POST", "/asana/refresh").then(function(r){ st.data.stages = r.stages; render(); toast("Stages up to date"); }).catch(function(e){ toast(e.message); }); };
+  }
+  function findStage(gid){
+    var S2 = st.data.stages; if (!S2) return null;
+    for (var i=0;i<S2.sections.length;i++){ var s = S2.sections[i]; for (var j=0;j<s.tasks.length;j++){ var t = s.tasks[j];
+      if (t.gid === gid) return { task:t, section:s.name, parent:null };
+      for (var k=0;k<(t.subtasks || []).length;k++) if (t.subtasks[k].gid === gid) return { task:t.subtasks[k], section:s.name, parent:t }; } }
+    return null;
   }
 
-  // ---- activity
-  var ACT = { installed:"installed", uninstalled:"un-ticked", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to" };
+  // ---- reports list
+  function renderReports(){
+    if (!canEdit()){ $("repBody").innerHTML = ""; return; }
+    var list = issues().slice().sort(function(a,b){ var o = { open:0, approved:1, done:2, rejected:3 }; return (o[a.status] - o[b.status]) || (b.at - a.at); });
+    var pend = st.pending.report || [];
+    $("repBody").innerHTML = '<p class="note" style="margin:12px 14px 4px">Found an extra point on site, or a point that isn’t there? On the <b>Plan</b>, tap <b>Report</b> and tap the spot. The office replies here.</p>' +
+      (list.length || pend.length ? '<div class="card" style="margin-top:8px">' + pend.map(function(r){ return '<div class="rowi"><span class="dot" style="background:#ea580c"></span><span class="t"><b>' + KIND[r.body.kind] + "</b><small>" + esc(r.body.text || "") + " · waiting for signal</small></span></div>"; }).join("") +
+        list.map(function(i){
+          var p = i.point_id ? pts().find(function(x){ return x.point_id === i.point_id; }) : null, sug = SUGGEST.find(function(s){ return s[0] === i.suggest_type; });
+          return '<div class="rowi" data-issue="' + esc(i.id) + '"><span class="dot" style="background:' + issueColor(i) + '"></span><span class="t"><b>' + KIND[i.kind] + (i.kind === "missing" && sug ? " · " + sug[1] : "") + (p ? " · " + esc(p.label) : "") + "</b><small>" + esc(floorName(i.floor_id)) + " · " + esc(i.by) + " · " + when(i.at) + (i.text ? " — " + esc(i.text.slice(0, 60)) : "") + "</small></span>" +
+            '<span class="pill ' + i.status + '">' + (i.status === "rejected" && i.kind === "extra" ? "Point stays" : { open:"Open", approved:"Approved", rejected:"Not needed", done:"Done" }[i.status]) + "</span>" + (i.notes.length ? '<span class="pc">💬 ' + i.notes.length + "</span>" : "") + "</div>";
+        }).join("") + "</div>" : '<div class="empty">No reports yet.</div>') + '<div style="height:16px"></div>';
+    $("repBody").querySelectorAll("[data-issue]").forEach(function(r){ r.onclick = function(){ var i = issues().find(function(x){ return x.id === r.dataset.issue; }); if (i && i.floor_id !== st.floor){ st.floor = i.floor_id; view.fitNext = true; renderFloors(); } openIssue(r.dataset.issue); }; });
+  }
+
+  // ---- activity (site + Asana)
+  var ACT = { installed:"installed", uninstalled:"un-ticked", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
+    report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
+    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });
-    var rows = (d.activity || []).map(function(a){
+    var rows = (d.activity || []).map(function(a){ return { at:a.at, src:"site", a:a }; });
+    if (d.stages && d.stages.sections && role() !== "customer"){
+      d.stages.sections.forEach(function(s){ s.tasks.forEach(function(t){ [t].concat(t.subtasks || []).forEach(function(x){ (x.stories || []).forEach(function(sy){
+        if (/ExpressTech site app|\(ExpressTech Site\)/.test(sy.text)) return;   // already in the site feed
+        rows.push({ at:sy.at, src:"asana", t:x, s:sy });
+      }); }); }); });
+    }
+    rows.sort(function(a,b){ return b.at - a.at; }); rows = rows.slice(0, 60);
+    var html = rows.map(function(r){
+      if (r.src === "asana"){
+        var verb = r.s.kind === "marked_complete" ? "completed" : r.s.kind === "marked_incomplete" ? "reopened" : r.s.kind === "assigned" ? "assigned" : "commented on";
+        return '<div class="act" data-stage="' + esc(r.t.gid) + '"><span class="av as">' + esc((r.s.by || "A").slice(0,1).toUpperCase()) + '</span><div class="tx"><b>' + esc(r.s.by) + "</b> " + verb + " <b>" + esc(r.t.name) + "</b>" + (r.s.kind === "comment_added" && r.s.text ? "<small>“" + esc(r.s.text.slice(0, 140)) + "”</small>" : "") + "<small>" + when(r.at) + " · Asana</small></div></div>";
+      }
+      var a = r.a, isIssue = String(a.point_id || "").indexOf("issue:") === 0, isStage = String(a.point_id || "").indexOf("stage:") === 0;
       var p = byId[a.point_id], ph = a.action === "photo" && p && p.photos.length ? p.photos.filter(function(x){ return x.at <= a.at + 2000; }).slice(-1)[0] : null;
-      var who = a.by_name || "Someone";
-      return '<div class="act"' + (p ? ' data-open="' + esc(p.point_id) + '"' : "") + '><span class="av">' + esc(who.slice(0, 1).toUpperCase()) + '</span><div class="tx"><b>' + esc(who) + "</b> " + (ACT[a.action] || a.action) + " <b>" + esc(p ? p.label : a.detail) + "</b>" +
-        (a.action === "note" ? '<small>“' + esc(a.detail) + "”</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
+      var who = a.by_name || "Someone", target = p ? p.label : isIssue || isStage ? "" : a.detail;
+      var attr = p ? ' data-open="' + esc(p.point_id) + '"' : isIssue ? ' data-issue="' + esc(a.point_id.slice(6)) + '"' : isStage ? ' data-stage="' + esc(a.point_id.slice(6)) + '"' : "";
+      return '<div class="act"' + attr + '><span class="av">' + esc(who.slice(0, 1).toUpperCase()) + '</span><div class="tx"><b>' + esc(who) + "</b> " + (ACT[a.action] || a.action) + (target ? " <b>" + esc(target) + "</b>" : "") +
+        ((a.action === "note" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
         (ph ? '<img loading="lazy" src="' + imgUrl("photo", ph.id) + '" alt="">' : "") + "</div>";
     }).join("");
-    $("actBody").innerHTML = rows ? '<div class="sec">Latest updates</div><div class="card">' + rows + "</div><div style=\"height:16px\"></div>" : '<div class="empty">No updates yet. Ticks, photos and notes from the site appear here.</div>';
+    $("actBody").innerHTML = html ? '<div class="sec">Latest updates</div><div class="card">' + html + '</div><div style="height:16px"></div>' : '<div class="empty">No updates yet. Ticks, photos, notes and Asana changes appear here.</div>';
     $("actBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(){ openPoint(r.dataset.open); }; });
+    $("actBody").querySelectorAll("[data-issue]").forEach(function(r){ r.onclick = function(){ openIssue(r.dataset.issue); }; });
+    $("actBody").querySelectorAll("[data-stage]").forEach(function(r){ r.onclick = function(){ openStage(r.dataset.stage); }; });
   }
-  function floorName(id){ var f = st.data.floors.find(function(x){ return x.id === id; }); return f ? f.name : ""; }
 
-  // ---- point sheet
-  function openPoint(id){ st.sel = id; renderSheet(); $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
-  function closeSheet(){ st.sel = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); renderPlanMarks(); }
+  // ---- sheet (point / report / stage)
+  function openSheet(){ $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
+  function openPoint(id){ st.sel = id; renderSheet(); openSheet(); }
+  function openIssue(id){ st.sel = "issue:" + id; renderSheet(); openSheet(); }
+  function openStage(gid){ st.sel = "stage:" + gid; renderSheet(); openSheet(); }
+  function closeSheet(){ st.sel = null; draft = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
   $("shClose").onclick = closeSheet; $("scrim").onclick = closeSheet;
   function renderSheet(){
+    if (!st.sel || !st.data) return;
+    if (st.sel === "draft"){ if (draft) renderDraft(); return; }
+    if (st.sel.indexOf("issue:") === 0) return renderIssue(st.sel.slice(6));
+    if (st.sel.indexOf("stage:") === 0) return renderStage(st.sel.slice(6));
+    renderPoint();
+  }
+  function photosHtml(list, pendList, key){
+    var h = "";
+    if (list.length || pendList.length) h += '<div class="photos">' + list.map(function(ph, i){ return '<button type="button" data-ph="' + i + '" data-of="' + esc(key) + '"><img loading="lazy" src="' + imgUrl("photo", ph.id) + '" alt=""></button>'; }).join("") +
+      pendList.map(function(it){ return '<button type="button"><img src="' + URL.createObjectURL(it.blob) + '" alt=""><span class="pend">Waiting…</span></button>'; }).join("") + "</div>";
+    return h;
+  }
+  function notesHtml(list, pendList){
+    return '<div class="notes">' + list.map(function(n){ var sys = /^(Approved|Not needed|Done|Reopened|Point stays|Point added|Point removed)/.test(n.text); return '<div class="n1' + (sys ? " sys" : "") + '">' + esc(n.text) + "<small>" + esc(n.by) + " · " + when(n.at) + "</small></div>"; }).join("") +
+      pendList.map(function(n){ return '<div class="n1">' + esc(n.text) + "<small>Waiting for signal…</small></div>"; }).join("") + "</div>";
+  }
+  function bindPhotoTaps(getList, title){ $("shBody").querySelectorAll("[data-ph]").forEach(function(b){ b.onclick = function(){ openViewer(getList(), +b.dataset.ph, title); }; }); }
+  function renderPoint(){
     var p = pts().find(function(x){ return x.point_id === st.sel; }); if (!p){ closeSheet(); return; }
     var done = isDone(p), pend = st.pending[p.point_id] || [];
     $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag;
     $("shTitle").textContent = p.label; $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
-    var h = "";
-    var pendStatus = pend.some(function(i){ return i.kind === "status"; });
+    var h = "", pendStatus = pend.some(function(i){ return i.kind === "status"; });
     h += '<div class="status' + (done ? " done" : "") + '"><span class="tick' + (done ? " on" : "") + '">' + CHECK + "</span><div>" + (done ? "Installed" : "Not installed yet") +
       "<small>" + (pendStatus ? "Waiting for signal to upload" : done && p.installed_by ? "by " + esc(p.installed_by) + " · " + when(p.installed_at) : CATS[catOf(p)].name) + "</small></div></div>";
     if (canEdit()){
       h += done ? '<button type="button" class="big undo" id="shUndo">Mark as not installed</button>' : '<button type="button" class="big ok" id="shDone">' + CHECK20 + "Mark installed</button>";
-      h += '<div class="two"><button type="button" class="btn pri" id="shCam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</button>' +
-           '<button type="button" class="btn" id="shGal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>From gallery</button></div>';
+      h += '<div class="two"><button type="button" class="btn pri" id="shCam">' + CAM_SVG + 'Take photo</button><button type="button" class="btn" id="shGal">' + GAL_SVG + "From gallery</button></div>";
     }
-    var phs = p.photos.slice(), pendPh = pend.filter(function(i){ return i.kind === "photo"; });
-    h += '<div class="lbl">Photos' + (phs.length + pendPh.length ? " · " + (phs.length + pendPh.length) : "") + "</div>";
-    if (phs.length || pendPh.length){
-      h += '<div class="photos">' + phs.map(function(ph, i){ return '<button type="button" data-ph="' + i + '"><img loading="lazy" src="' + imgUrl("photo", ph.id) + '" alt=""></button>'; }).join("") +
-        pendPh.map(function(it){ return '<button type="button"><img src="' + URL.createObjectURL(it.blob) + '" alt=""><span class="pend">Waiting…</span></button>'; }).join("") + "</div>";
-    } else h += '<p class="muted" style="margin:0 0 14px">' + (canEdit() ? "No photos yet — take one after installing to show the exact position." : "No photos yet.") + "</p>";
-    var notes = p.notes.slice(), pendN = pend.filter(function(i){ return i.kind === "note"; });
-    h += '<div class="lbl">Notes</div><div class="notes">' + notes.map(function(n){ return '<div class="n1">' + esc(n.text) + "<small>" + esc(n.by) + " · " + when(n.at) + "</small></div>"; }).join("") +
-      pendN.map(function(n){ return '<div class="n1">' + esc(n.text) + "<small>Waiting for signal…</small></div>"; }).join("") +
-      (!notes.length && !pendN.length ? '<p class="muted" style="margin:0 0 6px">No notes.</p>' : "") + "</div>";
+    var pendPh = pend.filter(function(i){ return i.kind === "photo"; }), pendN = pend.filter(function(i){ return i.kind === "note"; });
+    h += '<div class="lbl">Photos' + (p.photos.length + pendPh.length ? " · " + (p.photos.length + pendPh.length) : "") + "</div>" + (photosHtml(p.photos, pendPh, p.point_id) || '<p class="muted" style="margin:0 0 14px">' + (canEdit() ? "No photos yet — take one after installing to show the exact position." : "No photos yet.") + "</p>");
+    h += '<div class="lbl">Notes</div>' + notesHtml(p.notes, pendN) + (!p.notes.length && !pendN.length ? '<p class="muted" style="margin:0 0 6px">No notes.</p>' : "");
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
     if ($("shDone")) $("shDone").onclick = function(){ setInstalled(p, true); };
     if ($("shUndo")) $("shUndo").onclick = function(){ setInstalled(p, false); };
-    if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ $("camIn").click(); }); };
-    if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ $("galIn").click(); }); };
-    if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ addNote(p, t); }); };
-    $("shBody").querySelectorAll("[data-ph]").forEach(function(b){ b.onclick = function(){ openViewer(p, +b.dataset.ph); }; });
+    if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
+    if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
+    if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
+    bindPhotoTaps(function(){ return p.photos; }, p.label);
+  }
+  function renderIssue(id){
+    var i = issues().find(function(x){ return x.id === id; }); if (!i){ closeSheet(); return; }
+    var p = i.point_id ? pts().find(function(x){ return x.point_id === i.point_id; }) : null, sug = SUGGEST.find(function(s){ return s[0] === i.suggest_type; });
+    var key = "issue:" + i.id, pend = st.pending[key] || [];
+    $("shBadge").style.background = issueColor(i); $("shBadge").textContent = "!";
+    $("shTitle").textContent = KIND[i.kind] + (i.kind === "missing" && sug ? " · " + sug[1] : "");
+    $("shSub").textContent = floorName(i.floor_id) + " · " + i.by + " · " + when(i.at);
+    var h = '<div class="status' + (i.status === "done" ? " done" : i.status === "open" ? " warn" : "") + '"><div>' + (i.status === "rejected" && i.kind === "extra" ? "Point stays — please install it" : ISTAT[i.status]) + "<small>" + (i.status_by ? esc(i.status_by) + " · " + when(i.status_at) : "The ExpressTech office will check this") + "</small></div></div>";
+    if (p) h += '<div class="rowi" style="padding:0 0 12px;border:0" data-open="' + esc(p.point_id) + '"><span class="dot" style="background:' + esc(p.color) + '"></span><span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) + " — in the drawing</small></span></div>";
+    if (i.text) h += '<div class="desc">' + esc(i.text) + "</div>";
+    var pendPh = pend.filter(function(x){ return x.kind === "photo"; }), pendN = pend.filter(function(x){ return x.kind === "note"; });
+    if (i.photos.length || pendPh.length) h += '<div class="lbl">Photos</div>' + photosHtml(i.photos, pendPh, key);
+    if (isOffice()){
+      h += '<div class="three">' + [["approved","Approve","btn pri"],["rejected","Not needed","btn"],["open","Reopen","btn"]].filter(function(b){ return b[0] !== i.status; }).map(function(b){ return '<button type="button" class="' + b[2] + '" data-ist="' + b[0] + '">' + b[1] + "</button>"; }).join("") + "</div>";
+      if (i.status === "approved") h += '<p class="muted" style="margin:-4px 0 12px">Add or remove the point in the planner (the report shows as a pin on the drawing), then press <b>Update site</b>. The technicians will see the change.</p>';
+    }
+    h += '<div class="lbl">Conversation</div>' + notesHtml(i.notes, pendN) + (!i.notes.length && !pendN.length ? '<p class="muted" style="margin:0 0 6px">No replies yet.</p>' : "");
+    if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Reply…"></textarea><button type="button" id="noteAdd">Send</button></div>' +
+      '<div class="two"><button type="button" class="btn" id="shCam">' + CAM_SVG + 'Add photo</button><button type="button" class="btn" id="shShow">Show on plan</button></div>';
+    $("shBody").innerHTML = h;
+    $("shBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(){ openPoint(r.dataset.open); }; });
+    $("shBody").querySelectorAll("[data-ist]").forEach(function(b){ b.onclick = function(){
+      var reply = ($("noteIn") && $("noteIn").value.trim()) || "";
+      needName(function(){ req("POST", "/issue/" + i.id + "/status", JSON.stringify({ status:b.dataset.ist, reply:reply }), "application/json").then(function(){ toast("Saved"); load(true); }).catch(function(e){ toast(e.message); }); });
+    }; });
+    if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", issue:i.id, text:t }); render(); }); };
+    if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", issue:i.id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
+    if ($("shShow")) $("shShow").onclick = function(){ closeSheet(); switchView("vPlan"); if (st.floor !== i.floor_id){ st.floor = i.floor_id; view.fitNext = true; renderFloors(); }
+      setTimeout(function(){ var r = $("plan").getBoundingClientRect(); view.s = Math.max(view.s, view.fitS * 2.4); view.x = r.width/2 - i.x * view.w * view.s; view.y = r.height/2 - i.y * view.h * view.s; applyView(); }, 80); };
+    bindPhotoTaps(function(){ return i.photos; }, "Site report");
+  }
+  function renderStage(gid){
+    var f = findStage(gid); if (!f){ closeSheet(); return; }
+    var t = f.task;
+    $("shBadge").style.background = t.completed ? "var(--ok)" : "#64748b"; $("shBadge").innerHTML = t.completed ? CHECK20 : "◷";
+    $("shTitle").textContent = t.name; $("shSub").textContent = (f.parent ? f.parent.name + " · " : "") + f.section + " · Asana";
+    var h = '<div class="meta">' + (t.assignee ? '<span class="pill">👤 ' + esc(t.assignee) + "</span>" : '<span class="pill">Unassigned</span>') +
+      (t.due_on ? '<span class="pill' + (overdue(t.due_on, t.completed) ? " late" : "") + '">' + (overdue(t.due_on, t.completed) ? "Overdue · " : "Due ") + day(t.due_on) + "</span>" : "") +
+      (t.completed ? '<span class="pill ok">Done' + (t.completed_at ? " · " + when(t.completed_at) : "") + "</span>" : '<span class="pill open">To do</span>') + "</div>";
+    if (canEdit()) h += t.completed ? '<button type="button" class="big undo" id="sgUndo">Mark as not done</button><div style="height:12px"></div>' : '<button type="button" class="big ok" id="sgDone">' + CHECK20 + 'Mark stage done</button><div style="height:12px"></div>';
+    if (t.notes) h += '<div class="desc">' + esc(t.notes) + "</div>";
+    if (t.subtasks && t.subtasks.length){
+      h += '<div class="lbl">Steps</div><div class="card" style="margin:0 0 14px;padding:0 12px">' + t.subtasks.map(function(x){
+        return '<div class="subrow">' + (canEdit() ? '<button type="button" class="tick' + (x.completed ? " on" : "") + '" data-sub="' + esc(x.gid) + '">' + CHECK + "</button>" : '<span class="tick' + (x.completed ? " on" : "") + '">' + CHECK + "</span>") +
+          '<span class="t" data-stage-open="' + esc(x.gid) + '">' + esc(x.name) + "<small>" + stageMeta(x) + "</small></span></div>"; }).join("") + "</div>";
+    }
+    var comments = (t.stories || []).slice().reverse();
+    if (role() !== "customer"){
+      h += '<div class="lbl">Comments & history</div><div class="notes">' + (comments.length ? comments.map(function(s){
+        var sys = s.kind !== "comment_added";
+        return '<div class="n1' + (sys ? " sys" : "") + '">' + esc(sys ? (s.kind === "marked_complete" ? "Marked done" : s.kind === "marked_incomplete" ? "Reopened" : s.text || s.kind) : s.text) + "<small>" + esc(s.by) + " · " + when(s.at) + "</small></div>"; }).join("") : '<p class="muted" style="margin:0 0 6px">No comments yet.</p>') + "</div>";
+      if (canEdit()) h += '<div class="addnote"><textarea id="sgText" rows="1" placeholder="Comment (goes to Asana)…"></textarea><button type="button" id="sgSend">Send</button></div>';
+    }
+    $("shBody").innerHTML = h;
+    function act(path, body, msg){ needName(function(){ toast("Updating Asana…"); req("POST", path, JSON.stringify(body), "application/json").then(function(r){ st.data.stages = r.stages; render(); toast(msg); }).catch(function(e){ toast(e.message); }); }); }
+    if ($("sgDone")) $("sgDone").onclick = function(){ act("/stage/" + t.gid, { completed:true }, "Stage marked done"); };
+    if ($("sgUndo")) $("sgUndo").onclick = function(){ act("/stage/" + t.gid, { completed:false }, "Stage reopened"); };
+    $("shBody").querySelectorAll("[data-sub]").forEach(function(b){ b.onclick = function(){ var x = findStage(b.dataset.sub).task; act("/stage/" + x.gid, { completed:!x.completed }, x.completed ? "Step reopened" : "Step done"); }; });
+    $("shBody").querySelectorAll("[data-stage-open]").forEach(function(b){ b.onclick = function(){ openStage(b.dataset.stageOpen); }; });
+    if ($("sgSend")) $("sgSend").onclick = function(){ var txt = $("sgText").value.trim(); if (!txt) return; act("/stage/" + t.gid + "/comment", { text:txt }, "Comment sent to Asana"); };
   }
 
   function needName(cb){
@@ -516,64 +798,65 @@
   }
   function setInstalled(p, v){
     if (!canEdit()) return;
-    needName(function(){
-      enqueue({ kind:"status", pt:p.point_id, installed:v }).then(function(){ toast(v ? p.label + " marked installed" : p.label + " marked not installed"); });
-      render();   // optimistic
-    });
+    needName(function(){ enqueue({ kind:"status", pt:p.point_id, installed:v }).then(function(){ toast(v ? p.label + " marked installed" : p.label + " marked not installed"); }); render(); });
   }
-  function addNote(p, text){ enqueue({ kind:"note", pt:p.point_id, text:text }); render(); toast("Note added"); }
 
   // photos: shrink to ~1600 px JPEG on the phone before sending (fast on site, small to store)
   function shrink(file){
     var MAX = 1600;
-    var load = window.createImageBitmap ? createImageBitmap(file, { imageOrientation:"from-image" }).catch(function(){ return createImageBitmap(file); }) : new Promise(function(res, rej){ var i = new Image(); i.onload = function(){ res(i); }; i.onerror = rej; i.src = URL.createObjectURL(file); });
-    return load.then(function(img){
+    var ld = window.createImageBitmap ? createImageBitmap(file, { imageOrientation:"from-image" }).catch(function(){ return createImageBitmap(file); }) : new Promise(function(res, rej){ var i = new Image(); i.onload = function(){ res(i); }; i.onerror = rej; i.src = URL.createObjectURL(file); });
+    return ld.then(function(img){
       var w = img.width, h = img.height, k = Math.min(1, MAX / Math.max(w, h));
       var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       return new Promise(function(res){ c.toBlob(function(b){ res({ blob:b, w:c.width, h:c.height }); }, "image/jpeg", 0.82); });
     });
   }
+  var photoCb = null;
+  function pickPhotos(which, cb){ photoCb = cb; $(which === "cam" ? "camIn" : "galIn").click(); }
   function onFiles(files){
-    var p = pts().find(function(x){ return x.point_id === st.sel; }); if (!p || !files || !files.length) return;
-    toast("Uploading " + files.length + " photo" + (files.length > 1 ? "s" : "") + "…");
-    Array.prototype.reduce.call(files, function(chain, f){ return chain.then(function(){ return shrink(f).then(function(r){ return enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); }); }, Promise.resolve())
-      .then(function(){ renderSheet(); }).catch(function(){ toast("Could not read that photo"); });
+    var cb = photoCb; photoCb = null; if (!cb || !files || !files.length) return;
+    var out = [];
+    Array.prototype.reduce.call(files, function(chain, f){ return chain.then(function(){ return shrink(f).then(function(r){ out.push(r); }); }); }, Promise.resolve())
+      .then(function(){ cb(out); toast(out.length + " photo" + (out.length > 1 ? "s" : "") + " added"); }).catch(function(){ toast("Could not read that photo"); });
   }
   $("camIn").onchange = function(){ onFiles(this.files); this.value = ""; };
   $("galIn").onchange = function(){ onFiles(this.files); this.value = ""; };
 
   // ---- photo viewer
-  var vw = { p:null, i:0 };
-  function openViewer(p, i){ vw.p = p; vw.i = i; showViewer(); $("viewer").classList.add("on"); }
+  var vw = { list:null, i:0, title:"" };
+  function openViewer(list, i, title){ vw.list = list; vw.i = i; vw.title = title; showViewer(); $("viewer").classList.add("on"); }
   function showViewer(){
-    var ph = vw.p.photos[vw.i]; if (!ph){ $("viewer").classList.remove("on"); return; }
+    var ph = vw.list[vw.i]; if (!ph){ $("viewer").classList.remove("on"); return; }
     $("vImg").src = imgUrl("photo", ph.id);
-    $("vCap").innerHTML = "<b>" + esc(vw.p.label) + "</b><small>" + esc(ph.by) + " · " + when(ph.at) + " · " + (vw.i + 1) + " of " + vw.p.photos.length + "</small>";
+    $("vCap").innerHTML = "<b>" + esc(vw.title) + "</b><small>" + esc(ph.by) + " · " + when(ph.at) + " · " + (vw.i + 1) + " of " + vw.list.length + "</small>";
     $("vDel").classList.toggle("hidden", !canEdit());
   }
   $("vClose").onclick = function(){ $("viewer").classList.remove("on"); };
   $("vPrev").onclick = function(){ if (vw.i > 0){ vw.i--; showViewer(); } };
-  $("vNext").onclick = function(){ if (vw.i < vw.p.photos.length - 1){ vw.i++; showViewer(); } };
+  $("vNext").onclick = function(){ if (vw.i < vw.list.length - 1){ vw.i++; showViewer(); } };
   $("vDel").onclick = function(){
-    var ph = vw.p.photos[vw.i]; if (!ph || !confirm("Delete this photo?")) return;
-    req("DELETE", "/photo/" + ph.id).then(function(){ vw.p.photos.splice(vw.i, 1); if (vw.i >= vw.p.photos.length) vw.i = vw.p.photos.length - 1; if (vw.i < 0) $("viewer").classList.remove("on"); else showViewer(); render(); toast("Photo deleted"); })
+    var ph = vw.list[vw.i]; if (!ph || !confirm("Delete this photo?")) return;
+    req("DELETE", "/photo/" + ph.id).then(function(){ vw.list.splice(vw.i, 1); if (vw.i >= vw.list.length) vw.i = vw.list.length - 1; if (vw.i < 0) $("viewer").classList.remove("on"); else showViewer(); render(); toast("Photo deleted"); })
       .catch(function(e){ toast(e.message); });
   };
 
   // ---- tabs
-  document.querySelectorAll(".tabs button").forEach(function(b){ b.onclick = function(){
-    document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.toggle("on", x === b); });
-    document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on", v.id === b.dataset.v); });
-    st.view = b.dataset.v; if (st.view === "vPlan") setTimeout(function(){ if (view.fitNext) fit(); }, 30);
-  }; });
+  function switchView(id){
+    document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.toggle("on", x.dataset.v === id); });
+    document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on", v.id === id); });
+    st.view = id; if (id === "vPlan") setTimeout(function(){ if (view.fitNext) fit(); }, 30);
+  }
+  document.querySelectorAll(".tabs button").forEach(function(b){ b.onclick = function(){ switchView(b.dataset.v); }; });
 
   // ---- start
-  if (!P || !K || !S){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
-  load().then(function(){ updateQueue(); flush(); });
-  setInterval(function(){ if (!document.hidden && !$("viewer").classList.contains("on")) load(true); }, 20000);
-  document.addEventListener("visibilitychange", function(){ if (!document.hidden){ load(true); flush(); } });
+  if (!S){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
+  if (OFFICE){ if (P && okey()) openProject(P); else showHome(); }
+  else if (!P || !K){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
+  else load().then(function(){ updateQueue(); flush(); });
+  setInterval(function(){ if (P && !document.hidden && !$("viewer").classList.contains("on") && !st.placing && st.sel !== "draft") load(true); }, 20000);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden && P){ load(true); flush(); } });
 })();
 </script>
 </body>
