@@ -51,8 +51,15 @@
   .chip .n{ opacity:.7; font-weight:500; margin-left:4px; }
   .plan{ flex:1; min-height:0; position:relative; overflow:hidden; touch-action:none; background:#e9ecf1; }
   @media (prefers-color-scheme: dark){ .plan{ background:#0a0d12; } }
-  .stage{ position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform; }
+  /* nothing is laid out in a scaled box (browsers round positions there to whole pixels, which moves things when zoomed in):
+     the drawing layers are placed with transforms, and the points are placed in screen pixels on every move */
+  .stage{ position:absolute; inset:0; overflow:hidden; }
   .stage img{ display:block; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+  .stage img, .stage canvas, #tiles{ position:absolute; left:0; top:0; transform-origin:0 0; }
+  #tiles{ width:0; height:0; }
+  #marks{ position:absolute; left:0; top:0; width:0; height:0; --inv:1; }
+  #marks > *{ left:0; top:0; margin:0 !important; }
+  #marks .ic{ --u:max(calc(var(--sz, 30) * var(--s, 1) * 1px), 16px); }
   .mk{ position:absolute; width:calc(22px * var(--inv, 1)); height:calc(22px * var(--inv, 1)); margin:calc(-11px * var(--inv, 1)) 0 0 calc(-11px * var(--inv, 1));
        border-radius:50%; border:calc(2.2px * var(--inv, 1)) solid var(--c); background:#fff; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.35); padding:0; }
   .mk span{ font-size:calc(7.5px * var(--inv, 1)); font-weight:800; color:var(--c); letter-spacing:-.02em; line-height:1; }
@@ -62,20 +69,27 @@
   .mk.ph::before{ content:""; position:absolute; left:calc(-4px * var(--inv, 1)); bottom:calc(-4px * var(--inv, 1)); width:calc(8px * var(--inv, 1)); height:calc(8px * var(--inv, 1)); border-radius:50%; background:#111827; border:calc(1.5px * var(--inv, 1)) solid #fff; }
   .mk.dim{ opacity:.22; }
   .mk.sel{ outline:calc(3px * var(--inv, 1)) solid var(--accent); outline-offset:calc(2px * var(--inv, 1)); }
-  .ic{ position:absolute; width:calc(32px * var(--inv, 1)); height:calc(32px * var(--inv, 1)); margin:calc(-16px * var(--inv, 1)) 0 0 calc(-16px * var(--inv, 1)); padding:0; border:0; background:none; }
+  /* drawing icons: sized on the drawing exactly like the planner and the exported PDF (--sz = icon size in drawing units),
+     never smaller than 16 screen px so they stay visible when zoomed right out */
+  .ic{ --u:max(calc(var(--sz, 30) * 1px), calc(16px * var(--inv, 1))); position:absolute; width:var(--u); height:var(--u); margin:calc(var(--u) / -2) 0 0 calc(var(--u) / -2); padding:0; border:0; background:none; }
   .mk.ic, .mk.ic.done{ background:none; box-shadow:none; border:0; border-radius:0; }
-  .ic > svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 calc(0.5px * var(--inv, 1)) calc(1.2px * var(--inv, 1)) rgba(0,0,0,.35)); }
-  .ic .tg{ position:absolute; transform:translate(-50%,-50%); color:#fff; font-family:Arial, sans-serif; font-weight:700; font-style:normal; line-height:1.2; white-space:nowrap; pointer-events:none;
-       font-size:calc(6.4px * var(--inv, 1)); padding:0 calc(2px * var(--inv, 1)); border-radius:calc(2.3px * var(--inv, 1)); border:calc(0.8px * var(--inv, 1)) solid #fff; left:calc(50% + 9.4px * var(--inv, 1)); top:calc(50% + 8.9px * var(--inv, 1)); }
+  .ic > svg{ width:100%; height:100%; display:block; overflow:visible; filter:drop-shadow(0 calc(var(--u) * 0.02) calc(var(--u) * 0.05) rgba(0,0,0,.4)); }
+  .ic .tg{ position:absolute; transform:translate(-50%,-50%); color:#fff; font-family:Arial, sans-serif; font-weight:700; font-style:normal; line-height:1.2; white-space:nowrap; pointer-events:none; letter-spacing:0.02em;
+       font-size:calc(var(--u) * 0.2022); padding:0 0.32em; border-radius:0.35em; border:calc(var(--u) * 0.022) solid #fff; left:calc(50% + var(--u) * 0.2935); top:calc(50% + var(--u) * 0.2772); }
   .ic .cb{ position:absolute; transform:translate(-50%,-50%); font-family:Arial, sans-serif; font-weight:700; font-style:normal; line-height:1.15; white-space:nowrap; pointer-events:none; background:#fff;
-       font-size:calc(6px * var(--inv, 1)); padding:0 calc(1.8px * var(--inv, 1)); border-radius:calc(2.3px * var(--inv, 1)); border:calc(1px * var(--inv, 1)) solid currentColor; left:calc(50% + 9.9px * var(--inv, 1)); top:calc(50% - 9.4px * var(--inv, 1)); }
-  .ic.done::after{ content:""; position:absolute; left:calc(-3px * var(--inv, 1)); top:calc(-3px * var(--inv, 1)); width:calc(13px * var(--inv, 1)); height:calc(13px * var(--inv, 1)); border-radius:50%;
-       background:#12a150 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/70% no-repeat; border:calc(1.5px * var(--inv, 1)) solid #fff; box-shadow:0 1px 2px rgba(0,0,0,.3); }
-  .ic.ph::before{ content:""; position:absolute; left:calc(-1px * var(--inv, 1)); bottom:calc(0px * var(--inv, 1)); width:calc(8px * var(--inv, 1)); height:calc(8px * var(--inv, 1)); border-radius:50%; background:#111827; border:calc(1.5px * var(--inv, 1)) solid #fff; }
+       font-size:calc(var(--u) * 0.1891); padding:0 0.3em; border-radius:0.35em; border:calc(var(--u) * 0.033) solid currentColor; left:calc(50% + var(--u) * 0.3098); top:calc(50% - var(--u) * 0.2935); }
+  .ic.done::after, .ic.half::after{ content:""; position:absolute; --b:clamp(calc(11px * var(--inv, 1)), calc(var(--u) * 0.36), calc(24px * var(--inv, 1))); left:calc(var(--b) * -0.25); top:calc(var(--b) * -0.25); width:var(--b); height:var(--b); border-radius:50%; box-sizing:border-box;
+       background:#12a150 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/70% no-repeat; border:calc(var(--b) * 0.11) solid #fff; box-shadow:0 0 calc(var(--b) * 0.15) rgba(0,0,0,.35); }
+  .ic.half::after{ background-color:#f59e0b; }
+  .ic.ph::before{ content:""; position:absolute; --b:clamp(calc(7px * var(--inv, 1)), calc(var(--u) * 0.24), calc(14px * var(--inv, 1))); left:calc(var(--b) * -0.2); bottom:calc(var(--b) * -0.2); width:var(--b); height:var(--b); border-radius:50%; box-sizing:border-box; background:#111827; border:calc(var(--b) * 0.18) solid #fff; }
+  .ic.cfg > svg{ filter:drop-shadow(0 0 calc(var(--u) * 0.06) #2563eb) drop-shadow(0 0 calc(var(--u) * 0.06) #2563eb); }
   .ic.dim{ opacity:.22; }
-  .ic.sel{ outline:calc(2.5px * var(--inv, 1)) solid var(--accent); outline-offset:calc(1px * var(--inv, 1)); border-radius:50%; }
-  .ic .lb{ top:calc(100% + 1px * var(--inv, 1)); }
+  .ic.sel{ outline:calc(2.5px * var(--inv, 1)) solid var(--accent); outline-offset:calc(2px * var(--inv, 1)); border-radius:50%; }
+  .ic .lb{ top:calc(100% + 2px * var(--inv, 1)); }
   .labels .ic .lb{ display:block; }
+  .stage canvas{ display:block; pointer-events:none; }
+  .sharp-note{ position:absolute; right:60px; bottom:14px; font-size:11px; color:var(--muted); background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:3px 7px; display:none; }
+  .sharp-note.on{ display:block; }
   .mini{ width:26px; height:26px; flex-shrink:0; display:inline-block; } .mini svg{ width:100%; height:100%; display:block; }
   .legend .mini{ width:18px; height:18px; }
   .mk .lb, .ic .lb{ position:absolute; top:calc(100% + 2px * var(--inv, 1)); left:50%; transform:translateX(-50%); white-space:nowrap; font-size:calc(9px * var(--inv, 1)); font-weight:700; color:#111827;
@@ -106,6 +120,25 @@
   .ck{ width:30px; height:30px; border-radius:9px; border:2px solid var(--line-2); display:grid; place-items:center; flex-shrink:0; background:var(--panel); padding:0; }
   .ck.on{ background:var(--ok); border-color:var(--ok); }
   .ck svg{ width:17px; height:17px; opacity:0; } .ck.on svg{ opacity:1; }
+  .cks{ display:flex; gap:6px; flex-shrink:0; } .cks label{ display:flex; flex-direction:column; align-items:center; gap:2px; font-size:9.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .ck.cfg.on{ background:#2563eb; border-color:#2563eb; } .ck:disabled{ opacity:.45; }
+  .steps{ border:1px solid var(--line); border-radius:13px; overflow:hidden; margin-bottom:12px; }
+  .steprow{ display:flex; align-items:center; gap:12px; width:100%; padding:12px; border:0; border-top:1px solid var(--line); background:var(--panel); text-align:left; }
+  .steprow:first-child{ border-top:0; } .steprow .t{ flex:1; min-width:0; } .steprow .t b{ display:block; font-size:15px; } .steprow .t small{ display:block; color:var(--muted); font-size:12px; }
+  .steprow .n{ width:24px; height:24px; border-radius:50%; background:var(--panel-2); color:var(--muted); display:grid; place-items:center; font-size:12px; font-weight:800; flex-shrink:0; }
+  .steprow.on{ background:var(--ok-soft); } .steprow.on .n{ background:var(--ok); color:#fff; } .steprow.on.cfg{ background:#e8efff; } .steprow.on.cfg .n{ background:#2563eb; }
+  @media (prefers-color-scheme: dark){ .steprow.on.cfg{ background:#132744; } }
+  .steprow .go{ height:36px; padding:0 14px; border-radius:10px; border:0; font-weight:700; font-size:13.5px; background:var(--ok); color:#fff; flex-shrink:0; }
+  .steprow .go.undo{ background:var(--panel-2); color:var(--text); border:1px solid var(--line-2); font-weight:600; }
+  .steprow .go.cfg{ background:#2563eb; } .steprow .lock{ font-size:11.5px; color:var(--muted); flex-shrink:0; text-align:right; max-width:96px; }
+  .sbars{ display:grid; grid-template-columns:auto 1fr auto; gap:5px 9px; align-items:center; font-size:12px; color:var(--muted); } .sbars .bar{ height:6px; }
+  .bar.al i{ background:linear-gradient(90deg,#0d9488,#2dd4bf); } .bar.cf i{ background:linear-gradient(90deg,#2563eb,#60a5fa); }
+  .who{ font-size:11px; font-weight:600; color:var(--muted); }
+  .staff .rowi .t small{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .addp{ display:grid; grid-template-columns:1fr auto auto; gap:6px; padding:10px 12px; border-top:1px solid var(--line); }
+  .addp input, .addp select{ height:38px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); padding:0 9px; min-width:0; font:inherit; color:inherit; }
+  .addp button{ height:38px; border-radius:10px; border:0; background:var(--accent); color:#fff; font-weight:700; padding:0 12px; }
+  .mini-btn{ height:30px; padding:0 10px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); font-size:12.5px; font-weight:600; flex-shrink:0; }
   .sec{ margin:14px 12px 6px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
   .sec button{ border:0; background:none; color:var(--accent); font-weight:600; font-size:12.5px; padding:0; }
   .catc{ padding:12px; border-top:1px solid var(--line); } .catc:first-child{ border-top:0; }
@@ -226,7 +259,8 @@
   <section class="view on" id="vPlan">
     <div class="chips" id="floorChips"></div>
     <div class="plan" id="plan">
-      <div class="stage" id="stage"><img id="floorImg" alt=""><div id="marks"></div></div>
+      <div class="stage" id="stage"><img id="floorImg" alt=""><canvas id="baseCv"></canvas><div id="tiles"></div><div id="marks"></div></div>
+      <div class="sharp-note" id="sharpNote">Sharpening…</div>
       <button type="button" class="fab hidden" id="reportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 7v4M12 13.5v.01"/></svg>Report</button>
       <div class="planbar" id="placeBar"><span>Tap the exact spot on the drawing</span><button type="button" id="placeCancel">Cancel</button></div>
       <div class="legend" id="legend"></div>
@@ -288,10 +322,16 @@
   var KIND = { missing:"Extra point found on site", extra:"Point not on site", other:"Site issue" };
   var ISTAT = { open:"Waiting for office", approved:"Approved — will be added", rejected:"Not needed", done:"Done — drawing updated" };
 
-  // ---- links: site.html#p=<project>&k=<key>&s=<server>     office: site.html#office&s=<server>[&p=<project>]
+  // ---- links: site.html#p=<project>&k=<key>&s=<server>      (shared team link or customer link)
+  //             site.html#u=<personal key>&s=<server>[&p=]    (a staff member's own link: technician, site engineer, manager)
+  //             site.html#office&s=<server>[&p=<project>]     (office, with the office key)
   var hp = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
-  var S = (hp.get("s") || "").replace(/\/+$/, ""), OFFICE = hp.has("office"), P = hp.get("p"), K = hp.get("k");
-  var st = { data:null, floor:null, filter:"all", listFilter:"todo", sel:null, view:"vPlan", pending:{}, placing:false, list:null };
+  var S = (hp.get("s") || "").replace(/\/+$/, ""), OFFICE = hp.has("office"), P = hp.get("p"), K = hp.get("k"), U = hp.get("u");
+  var STAFF = !!U && !OFFICE; if (STAFF) K = U;
+  var ROLE_TAG = { office:"Office", manager:"Manager", engineer:"Site engineer", tech:"Technician", team:"Team", customer:"Customer view" };
+  var STEP_L = { installed:"Installed", aligned:"Aligned", configured:"Configured" };
+  var STEP_DO = { installed:"Mark installed", aligned:"Mark aligned", configured:"Mark configured" };
+  var st = { me:null, data:null, floor:null, filter:"all", listFilter:"todo", sel:null, view:"vPlan", pending:{}, placing:false, list:null };
   function okey(){ try { return localStorage.getItem("et_office_key:" + S) || ""; } catch(e){ return ""; } }
   function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function toast(m){ var t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove("on"); }, 2600); }
@@ -302,16 +342,19 @@
   }
   function day(iso){ if (!iso) return ""; var d = new Date(iso + "T00:00:00"); return d.toLocaleDateString(undefined, { day:"numeric", month:"short" }); }
   function overdue(iso, done){ if (!iso || done) return false; return new Date(iso + "T23:59:59") < new Date(); }
-  function name(){ try { return localStorage.getItem("et_site_name") || ""; } catch(e){ return ""; } }
+  function name(){ if (STAFF) return st.me ? st.me.name : ""; try { return localStorage.getItem("et_site_name") || ""; } catch(e){ return ""; } }
   function auth(){ return OFFICE ? { "X-Admin-Key":okey() } : { "X-Key":K }; }
   function api(path){ return S + "/site/p/" + P + path; }
   function imgKey(){ return OFFICE ? (st.data && st.data.links ? st.data.links.team_key : "") : K; }
   function imgUrl(kind, id){ return api("/" + kind + "/" + encodeURIComponent(id)) + "?k=" + encodeURIComponent(imgKey()) + (kind === "floor" ? "&v=" + ((st.data.floors.find(function(f){ return f.id === id; }) || {}).v || 0) : ""); }
   function role(){ return st.data ? st.data.role : ""; }
-  function canEdit(){ return role() === "team" || role() === "office"; }
-  function isOffice(){ return role() === "office"; }
+  function canEdit(){ var r = role(); return !!r && r !== "customer"; }
+  function isOffice(){ return role() === "office" || role() === "manager"; }
+  function canConfig(){ return isOffice() || role() === "engineer"; }
+  function canStep(step){ return step === "configured" ? canConfig() : canEdit(); }
+  function homeHash(){ return STAFF ? "#u=" + encodeURIComponent(U) + "&s=" + encodeURIComponent(S) : "#office&s=" + encodeURIComponent(S); }
   function req(method, path, body, type){
-    var h = Object.assign({ "X-By":name() || (OFFICE ? "ExpressTech office" : "Technician") }, auth());
+    var h = Object.assign(STAFF ? {} : { "X-By":name() || (OFFICE ? "ExpressTech office" : "Technician") }, auth());
     if (type) h["Content-Type"] = type;
     return fetch(api(path), { method:method, headers:h, body:body }).then(function(r){
       return r.json().catch(function(){ return {}; }).then(function(j){ if (!r.ok) { var e = new Error(j.error || ("Error " + r.status)); e.status = r.status; throw e; } return j; });
@@ -328,7 +371,7 @@
   try { issueMap = JSON.parse(localStorage.getItem("et_issue_map") || "{}") || {}; } catch(e){}
   function send(item){
     var base = item.issue ? "/issue/" + (issueMap[item.issue] || item.issue) : "/pt/" + encodeURIComponent(item.pt);
-    if (item.kind === "status") return req("POST", base + "/status", JSON.stringify({ installed:item.installed }), "application/json");
+    if (item.kind === "status") return req("POST", base + "/status", JSON.stringify({ step:item.step || "installed", done: item.done != null ? item.done : item.installed }), "application/json");
     if (item.kind === "note") return req("POST", base + "/note", JSON.stringify({ text:item.text }), "application/json");
     if (item.kind === "photo") return req("POST", base + "/photo?w=" + item.w + "&h=" + item.h, item.blob, "image/jpeg");
     if (item.kind === "report") return req("POST", "/issue", JSON.stringify(item.body), "application/json").then(function(r){ issueMap[item.local] = r.id; try { localStorage.setItem("et_issue_map", JSON.stringify(issueMap)); } catch(e){} return r; });
@@ -345,45 +388,88 @@
   function updateQueue(){ return qAll().then(function(items){ var q = $("queue"); st.pending = {}; items.forEach(function(it){ var k = it.issue ? "issue:" + it.issue : it.kind === "report" ? "report" : it.pt; (st.pending[k] = st.pending[k] || []).push(it); }); q.classList.toggle("on", items.length > 0); $("queueTxt").textContent = items.length + " change" + (items.length > 1 ? "s" : "") + " waiting for signal — they upload automatically."; }); }
   function enqueue(item){
     item.id = Date.now() + "-" + Math.random().toString(36).slice(2); item.p = P; item.t = Date.now();
-    return qPut(item).then(updateQueue).then(function(){ return flush(); });
+    return qPut(item).then(updateQueue).then(function(){ if (st.data && st.sel !== "draft") render(); return flush(); });
   }
   window.addEventListener("online", function(){ flush(); });
   $("queueRetry").onclick = function(){ flush(); };
 
-  // ================= office: all projects =================
+  // ================= home: all projects (office, or a staff member's own link) =================
+  function homeFetch(path, opts){
+    opts = opts || {}; opts.cache = "no-store";
+    opts.headers = Object.assign(STAFF ? { "X-Key":K } : { "X-Admin-Key":okey() }, opts.headers || {});
+    return fetch(S + path, opts).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
+      if (!r.ok){ if (r.status === 401 && !STAFF){ try { localStorage.removeItem("et_office_key:" + S); } catch(e){} } var e = new Error(j.error || "Error"); e.status = r.status; throw e; }
+      return j; }); });
+  }
+  function personLink(k){ return location.href.split("#")[0] + "#u=" + encodeURIComponent(k) + "&s=" + encodeURIComponent(S); }
+  function copyText(t, msg){
+    var done = function(){ toast(msg || "Link copied"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function(){ prompt("Copy this link:", t); });
+    else prompt("Copy this link:", t);
+  }
   function showHome(){
     P = null; st.data = null; closeSheet();
-    history.replaceState(null, "", "#office&s=" + encodeURIComponent(S));
+    history.replaceState(null, "", homeHash());
     document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on", v.id === "vHome"); });
     ["tabs","progBar","backBtn"].forEach(function(id){ $(id).classList.add("hidden"); });
-    $("pName").textContent = "ExpressTech projects"; $("pSub").textContent = "Office view · installations, reports and stages";
-    $("roleTag").textContent = "Office"; $("roleTag").className = "role office";
-    if (!okey()){
+    if (!STAFF){
+      $("pName").textContent = "ExpressTech projects"; $("pSub").textContent = "Office view · installations, reports and stages";
+      $("roleTag").textContent = "Office"; $("roleTag").className = "role office";
+    }
+    if (!STAFF && !okey()){
       $("homeBody").innerHTML = '<div class="login"><h3 style="margin:0 0 4px">Office sign-in</h3><p class="muted">Enter the office key once on this device.</p><input id="okIn" type="password" placeholder="Office key"><button type="button" class="big pri" id="okGo">Open projects</button></div>';
       $("loading").classList.add("hidden");
       $("okGo").onclick = function(){ try { localStorage.setItem("et_office_key:" + S, $("okIn").value.trim()); } catch(e){} showHome(); };
       return;
     }
-    fetch(S + "/site/list", { headers:{ "X-Admin-Key":okey() }, cache:"no-store" }).then(function(r){ return r.json().then(function(j){ if (!r.ok){ if (r.status === 401){ try { localStorage.removeItem("et_office_key:" + S); } catch(e){} } throw new Error(j.error || "Error"); } return j; }); })
-      .then(function(j){
-        st.list = j.projects; $("loading").classList.add("hidden");
-        var open = j.projects.reduce(function(a,p){ return a + p.open_reports; }, 0);
-        $("homeBody").innerHTML = '<div class="sec"><span>' + j.projects.length + " project" + (j.projects.length === 1 ? "" : "s") + (open ? ' · <span style="color:var(--warn)">' + open + " open report" + (open > 1 ? "s" : "") + "</span>" : "") + '</span><button type="button" id="homeRef">Refresh</button></div>' +
-          (j.projects.map(function(p){
-            var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
-            return '<button type="button" class="pcard" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
-              '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
-              '<div class="ft"><span class="pill">' + p.installed + " / " + p.points + " installed</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
-              (p.asana ? '<span class="pill">Stages ' + p.stages_done + " / " + p.stages_all + "</span>" + (p.next_stage ? '<span class="pill approved">Next: ' + esc(p.next_stage) + "</span>" : "") : '<span class="pill">Asana not linked</span>') +
-              "<small>" + when(p.updated_at) + "</small></div>" + (p.status ? '<div class="muted" style="margin-top:6px">' + esc(p.status.title) + "</div>" : "") + "</button>";
-          }).join("") || '<div class="empty">No projects yet. Publish one from the planner (Site button).</div>') + '<div style="height:20px"></div>';
-        $("homeBody").querySelectorAll("[data-p]").forEach(function(b){ b.onclick = function(){ openProject(b.dataset.p); }; });
-        $("homeRef").onclick = showHome;
-      }).catch(function(e){ $("loading").classList.add("hidden"); $("homeBody").innerHTML = '<div class="empty">' + esc(e.message) + '<br><br><button type="button" class="btn" id="homeRetry" style="margin:0 auto;padding:0 16px">Try again</button></div>'; $("homeRetry").onclick = showHome; });
+    homeFetch(STAFF ? "/site/me" : "/site/list").then(function(j){
+      if (STAFF){
+        st.me = j.person;
+        $("pName").textContent = "Hi " + j.person.name; $("pSub").textContent = "Your ExpressTech projects";
+        $("roleTag").textContent = ROLE_TAG[j.person.role] || ""; $("roleTag").className = "role" + (j.person.role === "manager" ? " office" : "");
+      }
+      st.list = j.projects; $("loading").classList.add("hidden");
+      var manage = !STAFF || (st.me && st.me.role === "manager");
+      var open = manage ? j.projects.reduce(function(a,p){ return a + (p.open_reports || 0); }, 0) : 0;
+      $("homeBody").innerHTML = '<div class="sec"><span>' + j.projects.length + " project" + (j.projects.length === 1 ? "" : "s") + (open ? ' · <span style="color:var(--warn)">' + open + " open report" + (open > 1 ? "s" : "") + "</span>" : "") + '</span><button type="button" id="homeRef">Refresh</button></div>' +
+        (j.projects.map(function(p){
+          var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
+          return '<button type="button" class="pcard" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (manage && p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
+            '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+            '<div class="ft"><span class="pill">' + p.installed + " / " + p.points + " done</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
+            (p.asana ? '<span class="pill">Stages ' + p.stages_done + " / " + p.stages_all + "</span>" + (p.next_stage ? '<span class="pill approved">Next: ' + esc(p.next_stage) + "</span>" : "") : manage ? '<span class="pill">Asana not linked</span>' : "") +
+            "<small>" + when(p.updated_at) + "</small></div>" + (p.status ? '<div class="muted" style="margin-top:6px">' + esc(p.status.title) + "</div>" : "") + "</button>";
+        }).join("") || '<div class="empty">' + (STAFF ? "No projects yet." : "No projects yet. Publish one from the planner (Site button).") + "</div>") +
+        (manage ? '<div class="sec" style="margin-top:20px"><span>Team</span></div><div class="card staff" id="staffCard"><div class="rowi"><span class="t"><small>Loading…</small></span></div></div>' +
+          '<p class="note">Each person gets their own link. Their name and role go on every tick, photo and note. Technicians install and align; the site engineer also ticks <b>Configured</b> on cameras; managers see everything, approve reports and manage the team.</p>' : "") +
+        '<div style="height:20px"></div>';
+      $("homeBody").querySelectorAll("[data-p]").forEach(function(b){ b.onclick = function(){ openProject(b.dataset.p); }; });
+      $("homeRef").onclick = showHome;
+      if (manage) renderStaff();
+    }).catch(function(e){ $("loading").classList.add("hidden"); $("homeBody").innerHTML = '<div class="empty">' + esc(e.message) + '<br><br><button type="button" class="btn" id="homeRetry" style="margin:0 auto;padding:0 16px">Try again</button></div>'; $("homeRetry").onclick = showHome; });
+  }
+  var ROLE_OPTS = [["tech","Technician"],["engineer","Site engineer"],["manager","Manager"]];
+  function renderStaff(){
+    homeFetch("/site/staff").then(function(j){
+      var card = $("staffCard"); if (!card) return;
+      var list = j.staff.filter(function(x){ return x.active; });
+      card.innerHTML = list.map(function(x){
+        return '<div class="rowi"><span class="act" style="padding:0;border:0"><span class="av">' + esc(x.name.slice(0,1).toUpperCase()) + "</span></span>" +
+          '<span class="t"><b>' + esc(x.name) + "</b><small>" + esc(ROLE_TAG[x.role] || x.role) + "</small></span>" +
+          '<button type="button" class="mini-btn" data-copy="' + esc(x.key) + '" data-n="' + esc(x.name) + '">Copy link</button>' +
+          '<button type="button" class="mini-btn" data-off="' + esc(x.id) + '" data-n="' + esc(x.name) + '" aria-label="Remove">✕</button></div>';
+      }).join("") + '<div class="addp"><input id="spName" placeholder="Name, e.g. Kutbuddin" maxlength="40"><select id="spRole">' + ROLE_OPTS.map(function(o){ return '<option value="' + o[0] + '">' + o[1] + "</option>"; }).join("") + '</select><button type="button" id="spAdd">Add</button></div>';
+      card.querySelectorAll("[data-copy]").forEach(function(b){ b.onclick = function(){ copyText(personLink(b.dataset.copy), b.dataset.n + "’s link copied — send it to them on WhatsApp"); }; });
+      card.querySelectorAll("[data-off]").forEach(function(b){ b.onclick = function(){ if (!confirm("Remove " + b.dataset.n + "? Their link stops working.")) return;
+        homeFetch("/site/staff/" + b.dataset.off, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ active:false }) }).then(renderStaff).catch(function(e){ toast(e.message); }); }; });
+      $("spAdd").onclick = function(){ var n = $("spName").value.trim(); if (!n){ $("spName").focus(); return; }
+        homeFetch("/site/staff", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ name:n, role:$("spRole").value }) })
+          .then(function(r){ renderStaff(); copyText(personLink(r.person.key), r.person.name + " added — link copied"); }).catch(function(e){ toast(e.message); }); };
+    }).catch(function(e){ var card = $("staffCard"); if (card) card.innerHTML = '<div class="rowi"><span class="t"><small>' + esc(e.message) + "</small></span></div>"; });
   }
   function openProject(id){
     P = id; st.floor = null; view.loadedFor = null; view.fitNext = true;
-    history.replaceState(null, "", "#office&s=" + encodeURIComponent(S) + "&p=" + encodeURIComponent(id));
+    history.replaceState(null, "", homeHash() + "&p=" + encodeURIComponent(id));
     ["tabs","progBar"].forEach(function(x){ $(x).classList.remove("hidden"); }); $("backBtn").classList.remove("hidden");
     switchView("vPlan"); $("loading").classList.remove("hidden"); $("loadMsg").textContent = "Opening project…";
     load().then(function(){ updateQueue(); flush(); });
@@ -406,7 +492,23 @@
   }
   function pts(){ return st.data ? st.data.points : []; }
   function issues(){ return st.data && st.data.issues ? st.data.issues : []; }
-  function isDone(p){ var q = (st.pending[p.point_id] || []).filter(function(i){ return i.kind === "status"; }); return q.length ? !!q[q.length-1].installed : !!p.installed; }
+  // the point's steps (cameras: installed → aligned → configured by the site engineer), with ticks still waiting for signal applied
+  function stepsOf(p){ return p.steps || (p.cat === "cam" ? ["installed","aligned","configured"] : ["installed"]); }
+  function teamSteps(p){ return stepsOf(p).filter(function(x){ return x !== "configured"; }); }
+  function state(p){
+    var o = {}; stepsOf(p).forEach(function(x){ o[x] = !!p[x]; });
+    (st.pending[p.point_id] || []).forEach(function(i){
+      if (i.kind !== "status") return;
+      var step = i.step || "installed", v = !!(i.done != null ? i.done : i.installed);
+      o[step] = v; if (v && step !== "installed") o.installed = true;
+      if (!v && step === "installed") stepsOf(p).forEach(function(x){ if (x !== "installed") o[x] = false; });
+    });
+    return o;
+  }
+  function isDone(p){ var o = state(p); return teamSteps(p).every(function(x){ return o[x]; }); }
+  function isHalf(p){ return state(p).installed && !isDone(p); }
+  function stepWaiting(p, step){ return (st.pending[p.point_id] || []).some(function(i){ return i.kind === "status" && (i.step || "installed") === step; }); }
+  function whoTxt(by, at){ return by ? "by " + esc(by) + (at ? " · " + when(at) : "") : ""; }
   function catOf(p){ return CATS[p.cat] ? p.cat : "other"; }
   function counts(list){ var n = list.length, d = list.filter(isDone).length; return { n:n, d:d, pct: n ? Math.round(d / n * 100) : 0 }; }
   function floorName(id){ var f = st.data.floors.find(function(x){ return x.id === id; }); return f ? f.name : ""; }
@@ -416,11 +518,12 @@
     var d = st.data;
     document.title = d.project.name + " · ExpressTech Site";
     $("pName").textContent = d.project.name;
-    $("pSub").textContent = d.role === "customer" ? "Installation progress by ExpressTech" : d.role === "office" ? "Office view" : "Installation · tap a point to update";
-    var rt = $("roleTag"); rt.textContent = d.role === "customer" ? "Customer view" : d.role === "office" ? "Office" : "Team";
-    rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" ? " office" : "");
+    var me = name();
+    $("pSub").textContent = d.role === "customer" ? "Installation progress by ExpressTech" : d.role === "office" ? "Office view" : (me && STAFF ? me + " · " : "") + "tap a point to update";
+    var rt = $("roleTag"); rt.textContent = ROLE_TAG[d.role] || "Team";
+    rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" || d.role === "manager" ? " office" : "");
     var c = counts(pts());
-    $("pct").textContent = c.pct + "%"; $("cnt").textContent = c.d + " of " + c.n + " installed" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
+    $("pct").textContent = c.pct + "%"; $("cnt").textContent = c.d + " of " + c.n + " done" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
     $("barI").style.width = c.pct + "%";
     $("tabRep").classList.toggle("hidden", !canEdit());
     $("reportBtn").classList.toggle("hidden", !canEdit());
@@ -436,7 +539,7 @@
     $("floorChips").innerHTML = d.floors.map(function(f){ var c = counts(pts().filter(function(p){ return p.floor_id === f.id; }));
       return '<button type="button" class="chip' + (f.id === st.floor ? " on" : "") + '" data-f="' + esc(f.id) + '">' + esc(f.name) + '<span class="n">' + c.d + "/" + c.n + "</span></button>"; }).join("") +
       '<span style="width:8px;flex-shrink:0"></span>' +
-      ["all","todo","done"].map(function(k){ return '<button type="button" class="chip' + (st.filter === k ? " on" : "") + '" data-flt="' + k + '">' + { all:"All", todo:"To do", done:"Done" }[k] + "</button>"; }).join("");
+      ["all","todo","done"].concat(canConfig() && pts().some(function(p){ return p.cat === "cam"; }) ? ["config"] : []).map(function(k){ return '<button type="button" class="chip' + (st.filter === k ? " on" : "") + '" data-flt="' + k + '">' + { all:"All", todo:"To do", done:"Done", config:"To configure" }[k] + "</button>"; }).join("");
     $("floorChips").querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ if (st.floor !== b.dataset.f){ st.floor = b.dataset.f; view.fitNext = true; renderFloors(); } }; });
     $("floorChips").querySelectorAll("[data-flt]").forEach(function(b){ b.onclick = function(){ st.filter = b.dataset.flt; renderFloors(); renderPlanMarks(); }; });
     showFloor();
@@ -451,100 +554,266 @@
       $("legend").innerHTML = Object.keys(cats).map(function(k){ return '<span><i style="background:' + esc(cats[k]) + '"></i>' + CATS[k].name + "</span>"; }).join("") || '<span class="muted">No points on this floor</span>';
     }
   }
-  var view = { s:1, x:0, y:0, w:0, h:0, fitS:1, fitNext:true, loadedFor:null };
-  function showFloor(){
-    var f = st.data.floors.find(function(x){ return x.id === st.floor; }), img = $("floorImg");
-    if (!f){ img.removeAttribute("src"); return; }
-    var src = imgUrl("floor", f.id);
-    if (view.loadedFor !== src){
-      view.loadedFor = src; img.onload = function(){ view.w = img.naturalWidth; view.h = img.naturalHeight; $("marks").style.width = view.w + "px"; $("marks").style.height = view.h + "px"; if (view.fitNext){ fit(); view.fitNext = false; } renderPlanMarks(); };
-      img.src = src;
+  // ================= the drawing =================
+  // The plan is the planner's own vector drawing (PDF), drawn on the phone with pdf.js:
+  //  - a base layer for the whole page, and
+  //  - after every zoom or pan, the visible part re-drawn at the exact zoom, one canvas pixel per screen pixel (never blurred).
+  // Stage units are PDF points of the page, the same box the planner measures its points in, so every point sits exactly
+  // where it is in the planner at every zoom. While the PDF loads (or on old publishes) a picture of the page is shown.
+  var view = { s:1, x:0, y:0, w:0, h:0, fitS:1, maxS:8, fitNext:true, loadedFor:null, kind:null, moving:false };
+  var pdfv = { doc:null, page:null, baseK:0, baseTask:null, tileTask:null, timer:null, token:0 };
+  var PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/", pdfjsP = null, BASE_PX = 6e6, TILE_PX = 14e6;
+  function loadPdfJs(){
+    return pdfjsP || (pdfjsP = new Promise(function(res, rej){
+      if (window.pdfjsLib) return res(window.pdfjsLib);
+      var sc = document.createElement("script"); sc.src = PDFJS + "pdf.min.js";
+      sc.onload = function(){ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; res(window.pdfjsLib); };
+      sc.onerror = function(){ pdfjsP = null; rej(new Error("Drawing tools not loaded")); };
+      document.head.appendChild(sc);
+    }));
+  }
+  function curFloor(){ return st.data ? st.data.floors.find(function(x){ return x.id === st.floor; }) : null; }
+  function sheetInfo(f){ var m = st.data.project.meta || {}, d = m.sheets && m.sheets[f.id]; if (d) return d; return f.pw ? { pw:f.pw, ph:f.ph } : null; }
+  function pdfUrl(f){ return api("/pdf/" + encodeURIComponent(f.id)) + "?k=" + encodeURIComponent(imgKey()) + "&v=" + f.pdf; }
+  // the drawing is kept on the phone: opens instantly next time and works with no signal
+  function getPdfBytes(f){
+    var url = pdfUrl(f), ck = S + "/drawing/" + P + "/" + encodeURIComponent(f.id) + "?v=" + f.pdf;
+    var net = function(){ return fetch(url, { cache:"no-store" }).then(function(r){ if (!r.ok) throw new Error("Drawing " + r.status);
+      var copy = r.clone(); if (window.caches) caches.open("et-drawings").then(function(c){ c.keys().then(function(ks){ ks.forEach(function(k){ if (k.url.indexOf(S + "/drawing/" + P + "/" + encodeURIComponent(f.id) + "?") === 0 && k.url !== ck) c.delete(k); }); }); return c.put(ck, copy); }).catch(function(e){ console.log("drawing not saved on this phone", e); });
+      return r.arrayBuffer(); }); };
+    if (!window.caches) return net();
+    return caches.open("et-drawings").then(function(c){ return c.match(ck); }).then(function(hit){ return hit ? hit.arrayBuffer() : net(); }, net);
+  }
+  function resetPdf(){
+    clearTimeout(pdfv.timer); pdfv.token++;
+    [pdfv.baseTask, pdfv.tileTask].forEach(function(t){ if (t && t.cancel) try { t.cancel(); } catch(e){} });
+    pdfv.baseTask = pdfv.tileTask = null; pdfv.page = null; pdfv.baseK = 0;
+    if (pdfv.doc){ try { pdfv.doc.destroy(); } catch(e){} } pdfv.doc = null;
+    var b = $("baseCv"); b.width = b.height = 1; b.style.display = "none";
+    clearTiles(); view.kind = null;
+  }
+  function clearTiles(){ var t = $("tiles"); Array.prototype.forEach.call(t.children, function(c){ c.width = c.height = 1; }); t.innerHTML = ""; }
+  function setStage(w, h){
+    if (view.w && Math.abs(view.w - w) > 0.01 && !view.fitNext){
+      // same page in new units (picture pixels → PDF points): keep the same spot on screen
+      var k = w / view.w; view.s /= k; view.fitS /= k; view.maxS /= k;
     }
+    view.w = w; view.h = h;
+    if (view.fitNext){ fit(); view.fitNext = false; }
     renderPlanMarks();
   }
+  function showFloor(){
+    var f = curFloor(), img = $("floorImg");
+    if (!f){ img.removeAttribute("src"); resetPdf(); view.loadedFor = null; return; }
+    var key = f.id + "|" + f.v + "|" + (f.pdf || 0);
+    if (view.loadedFor === key){ renderPlanMarks(); return; }
+    var sameFloor = view.loadedFor && view.loadedFor.split("|")[0] === f.id;
+    view.loadedFor = key; resetPdf();
+    if (!sameFloor){ view.w = view.h = 0; }
+    var d = sheetInfo(f);
+    img.style.display = "";
+    img.onload = function(){ if (view.loadedFor !== key) return; img.style.width = img.naturalWidth + "px"; img.style.height = img.naturalHeight + "px"; if (!view.w) setStage(img.naturalWidth, img.naturalHeight); else placeLayers(); };
+    img.src = imgUrl("floor", f.id);
+    if (d) setStage(d.pw, d.ph);
+    if (f.pdf) loadPdf(f, key);
+  }
+  function loadPdf(f, key){
+    loadPdfJs().then(function(lib){
+      return getPdfBytes(f).then(function(buf){ return lib.getDocument({ data:new Uint8Array(buf), isEvalSupported:false }).promise; });
+    }).then(function(doc){
+      if (view.loadedFor !== key){ doc.destroy(); return null; }
+      pdfv.doc = doc; return doc.getPage(1);
+    }).then(function(page){
+      if (!page || view.loadedFor !== key) return;
+      pdfv.page = page; view.kind = "pdf";
+      var vp = page.getViewport({ scale:1 });
+      setStage(vp.width, vp.height);
+      drawBase(key);
+    }).catch(function(e){ console.log("drawing", e); });   // the picture stays on screen
+  }
+  function drawBase(key){
+    var page = pdfv.page; if (!page) return;
+    var dpr = window.devicePixelRatio || 1, k = Math.min(Math.max(view.fitS * dpr * 3, 1), Math.sqrt(BASE_PX / (view.w * view.h)));
+    var vp = page.getViewport({ scale:k }), bw = Math.max(1, Math.round(vp.width)), bh = Math.max(1, Math.round(vp.height));
+    var c = document.createElement("canvas"); c.width = bw; c.height = bh;
+    var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, bw, bh);
+    var task = pdfv.baseTask = page.render({ canvasContext:ctx, viewport:vp, transform:[bw / vp.width, 0, 0, bh / vp.height, 0, 0] });
+    task.promise.then(function(){
+      if (view.loadedFor !== key) return;
+      var b = $("baseCv"); b.width = bw; b.height = bh; b.getContext("2d").drawImage(c, 0, 0); c.width = c.height = 1;
+      b.style.width = bw + "px"; b.style.height = bh + "px"; b.style.display = "block"; placeLayers();
+      $("floorImg").style.display = "none";
+      pdfv.baseK = k; pdfv.baseTask = null; scheduleTile();
+    }, function(){});
+  }
+  function scheduleTile(){
+    clearTimeout(pdfv.timer);
+    if (view.kind !== "pdf" || !pdfv.page) return;
+    pdfv.timer = setTimeout(drawTile, 160);
+  }
+  // The sharp layer: exactly the visible part of the page at the current zoom, starting on a whole screen pixel and shown
+  // 1 canvas pixel = 1 screen pixel. While the next pinch or pan is going on it simply moves with the drawing.
+  function drawTile(){
+    if (view.kind !== "pdf" || !pdfv.page || view.moving || st.view !== "vPlan") return;
+    var dpr = window.devicePixelRatio || 1, page = pdfv.page;
+    var r = $("plan").getBoundingClientRect();
+    var Px = r.left * dpr, Py = r.top * dpr;                            // the plan's corner in device pixels (can be fractional)
+    var Ax = Px + view.x * dpr, Ay = Py + view.y * dpr, k = view.s * dpr; // the page's corner in device pixels
+    var X0 = Math.max(Math.ceil(Px - 1e-6), Math.floor(Ax)), Y0 = Math.max(Math.ceil(Py - 1e-6), Math.floor(Ay));
+    var X1 = Math.min(Math.floor(Px + r.width * dpr + 1e-6), Math.ceil(Ax + view.w * k)), Y1 = Math.min(Math.floor(Py + r.height * dpr + 1e-6), Math.ceil(Ay + view.h * k));
+    var cw = X1 - X0, ch = Y1 - Y0; if (cw < 4 || ch < 4 || cw * ch > TILE_PX) return;
+    if (pdfv.tileTask && pdfv.tileTask.cancel) try { pdfv.tileTask.cancel(); } catch(e){}
+    var token = ++pdfv.token;
+    var c = document.createElement("canvas"); c.width = cw; c.height = ch;
+    c.style.width = cw + "px"; c.style.height = ch + "px";
+    c._at = { tx:(X0 - Px) / dpr, ty:(Y0 - Py) / dpr, x:view.x, y:view.y, s:view.s, dpr:dpr };
+    var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(Math.max(0, Ax - X0), Math.max(0, Ay - Y0), view.w * k, view.h * k);
+    var slow = setTimeout(function(){ $("sharpNote").classList.add("on"); }, 500);
+    var task = pdfv.tileTask = page.render({ canvasContext:ctx, viewport:page.getViewport({ scale:k }), transform:[1, 0, 0, 1, Ax - X0, Ay - Y0] });
+    task.promise.then(function(){
+      clearTimeout(slow); $("sharpNote").classList.remove("on");
+      if (token !== pdfv.token){ c.width = c.height = 1; return; }
+      clearTiles(); $("tiles").appendChild(c); pdfv.tileTask = null; placeLayers();
+    }, function(){ clearTimeout(slow); $("sharpNote").classList.remove("on"); c.width = c.height = 1; });
+  }
+  // put the picture, the base layer and the sharp layer where the current zoom says (transforms only)
+  function placeLayers(){
+    var img = $("floorImg"), b = $("baseCv");
+    if (img.naturalWidth && view.w) img.style.transform = "translate(" + view.x + "px," + view.y + "px) scale(" + (view.s * view.w / img.naturalWidth) + "," + (view.s * view.h / img.naturalHeight) + ")";
+    if (b.width > 1 && view.w) b.style.transform = "translate(" + view.x + "px," + view.y + "px) scale(" + (view.s * view.w / b.width) + "," + (view.s * view.h / b.height) + ")";
+    Array.prototype.forEach.call($("tiles").children, function(c){
+      var a = c._at, k = view.s / a.s;
+      c.style.transform = "translate(" + (view.x + (a.tx - a.x) * k) + "px," + (view.y + (a.ty - a.y) * k) + "px) scale(" + (k / a.dpr) + ")";
+    });
+  }
+  window.addEventListener("resize", function(){ scheduleTile(); });
+  if (/[?&]debug\b/.test(location.search)) window.__et = { view:view, pdfv:pdfv, st:st, probe:function(x, y){ var el = document.createElement("div"); el.className = "probe"; el.style.cssText = "position:absolute;width:3px;height:3px;background:#ff00ff;pointer-events:none"; $("marks").appendChild(el); markEls.push({ el:el, x:x, y:y }); placeMarks(); } };
+
   function pinSvg(color, txt){ return '<svg viewBox="0 0 26 26"><path d="M13 25s-9-7.6-9-14a9 9 0 0 1 18 0c0 6.4-9 14-9 14z" fill="' + color + '" stroke="#fff" stroke-width="2"/><text x="13" y="14.5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">' + txt + "</text></svg>"; }
   function icons(){ return (st.data && st.data.project.meta && st.data.project.meta.icons) || null; }
+  function ptMeta(p){ return ((st.data.project.meta || {}).pt || {})[p.point_id] || {}; }
   function iconSvg(p){
     var I = icons(), svg = I && I[p.type]; if (!svg) return null;
-    var o = (st.data.project.meta.pt || {})[p.point_id] || {};
+    var o = ptMeta(p);
     return o.r ? svg.replace('rotate(0)', 'rotate(' + o.r + ')') : svg;
+  }
+  // the icon's size on the drawing, in stage units — the same size the planner and the exported PDF draw it
+  function iconSize(p){
+    var f = st.data.floors.find(function(x){ return x.id === p.floor_id; }), d = f && sheetInfo(f), z = ptMeta(p).z || 1;
+    if (d && d.icon) return d.icon * (view.w / d.pw) * z;
+    var es = Math.max(1, Math.min(2.2, 3600 / Math.max(view.w, view.h)));
+    return Math.max(30, Math.min(view.w, view.h) * es * 0.024) * (46/30) / es * z;
   }
   function miniIcon(p){ var s = iconSvg(p); return s ? '<span class="mini">' + s + '</span>' : '<span class="dot" style="background:' + esc(p.color) + '"></span>'; }
   function issueColor(i){ return i.status === "open" ? "#ea580c" : i.status === "approved" ? "#2563eb" : i.status === "done" ? "#12a150" : "#94a3b8"; }
+  function shown(p){
+    var done = isDone(p);
+    if (st.filter === "todo") return !done;
+    if (st.filter === "done") return done;
+    if (st.filter === "config") return p.cat === "cam" && !state(p).configured;
+    return true;
+  }
   function renderPlanMarks(){
     if (!view.w) return;
     var list = pts().filter(function(p){ return p.floor_id === st.floor; });
     var html = list.map(function(p){
-      var done = isDone(p), dim = (st.filter === "todo" && done) || (st.filter === "done" && !done);
+      var done = isDone(p), half = !done && isHalf(p), cfg = p.cat === "cam" && state(p).configured, dim = !shown(p);
       var hasPh = p.photos.length || (st.pending[p.point_id] || []).some(function(i){ return i.kind === "photo"; });
-      var svg = iconSvg(p), cls = (done ? " done" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : ""), pos = 'left:' + (p.x * view.w).toFixed(1) + "px;top:" + (p.y * view.h).toFixed(1) + "px;";
+      var svg = iconSvg(p), cls = (done ? " done" : "") + (half ? " half" : "") + (cfg ? " cfg" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : ""), pos = "";
       if (svg){
-        var o = (st.data.project.meta.pt || {})[p.point_id] || {};
-        return '<button type="button" class="mk ic' + cls + '" data-pt="' + esc(p.point_id) + '" style="' + pos + '" aria-label="' + esc(p.label) + '">' + svg +
+        var o = ptMeta(p);
+        return '<button type="button" class="mk ic' + cls + '" data-pt="' + esc(p.point_id) + '" data-x="' + p.x + '" data-y="' + p.y + '" style="--sz:' + iconSize(p).toFixed(4) + '" aria-label="' + esc(p.label) + '">' + svg +
           (o.tag ? '<em class="tg" style="background:' + esc(o.tc || "#475569") + '">' + esc(o.tag) + "</em>" : "") + (o.cab ? '<em class="cb" style="color:' + esc(o.cc || "#16a34a") + '">' + esc(o.cab) + "</em>" : "") +
           '<em class="lb">' + esc(p.label) + "</em></button>";
       }
-      return '<button type="button" class="mk' + cls + '" data-pt="' + esc(p.point_id) + '" style="' + pos + "--c:" + esc(p.color) + '" aria-label="' + esc(p.label) + '"><span>' + CATS[catOf(p)].tag + '</span><em class="lb">' + esc(p.label) + "</em></button>";
+      return '<button type="button" class="mk' + cls + '" data-pt="' + esc(p.point_id) + '" data-x="' + p.x + '" data-y="' + p.y + '" style="--c:' + esc(p.color) + '" aria-label="' + esc(p.label) + '"><span>' + CATS[catOf(p)].tag + '</span><em class="lb">' + esc(p.label) + "</em></button>";
     }).join("");
     if (canEdit()){
       html += issues().filter(function(i){ return i.floor_id === st.floor && i.status !== "rejected" && i.status !== "done"; }).map(function(i){
-        return '<button type="button" class="pin" data-issue="' + esc(i.id) + '" style="left:' + (i.x * view.w).toFixed(1) + "px;top:" + (i.y * view.h).toFixed(1) + 'px" aria-label="Site report">' + pinSvg(issueColor(i), "!") + "</button>";
+        return '<button type="button" class="pin" data-issue="' + esc(i.id) + '" data-x="' + i.x + '" data-y="' + i.y + '" aria-label="Site report">' + pinSvg(issueColor(i), "!") + "</button>";
       }).join("");
       (st.pending.report || []).filter(function(r){ return r.body.floorId === st.floor; }).forEach(function(r){
-        html += '<button type="button" class="pin" style="left:' + (r.body.x * view.w).toFixed(1) + "px;top:" + (r.body.y * view.h).toFixed(1) + 'px;opacity:.6" aria-label="Report waiting for signal">' + pinSvg("#ea580c", "…") + "</button>";
+        html += '<button type="button" class="pin" data-x="' + r.body.x + '" data-y="' + r.body.y + '" style="opacity:.6" aria-label="Report waiting for signal">' + pinSvg("#ea580c", "…") + "</button>";
       });
     }
     $("marks").innerHTML = html;
+    markEls = Array.prototype.map.call($("marks").children, function(el){ return { el:el, x:+el.dataset.x, y:+el.dataset.y, pin:el.classList.contains("pin") }; });
     applyView();
   }
+  var markEls = [];
+  // every point is placed in screen pixels from its exact spot on the page: x = page corner + ratio × page width × zoom
+  function placeMarks(){
+    var m = $("marks"); m.style.setProperty("--s", view.s);
+    for (var i = 0; i < markEls.length; i++){
+      var o = markEls[i];
+      o.el.style.transform = "translate(" + (view.x + o.x * view.w * view.s) + "px," + (view.y + o.y * view.h * view.s) + "px) translate(-50%," + (o.pin ? "-100%" : "-50%") + ")";
+    }
+  }
+  function setTransform(){ placeLayers(); placeMarks(); }
   function applyView(){
-    $("stage").style.transform = "translate(" + view.x + "px," + view.y + "px) scale(" + view.s + ")";
-    $("stage").style.setProperty("--inv", (1 / view.s).toFixed(4));
-    $("stage").classList.toggle("labels", view.s > view.fitS * 2.1);
+    placeLayers(); placeMarks();
+    $("marks").classList.toggle("labels", view.s > view.fitS * 2.1);
+    scheduleTile();
   }
   function fit(){
     var r = $("plan").getBoundingClientRect(); if (!view.w || !r.width) return;
     view.s = view.fitS = Math.min(r.width / view.w, (r.height - 8) / view.h);
+    view.maxS = view.fitS * 30;
     view.x = (r.width - view.w * view.s) / 2; view.y = (r.height - view.h * view.s) / 2; applyView();
   }
+  function clampS(ns){ return Math.max(view.fitS * 0.6, Math.min(ns, view.maxS)); }
   function zoomAt(cx, cy, k){
-    var ns = Math.max(view.fitS * 0.6, Math.min(view.s * k, 8));
+    var ns = clampS(view.s * k);
     view.x = cx - (cx - view.x) * (ns / view.s); view.y = cy - (cy - view.y) * (ns / view.s); view.s = ns; applyView();
+  }
+  // the point nearest a tap (within its icon, or 22 px for small icons)
+  function pointAt(sx, sy){
+    var best = null, bd = 1e9;
+    pts().filter(function(p){ return p.floor_id === st.floor; }).forEach(function(p){
+      var px = view.x + p.x * view.w * view.s, py = view.y + p.y * view.h * view.s, d = Math.hypot(px - sx, py - sy);
+      var reach = Math.max(22, iconSize(p) * view.s * 0.55);
+      if (d <= reach && d < bd){ bd = d; best = p; }
+    });
+    return best;
   }
   (function gestures(){
     var plan = $("plan"), ptrs = {}, start = null, moved = false, lastTap = 0;
+    function begin(){ if (!view.moving){ view.moving = true; if (pdfv.tileTask && pdfv.tileTask.cancel) try { pdfv.tileTask.cancel(); } catch(e){} } }
+    function end(){ if (view.moving){ view.moving = false; scheduleTile(); } }
     function snapshot(){ var ids = Object.keys(ptrs), r = plan.getBoundingClientRect();
       if (ids.length === 1){ var p = ptrs[ids[0]]; return { mode:1, px:p.x, py:p.y, x:view.x, y:view.y }; }
       var a = ptrs[ids[0]], b = ptrs[ids[1]];
       return { mode:2, d:Math.hypot(a.x-b.x, a.y-b.y), cx:(a.x+b.x)/2 - r.left, cy:(a.y+b.y)/2 - r.top, x:view.x, y:view.y, s:view.s }; }
-    plan.addEventListener("pointerdown", function(e){ if (e.target.closest && e.target.closest(".zoom,.fab,.planbar")) return; ptrs[e.pointerId] = { x:e.clientX, y:e.clientY }; plan.setPointerCapture(e.pointerId); moved = false; start = snapshot(); });
+    plan.addEventListener("pointerdown", function(e){ if (e.target.closest && e.target.closest(".zoom,.fab,.planbar,.legend")) return; ptrs[e.pointerId] = { x:e.clientX, y:e.clientY }; try { plan.setPointerCapture(e.pointerId); } catch(err){} moved = false; start = snapshot(); });
     plan.addEventListener("pointermove", function(e){
       if (!ptrs[e.pointerId]) return; ptrs[e.pointerId] = { x:e.clientX, y:e.clientY };
       var ids = Object.keys(ptrs), r = plan.getBoundingClientRect();
       if (ids.length === 1 && start && start.mode === 1){
         var dx = e.clientX - start.px, dy = e.clientY - start.py; if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
-        if (moved){ view.x = start.x + dx; view.y = start.y + dy; applyView(); }
+        if (moved){ begin(); view.x = start.x + dx; view.y = start.y + dy; applyView(); }
       } else if (ids.length >= 2){
         if (!start || start.mode !== 2) start = snapshot();
-        var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a.x-b.x, a.y-b.y), ns = Math.max(view.fitS * 0.6, Math.min(start.s * d / start.d, 8));
+        var a = ptrs[ids[0]], b = ptrs[ids[1]], d = Math.hypot(a.x-b.x, a.y-b.y), ns = clampS(start.s * d / start.d);
         var cx = (a.x+b.x)/2 - r.left, cy = (a.y+b.y)/2 - r.top;
-        view.s = ns; view.x = cx - (start.cx - start.x) * (ns / start.s); view.y = cy - (start.cy - start.y) * (ns / start.s); moved = true; applyView();
+        begin(); view.s = ns; view.x = cx - (start.cx - start.x) * (ns / start.s); view.y = cy - (start.cy - start.y) * (ns / start.s); moved = true; applyView();
       }
     });
     plan.addEventListener("pointerup", function(e){
       if (!ptrs[e.pointerId]) return;
       var wasTap = !moved && Object.keys(ptrs).length === 1;
       delete ptrs[e.pointerId]; start = Object.keys(ptrs).length ? snapshot() : null;
+      if (!start) end();
       if (!wasTap) return;
       var r = plan.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
       if (st.placing){ placeReport((sx - view.x) / view.s / view.w, (sy - view.y) / view.s / view.h); return; }
       var el = document.elementFromPoint(e.clientX, e.clientY);
       var pin = el && el.closest && el.closest(".pin[data-issue]"); if (pin){ openIssue(pin.dataset.issue); return; }
-      var mk = el && el.closest && el.closest(".mk"); if (mk){ openPoint(mk.dataset.pt); return; }
+      var hit = pointAt(sx, sy); if (hit){ openPoint(hit.point_id); return; }
       var t = Date.now(); if (t - lastTap < 300) zoomAt(sx, sy, 2); lastTap = t;
     });
-    plan.addEventListener("pointercancel", function(e){ delete ptrs[e.pointerId]; start = null; });
-    plan.addEventListener("wheel", function(e){ e.preventDefault(); var r = plan.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.15 : 1/1.15); }, { passive:false });
+    plan.addEventListener("pointercancel", function(e){ delete ptrs[e.pointerId]; start = null; end(); });
+    var wheelT = null;
+    plan.addEventListener("wheel", function(e){ e.preventDefault(); begin(); var r = plan.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.15 : 1/1.15); clearTimeout(wheelT); wheelT = setTimeout(end, 120); }, { passive:false });
     $("zIn").onclick = function(){ var r = plan.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1.5); };
     $("zOut").onclick = function(){ var r = plan.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1/1.5); };
     $("zFit").onclick = function(){ fit(); };
@@ -609,15 +878,21 @@
       if (!list.length) return;
       var fc = counts(all.filter(function(p){ return p.floor_id === f.id; }));
       html += '<div class="grp"><span>' + esc(f.name) + "</span><span>" + fc.d + " / " + fc.n + '</span></div><div class="card">' + list.map(function(p){
-        var done = isDone(p), nph = p.photos.length + (st.pending[p.point_id] || []).filter(function(i){ return i.kind === "photo"; }).length;
+        var o = state(p), nph = p.photos.length + (st.pending[p.point_id] || []).filter(function(i){ return i.kind === "photo"; }).length;
+        var multi = stepsOf(p).length > 1, lastBy = o.aligned && p.aligned_by ? p.aligned_by : o.installed ? p.installed_by : "";
+        var boxes = stepsOf(p).filter(function(x){ return x !== "configured" || canConfig() || o.configured; }).map(function(x){
+          var cls = "ck" + (o[x] ? " on" : "") + (x === "configured" ? " cfg" : "");
+          var box = canStep(x) ? '<button type="button" class="' + cls + '" data-tick="' + esc(p.point_id) + '" data-step="' + x + '" aria-label="' + STEP_L[x] + '">' + CHECK + "</button>" : '<span class="' + cls + '">' + CHECK + "</span>";
+          return multi ? "<label>" + box + { installed:"Fixed", aligned:"Aligned", configured:"Config" }[x] + "</label>" : box;
+        }).join("");
         return '<div class="rowi" data-open="' + esc(p.point_id) + '">' + miniIcon(p) + '<span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) +
-          (done && p.installed_by ? " · " + esc(p.installed_by) : "") + "</small></span>" + (nph ? '<span class="pc">📷 ' + nph + "</span>" : "") +
-          (canEdit() ? '<button type="button" class="ck' + (done ? " on" : "") + '" data-tick="' + esc(p.point_id) + '" aria-label="Installed">' + CHECK + "</button>" : '<span class="ck' + (done ? " on" : "") + '">' + CHECK + "</span>") + "</div>";
+          (lastBy ? " · " + esc(lastBy) : "") + (multi && o.installed && !o.aligned ? ' · <span style="color:#d97706;font-weight:600">align next</span>' : "") + "</small></span>" + (nph ? '<span class="pc">📷 ' + nph + "</span>" : "") +
+          '<span class="cks">' + boxes + "</span></div>";
       }).join("") + "</div>";
     });
-    $("listBody").innerHTML = html || '<div class="empty">' + (st.listFilter === "todo" ? "Everything here is installed. 🎉" : "Nothing to show.") + "</div>";
+    $("listBody").innerHTML = html || '<div class="empty">' + (st.listFilter === "todo" ? "Everything here is done. 🎉" : "Nothing to show.") + "</div>";
     $("listBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(e){ if (e.target.closest("[data-tick]")) return; openPoint(r.dataset.open); }; });
-    $("listBody").querySelectorAll("[data-tick]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); var p = pts().find(function(x){ return x.point_id === b.dataset.tick; }); setInstalled(p, !isDone(p)); }; });
+    $("listBody").querySelectorAll("[data-tick]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); var p = pts().find(function(x){ return x.point_id === b.dataset.tick; }); setStep(p, b.dataset.step, !state(p)[b.dataset.step]); }; });
   }
   $("q").addEventListener("input", renderList);
 
@@ -652,8 +927,13 @@
     }
     html += '<div class="sec">By type</div><div class="card">' + Object.keys(CATS).map(function(k){
       var list = all.filter(function(p){ return catOf(p) === k; }); if (!list.length) return "";
-      var c = counts(list), col = list[0].color;
-      return '<div class="catc"><div class="h"><span><span class="dot" style="vertical-align:-1px;margin-right:7px;background:' + esc(col) + '"></span>' + CATS[k].name + "</span><small>" + c.d + " / " + c.n + '</small></div><div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
+      var c = counts(list), col = list[0].color, ic = list[0] ? miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"') : "";
+      var head = '<div class="h"><span>' + ic + CATS[k].name + "</span><small>" + c.d + " / " + c.n + " done</small></div>";
+      if (k !== "cam") return '<div class="catc">' + head + '<div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
+      // cameras: one bar per step
+      var n = list.length, sb = ["installed","aligned","configured"].map(function(x){ var d = list.filter(function(p){ return state(p)[x]; }).length, pc = n ? Math.round(d / n * 100) : 0;
+        return "<span>" + STEP_L[x] + '</span><div class="bar' + (x === "aligned" ? " al" : x === "configured" ? " cf" : "") + '"><i style="width:' + pc + '%"></i></div><span>' + d + " / " + n + "</span>"; }).join("");
+      return '<div class="catc">' + head + '<div class="sbars">' + sb + "</div></div>";
     }).join("") + "</div>";
     html += '<div class="sec">By floor</div><div class="card">' + d.floors.map(function(f){
       var c = counts(all.filter(function(p){ return p.floor_id === f.id; })); if (!c.n) return "";
@@ -687,7 +967,7 @@
   }
 
   // ---- activity (site + Asana)
-  var ACT = { installed:"installed", uninstalled:"un-ticked", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
+  var ACT = { installed:"installed", uninstalled:"un-ticked", aligned:"aligned", unaligned:"un-ticked the alignment of", configured:"configured", unconfigured:"un-ticked the configuration of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
     "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing" };
   function renderActivity(){
@@ -709,7 +989,7 @@
       var p = byId[a.point_id], ph = a.action === "photo" && p && p.photos.length ? p.photos.filter(function(x){ return x.at <= a.at + 2000; }).slice(-1)[0] : null;
       var who = a.by_name || "Someone", target = p ? p.label : isIssue || isStage ? "" : a.detail;
       var attr = p ? ' data-open="' + esc(p.point_id) + '"' : isIssue ? ' data-issue="' + esc(a.point_id.slice(6)) + '"' : isStage ? ' data-stage="' + esc(a.point_id.slice(6)) + '"' : "";
-      return '<div class="act"' + attr + '><span class="av">' + esc(who.slice(0, 1).toUpperCase()) + '</span><div class="tx"><b>' + esc(who) + "</b> " + (ACT[a.action] || a.action) + (target ? " <b>" + esc(target) + "</b>" : "") +
+      return '<div class="act"' + attr + '><span class="av">' + esc(who.slice(0, 1).toUpperCase()) + '</span><div class="tx"><b>' + esc(who) + "</b>" + (a.by_role && role() !== "customer" ? ' <span class="who">' + esc(a.by_role) + "</span>" : "") + " " + (ACT[a.action] || a.action) + (target ? " <b>" + esc(target) + "</b>" : "") +
         ((a.action === "note" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
         (ph ? '<img loading="lazy" src="' + imgUrl("photo", ph.id) + '" alt="">' : "") + "</div>";
     }).join("");
@@ -746,24 +1026,33 @@
   function bindPhotoTaps(getList, title){ $("shBody").querySelectorAll("[data-ph]").forEach(function(b){ b.onclick = function(){ openViewer(getList(), +b.dataset.ph, title); }; }); }
   function renderPoint(){
     var p = pts().find(function(x){ return x.point_id === st.sel; }); if (!p){ closeSheet(); return; }
-    var done = isDone(p), pend = st.pending[p.point_id] || [];
+    var done = isDone(p), o = state(p), pend = st.pending[p.point_id] || [];
     var bsvg = iconSvg(p); $("shBadge").className = "badge" + (bsvg ? " icon" : "");
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = p.label; $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
     var h = "", pendStatus = pend.some(function(i){ return i.kind === "status"; });
-    h += '<div class="status' + (done ? " done" : "") + '"><span class="tick' + (done ? " on" : "") + '">' + CHECK + "</span><div>" + (done ? "Installed" : "Not installed yet") +
-      "<small>" + (pendStatus ? "Waiting for signal to upload" : done && p.installed_by ? "by " + esc(p.installed_by) + " · " + when(p.installed_at) : CATS[catOf(p)].name) + "</small></div></div>";
-    if (canEdit()){
-      h += done ? '<button type="button" class="big undo" id="shUndo">Mark as not installed</button>' : '<button type="button" class="big ok" id="shDone">' + CHECK20 + "Mark installed</button>";
-      h += '<div class="two"><button type="button" class="btn pri" id="shCam">' + CAM_SVG + 'Take photo</button><button type="button" class="btn" id="shGal">' + GAL_SVG + "From gallery</button></div>";
+    if (stepsOf(p).length > 1){
+      // cameras: 1 installed, 2 aligned (technician), 3 configured (site engineer) — each ticked on its own, with who and when
+      h += '<div class="steps">' + stepsOf(p).map(function(x, i){
+        var on = o[x], wait = stepWaiting(p, x), by = p[x + "_by"], at = p[x + "_at"];
+        var sub = wait ? "Waiting for signal to upload" : on ? whoTxt(by, at) || "Done" : x === "configured" ? "Site engineer, after alignment" : x === "aligned" ? (o.installed ? "Next: aim and lock the camera" : "After installing") : "Fix the camera in place";
+        var btn = !canStep(x) ? (x === "configured" && !on ? '<span class="lock">Site engineer</span>' : "")
+          : on ? '<button type="button" class="go undo" data-step="' + x + '" data-v="0">Undo</button>'
+          : '<button type="button" class="go' + (x === "configured" ? " cfg" : "") + '" data-step="' + x + '" data-v="1">' + STEP_DO[x] + "</button>";
+        return '<div class="steprow' + (on ? " on" : "") + (x === "configured" ? " cfg" : "") + '"><span class="n">' + (on ? CHECK.replace('stroke-width="3.2"', 'stroke-width="3.6" width="14" height="14"') : i + 1) + '</span><span class="t"><b>' + STEP_L[x] + "</b><small>" + sub + "</small></span>" + btn + "</div>";
+      }).join("") + "</div>";
+    } else {
+      h += '<div class="status' + (done ? " done" : "") + '"><span class="tick' + (done ? " on" : "") + '">' + CHECK + "</span><div>" + (done ? "Installed" : "Not installed yet") +
+        "<small>" + (pendStatus ? "Waiting for signal to upload" : done && p.installed_by ? "by " + esc(p.installed_by) + " · " + when(p.installed_at) : CATS[catOf(p)].name) + "</small></div></div>";
+      if (canEdit()) h += done ? '<button type="button" class="big undo" data-step="installed" data-v="0">Mark as not installed</button>' : '<button type="button" class="big ok" data-step="installed" data-v="1">' + CHECK20 + "Mark installed</button>";
     }
+    if (canEdit()) h += '<div class="two"><button type="button" class="btn pri" id="shCam">' + CAM_SVG + 'Take photo</button><button type="button" class="btn" id="shGal">' + GAL_SVG + "From gallery</button></div>";
     var pendPh = pend.filter(function(i){ return i.kind === "photo"; }), pendN = pend.filter(function(i){ return i.kind === "note"; });
     h += '<div class="lbl">Photos' + (p.photos.length + pendPh.length ? " · " + (p.photos.length + pendPh.length) : "") + "</div>" + (photosHtml(p.photos, pendPh, p.point_id) || '<p class="muted" style="margin:0 0 14px">' + (canEdit() ? "No photos yet — take one after installing to show the exact position." : "No photos yet.") + "</p>");
     h += '<div class="lbl">Notes</div>' + notesHtml(p.notes, pendN) + (!p.notes.length && !pendN.length ? '<p class="muted" style="margin:0 0 6px">No notes.</p>' : "");
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
-    if ($("shDone")) $("shDone").onclick = function(){ setInstalled(p, true); };
-    if ($("shUndo")) $("shUndo").onclick = function(){ setInstalled(p, false); };
+    $("shBody").querySelectorAll("[data-step]").forEach(function(b){ b.onclick = function(){ setStep(p, b.dataset.step, b.dataset.v === "1"); }; });
     if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
@@ -832,13 +1121,17 @@
   }
 
   function needName(cb){
-    if (name()) return cb();
+    if (STAFF || name()) return cb();
     $("nameModal").classList.add("on"); $("nameIn").focus();
     $("nameOk").onclick = function(){ var n = $("nameIn").value.trim(); if (!n){ $("nameIn").focus(); return; } try { localStorage.setItem("et_site_name", n); } catch(e){} $("nameModal").classList.remove("on"); cb(); };
   }
-  function setInstalled(p, v){
-    if (!canEdit()) return;
-    needName(function(){ enqueue({ kind:"status", pt:p.point_id, installed:v }).then(function(){ toast(v ? p.label + " marked installed" : p.label + " marked not installed"); }); render(); });
+  function setStep(p, step, v){
+    step = step || "installed";
+    if (!canStep(step)) return;
+    needName(function(){
+      enqueue({ kind:"status", pt:p.point_id, step:step, done:v }).then(function(){ toast(p.label + (v ? " — " + STEP_L[step].toLowerCase() : " — " + STEP_L[step].toLowerCase() + " un-ticked")); });
+      render();
+    });
   }
 
   // photos: shrink to ~1600 px JPEG on the phone before sending (fast on site, small to store)
@@ -885,7 +1178,7 @@
   function switchView(id){
     document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.toggle("on", x.dataset.v === id); });
     document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on", v.id === id); });
-    st.view = id; if (id === "vPlan") setTimeout(function(){ if (view.fitNext) fit(); }, 30);
+    st.view = id; if (id === "vPlan") setTimeout(function(){ if (view.fitNext) fit(); else scheduleTile(); }, 30);
   }
   document.querySelectorAll(".tabs button").forEach(function(b){ b.onclick = function(){ switchView(b.dataset.v); }; });
 
@@ -893,6 +1186,7 @@
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
   if (!S){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
   if (OFFICE){ if (P && okey()) openProject(P); else showHome(); }
+  else if (STAFF){ homeFetch("/site/me").then(function(j){ st.me = j.person; }).catch(function(){}).then(function(){ if (P) openProject(P); else showHome(); }); }
   else if (!P || !K){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
   else load().then(function(){ updateQueue(); flush(); });
   setInterval(function(){ if (P && !document.hidden && !$("viewer").classList.contains("on") && !st.placing && st.sel !== "draft") load(true); }, 20000);

@@ -81,23 +81,51 @@ Do this once on each office device. The **Quote** dialog uses the same server.
 ---
 
 ## Using it
-1. **Publish.** Open the project in the planner, click **Site**, then **Publish to site**. The drawings and points go up.
-2. **Send the links.**
-   - **Team link:** for technicians. They can tick, take photos and add notes. The first time, the phone asks for their name.
+1. **Publish.** Open the project in the planner, click **Site**, then **Publish to site**. The points go up with each floor's original vector drawing.
+   - The site app draws the drawing itself, so it stays sharp at every zoom, and the points sit exactly where they are in the planner.
+   - Each phone keeps a copy of the drawing, so it opens instantly and works with no signal.
+   - Projects published before this version show a picture of the drawing until you press **Update site** once.
+2. **Your team: one personal link each.** In the office view (step 4), scroll to **Team**, type the name, pick the role and press **Add**. Their link is copied: send it on WhatsApp.
+
+   | Role | Can do |
+   |---|---|
+   | **Technician** (e.g. Kutbuddin) | tick **Installed** on every point, and **Aligned** on cameras; photos, notes, site reports, Asana stages and comments |
+   | **Site engineer** (e.g. Idris) | everything a technician can, plus **Configured** on cameras; a **To configure** filter on the plan |
+   | **Manager** (e.g. Husain) | everything, plus office-only stages (payments), approving site reports, the customer and team links, and managing the team |
+
+   A personal link opens all the projects. Every tick, photo and note shows the person's name and role. Press ✕ to stop someone's link.
+3. **Other links** (in the planner's **Site** window):
+   - **Team link:** a shared link for a helper without a personal link. The phone asks for a name once.
    - **Customer link:** view only, with progress, photos and stages. It never shows the team link or payment tasks.
-3. **Office view (all projects).** In the planner, open **Site → Open office view**, or bookmark `https://thegamer998-ctrl.github.io/lv-planner/site.html#office&s=<server address>`.
+4. **Office view (all projects).** In the planner, open **Site → Open office view**, or bookmark `https://thegamer998-ctrl.github.io/lv-planner/site.html#office&s=<server address>`.
    - Enter the office key once on each device.
    - It lists every project with progress, open site reports, Asana stages, the next stage and the status.
    - Open a project to see everything, including office-only tasks such as payments.
-4. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
-   - When every point of a kind is ticked, the matching subtask is completed with a comment. For example, all APs ticked completes **Ceiling Access Points Installation**, and all cameras ticked completes a subtask with "camera install" in its name.
-   - Unticking reopens it.
+5. **Cameras: three ticks.** In the app each camera has three steps:
+   1. **Installed**: the technician fixed it
+   2. **Aligned**: the technician aimed and locked it
+   3. **Configured**: the site engineer adopted, named and set recording
+
+   A camera counts as done for the installation only when it is installed **and** aligned. Ticking Aligned also ticks Installed. Unticking Installed clears the later steps.
+6. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
+   - When every point of a kind has a step ticked, the matching Asana subtask is completed with a comment. The subtask is found by its name:
+
+   | When all… | completes the Asana task or subtask named like |
+   |---|---|
+   | access points are installed | **Ceiling Access Point Installation** |
+   | cameras are installed | **Cameras Installation** (any name with "camera" and "install") |
+   | cameras are aligned | **Cameras Alignment** (any name with "camera" and "align") |
+   | cameras are configured | **CCTV - Camera Naming…** or **Camera Adoption** |
+   | data points are installed | a name with "data point" or "network point" |
+
+   - Add **Cameras Installation** and **Cameras Alignment** as subtasks in the villa template, so every new project has them.
+   - Unticking reopens the subtask.
    - The Asana stages show in the site app's **Progress** tab and stay mirrored every 2 minutes (see step 3b).
-5. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.
+7. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.
    - Technicians see the work stages.
    - Customers see the stages without comments.
    - Payment and invoice tasks are office only.
-6. **Site reports.** A technician taps **Report** on the plan and taps the spot, then chooses one of:
+8. **Site reports.** A technician taps **Report** on the plan and taps the spot, then chooses one of:
    - **Extra point found here**, with the kind of point (AP, camera…)
    - **Point not on site**
    - **Other issue**
@@ -112,6 +140,6 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - **Not needed / Keep the point**, with a reply
 
    Press **Update site**. The technician sees the new or removed point and your answer.
-7. **Changes to the design.** Click **Update site**. Ticks, photos and notes on existing points are kept.
-8. **No signal on site** (basements). Ticks, notes and photos wait on the phone and upload by themselves when the signal returns.
-9. **Lost a link?** Open **Site** in the planner to copy it again. Links can be reset from the server if one is shared by mistake.
+9. **Changes to the design.** Click **Update site**. Ticks, photos and notes on existing points are kept.
+10. **No signal on site** (basements). Ticks, notes and photos wait on the phone and upload by themselves when the signal returns.
+11. **Lost a link?** Open **Site** in the planner to copy it again. Links can be reset from the server if one is shared by mistake.

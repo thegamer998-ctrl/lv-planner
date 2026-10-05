@@ -1,8 +1,8 @@
-// LV Planner offline cache - v4 (planner + site app)
+// LV Planner offline cache - v5 (planner + site app)
 // The app page itself: always fetched fresh when online (you get updates immediately);
 // the saved copy is only used when there's no internet.
 // Libraries and icons: served from the saved copy, refreshed in the background.
-var CACHE = "lvplanner-v4";
+var CACHE = "lvplanner-v5";
 var SHELL = [
   "./", "./index.html", "./site.html", "./manifest.webmanifest",
   "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png",
@@ -20,7 +20,8 @@ self.addEventListener("install", function(e){
 });
 self.addEventListener("activate", function(e){
   e.waitUntil(caches.keys().then(function(keys){
-    return Promise.all(keys.filter(function(k){ return k !== CACHE; }).map(function(k){ return caches.delete(k); }));
+    // only our own old copies; the site app's saved drawings ("et-drawings") stay on the phone
+    return Promise.all(keys.filter(function(k){ return k !== CACHE && k.indexOf("lvplanner-") === 0; }).map(function(k){ return caches.delete(k); }));
   }).then(function(){ return self.clients.claim(); }));
 });
 function isAppPage(req, url){

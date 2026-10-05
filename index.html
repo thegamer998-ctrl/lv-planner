@@ -403,6 +403,7 @@
   .st-msg{ font-size:12.5px; margin:0; min-height:1em; }
   .marker .site-ok{ position:absolute; right:-6px; top:-6px; width:14px; height:14px; border-radius:50%; background:#12a150; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.4);
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E"); background-size:70%; background-position:center; background-repeat:no-repeat; pointer-events:none; }
+  .marker .site-ok.half{ background-color:#f59e0b; }
   .confirm-box.qt-box{ width:620px; max-width:calc(100vw - 32px); max-height:88vh; display:flex; flex-direction:column; gap:8px; }
   .qt-top{ display:flex; align-items:center; justify-content:space-between; } .qt-top .choice-title{ margin:0; }
   .qt-lbl{ font-size:11.5px; color:var(--text-muted); } #qtCustomer{ height:36px; margin:0; }
@@ -800,7 +801,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.12</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.13</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -993,7 +994,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.12</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.13</p>
     </section>
   </aside>
 
@@ -3510,7 +3511,9 @@
         var mv = markerVariant(m); if (mv) wrap.insertAdjacentHTML("beforeend", tagHtml(mv, sz*15/46));
         wrap.insertAdjacentHTML("beforeend", cableTagHtml(m, sz*15/46)); }
       if (m.note){ var dot=document.createElement("span"); dot.className="note-dot"; wrap.appendChild(dot); }
-      if (typeof siteUi !== "undefined" && siteUi && siteUi.status && siteUi.show && siteUi.status[m.id] && siteUi.status[m.id].installed){ var ok = document.createElement("span"); ok.className = "site-ok"; ok.title = "Installed on site"; wrap.appendChild(ok); }
+      if (typeof siteUi !== "undefined" && siteUi && siteUi.status && siteUi.show && siteUi.status[m.id] && siteUi.status[m.id].installed){
+        var ss = siteUi.status[m.id], half = ss.cam && !ss.aligned, ok = document.createElement("span");
+        ok.className = "site-ok" + (half ? " half" : ""); ok.title = half ? "Installed on site — not aligned yet" : ss.cam ? "Installed and aligned on site" + (ss.configured ? ", configured" : "") : "Installed on site"; wrap.appendChild(ok); }
       wrap.addEventListener("pointerdown", function(e){
         e.stopPropagation();
         if (e.button !== undefined && e.button !== 0) return;
@@ -6557,6 +6560,7 @@
       if (!icons[m.type]) icons[m.type] = typeIconSVG(t, 0);
       var v = markerVariant(m), c = CABLE_CATS[m.cable], o = {};
       if (m.rotation) o.r = Math.round(m.rotation);
+      if (m.size && m.size !== 1) o.z = +m.size.toFixed(3);
       if (v && v.tag) { o.tag = v.tag; o.tc = v.color; }
       if (c && c.tag) { o.cab = c.tag; o.cc = c.color; }
       if (Object.keys(o).length) pt[m.id] = o;
@@ -6582,24 +6586,67 @@
     });
   }
   function sheetSig(sh){ return [sh.name, sh.f.pdfBase64 ? sh.f.pdfBase64.length : 0, sh.f.fileName || ""].join("|"); }
+  // page size in PDF points and the drawing's icon size on that page (the same size the planner and the exported PDF use)
+  function sheetDims(sh){
+    return sh.f.pdfDoc.getPage(sh.page).then(function(page){
+      var vp = page.getViewport({ scale:1 }), es = exportScaleForDims(vp.width, vp.height);
+      var exportIcon = Math.max(30, Math.min(vp.width * es, vp.height * es) * 0.024);
+      return { pw:+vp.width.toFixed(2), ph:+vp.height.toFixed(2), icon:+(exportIcon * (46/30) / es).toFixed(3) };
+    });
+  }
+  // the vector drawing of one sheet as a single-page PDF, so the site app draws it sharp at any zoom (not a picture)
+  function sheetPdf(sh){
+    if (!sh.f.pdfBase64) return Promise.resolve(null);
+    var bytes = base64ToUint8Array(sh.f.pdfBase64);
+    if (sh.f.numPages === 1) return Promise.resolve(bytes);
+    if (!window.PDFLib) return Promise.resolve(null);
+    return PDFLib.PDFDocument.load(bytes, { ignoreEncryption:true, updateMetadata:false }).then(function(src){
+      return PDFLib.PDFDocument.create().then(function(out){
+        return out.copyPages(src, [sh.page - 1]).then(function(pg){ out.addPage(pg[0]); return out.save({ useObjectStreams:true }); });
+      });
+    });
+  }
+  var SITE_PART = 1800 * 1024;
+  function uploadSheetPdf(id, sh, dims){
+    return sheetPdf(sh).then(function(bytes){
+      if (!bytes) return false;
+      var parts = Math.max(1, Math.ceil(bytes.length / SITE_PART)), chain = Promise.resolve();
+      for (var i = 0; i < parts; i++) (function(i){ chain = chain.then(function(){
+        return siteFetch("/site/p/" + id + "/pdf/" + encodeURIComponent(sh.id) + "?part=" + i + "&parts=" + parts + "&pw=" + dims.pw + "&ph=" + dims.ph,
+          { method:"PUT", headers:{ "Content-Type":"application/pdf" }, body:bytes.slice(i * SITE_PART, (i + 1) * SITE_PART) });
+      }); })(i);
+      return chain.then(function(){ return true; });
+    });
+  }
   function publishSite(){
     var msg = document.getElementById("stMsg"), btn = document.getElementById("stPub");
     if (siteUi.busy) return; siteUi.busy = true; if (btn) btn.disabled = true;
-    var sheets = siteSheets(), pts = sitePoints();
+    var sheets = siteSheets(), pts = sitePoints(), dims = {};
     msg.textContent = "Publishing " + pts.length + " points…";
     var resolved = (project.site && project.site.resolved) || [];
-    var body = { id: project.site && project.site.id, name: project.name, meta: Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "" }, siteIcons()), floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
-    siteFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(function(r){
+    Promise.all(sheets.map(function(sh){ return sheetDims(sh).then(function(d){ dims[sh.id] = d; }); })).then(function(){
+      var meta = Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "", sheets: dims }, siteIcons());
+      var body = { id: project.site && project.site.id, name: project.name, meta: meta, floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
+      return siteFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) });
+    }).then(function(r){
       var isNew = !project.site || project.site.id !== r.id;
       project.site = Object.assign({}, project.site || {}, { id:r.id }); project.site.sig = isNew ? {} : (project.site.sig || {});
       project.site.resolved = [];
-      var todo = sheets.filter(function(sh){ return r.needFloors.indexOf(sh.id) >= 0 || project.site.sig[sh.id] !== sheetSig(sh); });
+      project.site.pdfSig = isNew ? {} : (project.site.pdfSig || {});
+      var needPdf = r.needPdf || [];
+      var todo = sheets.filter(function(sh){ return r.needFloors.indexOf(sh.id) >= 0 || project.site.sig[sh.id] !== sheetSig(sh) || needPdf.indexOf(sh.id) >= 0 || project.site.pdfSig[sh.id] !== sheetSig(sh); });
       var chain = Promise.resolve();
       todo.forEach(function(sh, i){ chain = chain.then(function(){
         msg.textContent = "Uploading drawing " + (i + 1) + " of " + todo.length + " (" + sh.name + ")…";
-        return sheetJpeg(sh).then(function(img){
+        // 1. a quick picture (shown while the sharp drawing loads, and on very old phones)
+        var pic = r.needFloors.indexOf(sh.id) >= 0 || project.site.sig[sh.id] !== sheetSig(sh) ? sheetJpeg(sh).then(function(img){
           return siteFetch("/site/p/" + r.id + "/floor/" + encodeURIComponent(sh.id) + "?name=" + encodeURIComponent(sh.name) + "&w=" + img.w + "&h=" + img.h + "&ord=" + sheets.indexOf(sh), { method:"PUT", headers:{ "Content-Type":"image/jpeg" }, body:img.blob });
-        }).then(function(){ project.site.sig[sh.id] = sheetSig(sh); });
+        }).then(function(){ project.site.sig[sh.id] = sheetSig(sh); }) : Promise.resolve();
+        // 2. the vector drawing itself (sharp at every zoom)
+        return pic.then(function(){
+          if (needPdf.indexOf(sh.id) < 0 && project.site.pdfSig[sh.id] === sheetSig(sh)) return;
+          return sheetDims(sh).then(function(d){ return uploadSheetPdf(r.id, sh, d); }).then(function(ok){ if (ok) project.site.pdfSig[sh.id] = sheetSig(sh); });
+        });
       }); });
       return chain;
     }).then(function(){
@@ -6613,7 +6660,7 @@
     if (!project.site || !project.site.id || !zRelay().url) return Promise.resolve();
     return siteFetch("/site/p/" + project.site.id).then(function(d){
       siteUi.data = d; siteUi.status = {};
-      d.points.forEach(function(p){ siteUi.status[p.point_id] = { installed: !!p.installed, photos: p.photos.length, by: p.installed_by }; });
+      d.points.forEach(function(p){ siteUi.status[p.point_id] = { installed: !!p.installed, aligned: !!p.aligned, configured: !!p.configured, cam: p.cat === "cam", photos: p.photos.length, by: p.installed_by }; });
       renderSiteDialog(afterPublish ? "Published. Send the links below." : "");
       if (typeof renderMarkers === "function") renderMarkers();
     }).catch(function(e){ renderSiteDialog("Couldn't reach the site: " + e.message); });

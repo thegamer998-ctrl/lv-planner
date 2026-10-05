@@ -3,6 +3,9 @@
 //   /site/...      → installation site app: floor plans, points, ticks, photos, notes, site reports, Asana mirror
 //   cron (every 2 min) → keeps every linked Asana project mirrored
 //
+// People: the office key (ADMIN_KEY) opens everything. Each staff member (technician, site engineer, manager) gets a
+// personal link made in the office view; every tick, photo and note then carries their name and role.
+//
 // Secrets: ADMIN_KEY (office key), ASANA_TOKEN, ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN
 // Variables: ALLOWED_ORIGIN, ZOHO_DC, ORG_ID, TEMPLATE_ID, SALESPERSON
 
@@ -21,31 +24,54 @@ const SCHEMA = [
      suggest_type TEXT, text TEXT, by_name TEXT, at INTEGER, status TEXT DEFAULT 'open', status_by TEXT, status_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT, at INTEGER, by_name TEXT,
      action TEXT, point_id TEXT, detail TEXT)`,
+  `CREATE TABLE IF NOT EXISTS floor_pdf (project_id TEXT, floor_id TEXT, part INTEGER, data BLOB, PRIMARY KEY (project_id, floor_id, part))`,
+  `CREATE TABLE IF NOT EXISTS staff (id TEXT PRIMARY KEY, name TEXT, role TEXT, key TEXT UNIQUE, active INTEGER DEFAULT 1, created_at INTEGER)`,
   `CREATE INDEX IF NOT EXISTS photos_pt ON photos (project_id, point_id)`,
   `CREATE INDEX IF NOT EXISTS notes_pt ON notes (project_id, point_id)`,
   `CREATE INDEX IF NOT EXISTS issues_p ON issues (project_id, status)`,
   `CREATE INDEX IF NOT EXISTS log_p ON log (project_id, at)`
 ];
+// columns added after the first version (run once; "duplicate column" errors are expected and ignored)
+const COLUMNS = [
+  "points ADD COLUMN aligned INTEGER DEFAULT 0", "points ADD COLUMN aligned_by TEXT", "points ADD COLUMN aligned_at INTEGER",
+  "points ADD COLUMN configured INTEGER DEFAULT 0", "points ADD COLUMN configured_by TEXT", "points ADD COLUMN configured_at INTEGER",
+  "floors ADD COLUMN pdf_parts INTEGER DEFAULT 0", "floors ADD COLUMN pdf_v INTEGER DEFAULT 0", "floors ADD COLUMN pw REAL", "floors ADD COLUMN ph REAL",
+  "log ADD COLUMN by_role TEXT"
+];
 let schemaReady = false;
 async function ensureSchema(db) {
   if (schemaReady) return;
   for (const s of SCHEMA) await db.prepare(s).run();
+  for (const c of COLUMNS) { try { await db.prepare("ALTER TABLE " + c).run(); } catch (e) { /* already there */ } }
   schemaReady = true;
 }
 
+// The work steps of each point. Cameras: the technician installs it, then aligns it; the site engineer then configures it.
+// Every other point has one step: installed. A point counts as done for the installation team when all its "team" steps are ticked.
+const STEPS = {
+  installed:  { label: "Installed",  who: "team" },
+  aligned:    { label: "Aligned",    who: "team" },
+  configured: { label: "Configured", who: "engineer" }
+};
+function stepsOf(cat) { return cat === "cam" ? ["installed", "aligned", "configured"] : ["installed"]; }
+const ROLE_NAME = { office: "Office", manager: "Manager", engineer: "Site engineer", tech: "Technician", team: "Team", customer: "Customer" };
+
 // Point categories (the planner's VLAN groups) and the Asana subtask each completes when every point of it is installed
+// (per step: cameras have separate Asana steps for installation, alignment and configuration/naming)
 const CATS = {
-  ap:    { name: "Access points", asana: /access point.*install|install.*access point|ceiling access point/i },
-  cam:   { name: "Cameras",       asana: /camera.*install|install.*camera|cctv.*install/i },
-  data:  { name: "Data points",   asana: /data point|network point/i },
-  phone: { name: "IP phones",     asana: /phone.*install|install.*phone/i },
-  icom:  { name: "Intercom",      asana: /intercom|door entry/i },
-  rack:  { name: "Cabinet",       asana: null },
-  other: { name: "Other",         asana: null }
+  ap:    { name: "Access points", asana: { installed: /access point.*install|install.*access point|ceiling access point/i } },
+  cam:   { name: "Cameras",       asana: { installed: /camera.*install|install.*camera|cctv.*install/i,
+                                           aligned: /camera.*align|align.*camera|cctv.*align/i,
+                                           configured: /(camera|cctv)[^,]*\b(naming|adoption|adopt)\b|\bcameras? (config|configuration|setup)\b/i } },
+  data:  { name: "Data points",   asana: { installed: /data point|network point/i } },
+  phone: { name: "IP phones",     asana: { installed: /phone.*install|install.*phone/i } },
+  icom:  { name: "Intercom",      asana: { installed: /intercom|door entry/i } },
+  rack:  { name: "Cabinet",       asana: {} },
+  other: { name: "Other",         asana: {} }
 };
 // money / admin tasks: shown in the office view only
 const PRIVATE_STAGE = /payment|invoice|it flow|customer details|quotation|advance/i;
-const MAX_IMG = 1900 * 1024;   // D1 rows are limited to 2 MB
+const MAX_IMG = 1900 * 1024;   // D1 rows are limited to 2 MB (floor PDFs are stored in parts of this size)
 const FRESH_MS = 90 * 1000;    // a mirror older than this is refreshed when someone opens the project
 
 function rid(n = 20) {
@@ -71,6 +97,7 @@ export default {
 
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
+    let mm0;
     const adminOk = () => !!env.ADMIN_KEY && (req.headers.get("X-Admin-Key") === env.ADMIN_KEY || req.headers.get("X-Relay-Key") === env.ADMIN_KEY);
     try {
       if (path === "/" && req.method === "GET") return json({ ok: true, service: "ExpressTech server", asana: !!env.ASANA_TOKEN, db: !!env.DB });
@@ -90,7 +117,40 @@ export default {
       }
       if (path === "/site/list" && req.method === "GET") {
         if (!adminOk()) return json({ error: "Wrong office key" }, 401);
-        return json({ projects: await projectList(db) });
+        return json({ projects: await projectList(db, true) });
+      }
+      // a staff member's own link: who they are and the projects they can open
+      const staffKey = req.headers.get("X-Key") || url.searchParams.get("k") || "";
+      const person = staffKey ? await db.prepare("SELECT * FROM staff WHERE key = ? AND active = 1").bind(staffKey).first() : null;
+      const isManager = adminOk() || (person && person.role === "manager");
+      if (path === "/site/me" && req.method === "GET") {
+        if (!person) return json({ error: "This link is not valid any more — ask the ExpressTech office for a new one" }, 403);
+        return json({ person: { id: person.id, name: person.name, role: person.role }, projects: await projectList(db, person.role === "manager") });
+      }
+      // staff: office and managers add people (technician / engineer / manager) and get their personal links
+      if (path === "/site/staff" && req.method === "GET") {
+        if (!isManager) return json({ error: "Office only" }, 403);
+        const r = await db.prepare("SELECT id, name, role, key, active, created_at FROM staff ORDER BY active DESC, role, name").all();
+        return json({ staff: r.results });
+      }
+      if (path === "/site/staff" && req.method === "POST") {
+        if (!isManager) return json({ error: "Office only" }, 403);
+        const b = await req.json();
+        const nm = String(b.name || "").trim().slice(0, 40), rl = ["tech", "engineer", "manager"].includes(b.role) ? b.role : "tech";
+        if (!nm) return json({ error: "Name is required" }, 400);
+        const id = rid(10), k = rid(24);
+        await db.prepare("INSERT INTO staff (id, name, role, key, active, created_at) VALUES (?, ?, ?, ?, 1, ?)").bind(id, nm, rl, k, now()).run();
+        return json({ ok: true, person: { id, name: nm, role: rl, key: k, active: 1 } });
+      }
+      if ((mm0 = path.match(/^\/site\/staff\/([A-Za-z0-9]+)$/)) && req.method === "POST") {
+        if (!isManager) return json({ error: "Office only" }, 403);
+        const b = await req.json(), cur = await db.prepare("SELECT * FROM staff WHERE id = ?").bind(mm0[1]).first();
+        if (!cur) return json({ error: "Not found" }, 404);
+        const nm = b.name != null ? String(b.name).trim().slice(0, 40) || cur.name : cur.name;
+        const rl = ["tech", "engineer", "manager"].includes(b.role) ? b.role : cur.role;
+        const act = b.active != null ? (b.active ? 1 : 0) : cur.active, k = b.newKey ? rid(24) : cur.key;
+        await db.prepare("UPDATE staff SET name = ?, role = ?, active = ?, key = ? WHERE id = ?").bind(nm, rl, act, k, cur.id).run();
+        return json({ ok: true, person: { id: cur.id, name: nm, role: rl, key: k, active: act } });
       }
 
       const m = path.match(/^\/site\/p\/([A-Za-z0-9]+)(?:\/(.*))?$/);
@@ -98,11 +158,15 @@ export default {
       const pid = m[1], rest = m[2] || "";
       let proj = await db.prepare("SELECT * FROM projects WHERE id = ?").bind(pid).first();
       if (!proj) return json({ error: "Project not found" }, 404);
-      const key = req.headers.get("X-Key") || url.searchParams.get("k") || "";
-      const role = adminOk() ? "office" : key && key === proj.team_key ? "team" : key && key === proj.view_key ? "customer" : null;
+      const key = staffKey;
+      const role = adminOk() ? "office" : person ? person.role : key && key === proj.team_key ? "team" : key && key === proj.view_key ? "customer" : null;
       if (!role) return json({ error: "This link is not valid any more — ask ExpressTech for a new one" }, 403);
-      const canEdit = role === "office" || role === "team";
-      const by = (req.headers.get("X-By") || url.searchParams.get("by") || (role === "office" ? "ExpressTech office" : "Technician")).slice(0, 40);
+      const canEdit = role !== "customer";
+      const officeLike = role === "office" || role === "manager";
+      // a staff member's name comes from their own link; the shared team link and the office type theirs once per device
+      const by = person ? person.name : (req.headers.get("X-By") || url.searchParams.get("by") || (role === "office" ? "ExpressTech office" : "Technician")).slice(0, 40);
+      const byRole = ROLE_NAME[role] || "";
+      const log = (action, ptid, detail) => addLog(db, pid, by, action, ptid, detail, byRole);
       const asanaOn = !!(proj.asana_gid && env.ASANA_TOKEN);
       let mm;
 
@@ -124,13 +188,38 @@ export default {
         if (!f || !f.img) return json({ error: "No image" }, 404);
         return new Response(toBytes(f.img), { headers: { ...cors, "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=31536000, immutable" } });
       }
+      // the floor's vector drawing (single-page PDF), stored in parts because D1 rows are limited to 2 MB
+      if ((mm = rest.match(/^pdf\/([^/]+)$/))) {
+        const fid = decodeURIComponent(mm[1]);
+        if (req.method === "PUT") {
+          if (role !== "office") return json({ error: "Office only" }, 403);
+          const q = url.searchParams, part = +q.get("part") || 0, parts = Math.max(1, +q.get("parts") || 1);
+          const buf = await req.arrayBuffer();
+          if (buf.byteLength > MAX_IMG) return json({ error: "Part too large" }, 413);
+          if (part === 0) await db.prepare("DELETE FROM floor_pdf WHERE project_id = ? AND floor_id = ?").bind(pid, fid).run();
+          await db.prepare("INSERT OR REPLACE INTO floor_pdf (project_id, floor_id, part, data) VALUES (?, ?, ?, ?)").bind(pid, fid, part, new Uint8Array(buf)).run();
+          if (part === parts - 1) {
+            await db.prepare("UPDATE floors SET pdf_parts = ?, pdf_v = ?, pw = ?, ph = ? WHERE project_id = ? AND floor_id = ?")
+              .bind(parts, now(), +q.get("pw") || null, +q.get("ph") || null, pid, fid).run();
+            await touch(db, pid);
+          }
+          return json({ ok: true });
+        }
+        const f = await db.prepare("SELECT pdf_parts FROM floors WHERE project_id = ? AND floor_id = ?").bind(pid, fid).first();
+        if (!f || !f.pdf_parts) return json({ error: "No drawing" }, 404);
+        const r = await db.prepare("SELECT part, data FROM floor_pdf WHERE project_id = ? AND floor_id = ? ORDER BY part").bind(pid, fid).all();
+        if (r.results.length !== f.pdf_parts) return json({ error: "Drawing incomplete" }, 404);
+        const chunks = r.results.map(x => toBytes(x.data)), total = chunks.reduce((a, c) => a + c.byteLength, 0), out = new Uint8Array(total);
+        let o = 0; for (const c of chunks) { out.set(c, o); o += c.byteLength; }
+        return new Response(out, { headers: { ...cors, "Content-Type": "application/pdf", "Cache-Control": "private, max-age=31536000, immutable" } });
+      }
       // photos (of points or of site reports)
       if ((mm = rest.match(/^photo\/([A-Za-z0-9]+)$/))) {
         if (req.method === "DELETE") {
           if (!canEdit) return json({ error: "View only" }, 403);
           const ph = await db.prepare("SELECT point_id FROM photos WHERE id = ? AND project_id = ?").bind(mm[1], pid).first();
           await db.prepare("DELETE FROM photos WHERE id = ? AND project_id = ?").bind(mm[1], pid).run();
-          if (ph) await addLog(db, pid, by, "photo-removed", ph.point_id, "");
+          if (ph) await log("photo-removed", ph.point_id, "");
           return json({ ok: true });
         }
         const ph = await db.prepare("SELECT img, point_id FROM photos WHERE id = ? AND project_id = ?").bind(mm[1], pid).first();
@@ -144,16 +233,27 @@ export default {
         const pt = await db.prepare("SELECT * FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
         if (!pt) return json({ error: "Point not found" }, 404);
         if (mm[2] === "status") {
-          const b = await req.json(), inst = b.installed ? 1 : 0, t = now();
-          await db.prepare("UPDATE points SET installed = ?, installed_by = ?, installed_at = ? WHERE project_id = ? AND point_id = ?")
-            .bind(inst, inst ? by : null, inst ? t : null, pid, ptid).run();
-          await addLog(db, pid, by, inst ? "installed" : "uninstalled", ptid, pt.label);
+          // body: { step: "installed" | "aligned" | "configured", done: true/false }   (old form { installed: true/false } still works)
+          const b = await req.json();
+          const step = b.step || "installed", done = (b.done != null ? b.done : b.installed) ? 1 : 0, t = now();
+          if (!stepsOf(pt.cat).includes(step)) return json({ error: "This point has no " + step + " step" }, 400);
+          if (STEPS[step].who === "engineer" && !(officeLike || role === "engineer")) return json({ error: "Only the site engineer can tick " + STEPS[step].label }, 403);
+          // order: aligned or configured implies installed; un-ticking installed clears the later steps
+          const set = { [step]: done };
+          if (done && step !== "installed" && !pt.installed) set.installed = 1;
+          if (!done && step === "installed") for (const s of stepsOf(pt.cat)) if (s !== "installed" && pt[s]) set[s] = 0;
+          for (const s of Object.keys(set)) {
+            await db.prepare(`UPDATE points SET ${s} = ?, ${s}_by = ?, ${s}_at = ? WHERE project_id = ? AND point_id = ?`)
+              .bind(set[s], set[s] ? by : null, set[s] ? t : null, pid, ptid).run();
+            await log(stepAction(s, set[s]), ptid, pt.label);
+          }
           await touch(db, pid);
-          if (asanaOn) ctx.waitUntil(asanaPush(db, env, proj, pt.cat, by).catch(e => console.log("asana push", e)));
-          return json({ ok: true, installed: inst, installed_by: inst ? by : null, installed_at: inst ? t : null });
+          if (asanaOn) ctx.waitUntil((async () => { for (const s of Object.keys(set)) await asanaPush(db, env, proj, pt.cat, s, by); })().catch(e => console.log("asana push", e)));
+          const np = await db.prepare("SELECT installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
+          return json({ ok: true, ...np });
         }
-        if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, ptid, by, pt.label));
-        if (mm[2] === "note") return json(await saveNote(db, req, pid, ptid, by, pt.label));
+        if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, ptid, by, pt.label, byRole));
+        if (mm[2] === "note") return json(await saveNote(db, req, pid, ptid, by, pt.label, byRole));
       }
       // site reports (technician pins: extra point found, point not on site, other)
       if (rest === "issue" && req.method === "POST") {
@@ -165,7 +265,7 @@ export default {
         const id = rid(14), t = now();
         await db.prepare("INSERT INTO issues (id, project_id, floor_id, x, y, kind, point_id, suggest_type, text, by_name, at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')")
           .bind(id, pid, String(b.floorId), clamp01(b.x), clamp01(b.y), kind, b.pointId ? String(b.pointId) : null, b.suggestType ? String(b.suggestType).slice(0, 30) : null, text, by, t).run();
-        await addLog(db, pid, by, "report", "issue:" + id, (kind === "missing" ? "Extra point found" : kind === "extra" ? "Point not on site" : "Site report") + (text ? ": " + text.slice(0, 60) : ""));
+        await log("report", "issue:" + id, (kind === "missing" ? "Extra point found" : kind === "extra" ? "Point not on site" : "Site report") + (text ? ": " + text.slice(0, 60) : ""));
         await touch(db, pid);
         return json({ ok: true, id });
       }
@@ -174,10 +274,10 @@ export default {
         const is = await db.prepare("SELECT * FROM issues WHERE id = ? AND project_id = ?").bind(iid, pid).first();
         if (!is) return json({ error: "Report not found" }, 404);
         if (!canEdit) return json({ error: "View only" }, 403);
-        if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, "issue:" + iid, by, "site report"));
-        if (mm[2] === "note") return json(await saveNote(db, req, pid, "issue:" + iid, by, "site report"));
+        if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, "issue:" + iid, by, "site report", byRole));
+        if (mm[2] === "note") return json(await saveNote(db, req, pid, "issue:" + iid, by, "site report", byRole));
         if (mm[2] === "status") {
-          if (role !== "office") return json({ error: "Only the office can approve or close a report" }, 403);
+          if (!officeLike) return json({ error: "Only the office can approve or close a report" }, 403);
           const b = await req.json();
           const status = ["open", "approved", "rejected", "done"].includes(b.status) ? b.status : "open";
           await db.prepare("UPDATE issues SET status = ?, status_by = ?, status_at = ? WHERE id = ?").bind(status, by, now(), iid).run();
@@ -185,7 +285,7 @@ export default {
           const label = status === "rejected" && is.kind === "extra" ? "Point stays in the drawing"
             : { open: "Reopened", approved: "Approved", rejected: "Not needed", done: "Done — point updated in the drawing" }[status];
           await db.prepare("INSERT INTO notes (id, project_id, point_id, text, by_name, at) VALUES (?, ?, ?, ?, ?, ?)").bind(rid(16), pid, "issue:" + iid, label + (reply ? " — " + reply : ""), by, now()).run();
-          await addLog(db, pid, by, "report-" + status, "issue:" + iid, reply.slice(0, 60));
+          await log("report-" + status, "issue:" + iid, reply.slice(0, 60));
           await touch(db, pid);
           return json({ ok: true, status });
         }
@@ -197,13 +297,13 @@ export default {
       }
       // Asana: link, refresh, tick a stage, comment on a stage
       if (rest === "asana" && req.method === "POST") {
-        if (role !== "office") return json({ error: "Office only" }, 403);
+        if (!officeLike) return json({ error: "Office only" }, 403);
         const b = await req.json();
         const gid = String(b.gid || "").replace(/\D/g, "") || null;
         await db.prepare("UPDATE projects SET asana_gid = ?, asana_cache = NULL, asana_at = 0 WHERE id = ?").bind(gid, pid).run();
         let stages = null;
         if (gid && env.ASANA_TOKEN) stages = await asanaRefresh(db, env, { ...proj, asana_gid: gid, asana_cache: null });
-        return json({ ok: true, gid, stages: stages ? stagesFor(stages, "office") : null });
+        return json({ ok: true, gid, stages: stages ? stagesFor(stages, role) : null });
       }
       if (rest === "asana/refresh" && req.method === "POST") {
         if (!asanaOn) return json({ error: "Asana is not linked" }, 400);
@@ -215,24 +315,24 @@ export default {
         if (!asanaOn) return json({ error: "Asana is not linked" }, 400);
         const cache = safeJson(proj.asana_cache), gid = mm[1];
         const found = findTask(cache, gid);
-        if (!found || (role !== "office" && found.private)) return json({ error: "Stage not found" }, 404);
+        if (!found || (!officeLike && found.private)) return json({ error: "Stage not found" }, 404);
         const b = await req.json();
         if (mm[2]) {
           const text = String(b.text || "").trim().slice(0, 2000);
           if (!text) return json({ error: "Empty comment" }, 400);
           await asanaApi(env, `/tasks/${gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${by} (ExpressTech Site): ${text}` } }) });
-          await addLog(db, pid, by, "stage-comment", "stage:" + gid, found.task.name + ": " + text.slice(0, 60));
+          await log("stage-comment", "stage:" + gid, found.task.name + ": " + text.slice(0, 60));
         } else {
           const done = !!b.completed;
           await asanaApi(env, `/tasks/${gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: done } }) });
           await asanaApi(env, `/tasks/${gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${done ? "Completed" : "Reopened"} by ${by} in the ExpressTech site app.` } }) });
-          await addLog(db, pid, by, done ? "stage-done" : "stage-reopened", "stage:" + gid, found.task.name);
+          await log(done ? "stage-done" : "stage-reopened", "stage:" + gid, found.task.name);
         }
         const stages = await asanaRefresh(db, env, proj);
         return json({ ok: true, stages: stagesFor(stages, role) });
       }
       if (rest === "keys" && req.method === "POST") {
-        if (role !== "office") return json({ error: "Office only" }, 403);
+        if (!officeLike) return json({ error: "Office only" }, 403);
         const b = await req.json().catch(() => ({}));
         const team = b.which === "customer" ? proj.team_key : rid(), view = b.which === "team" ? proj.view_key : rid();
         await db.prepare("UPDATE projects SET team_key = ?, view_key = ? WHERE id = ?").bind(team, view, pid).run();
@@ -270,26 +370,27 @@ function clamp01(v) { v = +v; return isFinite(v) ? Math.max(0, Math.min(1, v)) :
 function toBytes(v) { if (Array.isArray(v)) return new Uint8Array(v); return v; }
 function safeJson(s) { try { return JSON.parse(s || "{}") || {}; } catch (e) { return {}; } }
 async function touch(db, pid) { await db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").bind(now(), pid).run(); }
-async function addLog(db, pid, by, action, ptid, detail) {
-  await db.prepare("INSERT INTO log (project_id, at, by_name, action, point_id, detail) VALUES (?, ?, ?, ?, ?, ?)").bind(pid, now(), by, action, ptid, detail || "").run();
+function stepAction(step, done) { return step === "installed" ? (done ? "installed" : "uninstalled") : (done ? step : "un" + step); }
+async function addLog(db, pid, by, action, ptid, detail, byRole) {
+  await db.prepare("INSERT INTO log (project_id, at, by_name, action, point_id, detail, by_role) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(pid, now(), by, action, ptid, detail || "", byRole || "").run();
 }
-async function savePhoto(db, req, url, pid, ptid, by, label) {
+async function savePhoto(db, req, url, pid, ptid, by, label, byRole) {
   const buf = await req.arrayBuffer();
   if (!buf.byteLength) throw new Error("Empty photo");
   if (buf.byteLength > MAX_IMG) throw new Error("Photo too large");
   const id = rid(16), q = url.searchParams, t = now();
   await db.prepare("INSERT INTO photos (id, project_id, point_id, img, w, h, by_name, at, caption) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(id, pid, ptid, new Uint8Array(buf), +q.get("w") || 0, +q.get("h") || 0, by, t, (q.get("caption") || "").slice(0, 200)).run();
-  await addLog(db, pid, by, "photo", ptid, label);
+  await addLog(db, pid, by, "photo", ptid, label, byRole);
   await touch(db, pid);
   return { ok: true, photo: { id, by, at: t, w: +q.get("w") || 0, h: +q.get("h") || 0 } };
 }
-async function saveNote(db, req, pid, ptid, by, label) {
+async function saveNote(db, req, pid, ptid, by, label, byRole) {
   const b = await req.json(), text = String(b.text || "").trim().slice(0, 1000);
   if (!text) throw new Error("Empty note");
   const id = rid(16), t = now();
   await db.prepare("INSERT INTO notes (id, project_id, point_id, text, by_name, at) VALUES (?, ?, ?, ?, ?, ?)").bind(id, pid, ptid, text, by, t).run();
-  await addLog(db, pid, by, "note", ptid, text.slice(0, 80));
+  await addLog(db, pid, by, "note", ptid, text.slice(0, 80), byRole);
   await touch(db, pid);
   return { ok: true, note: { id, text, by, at: t } };
 }
@@ -331,27 +432,29 @@ async function publish(db, b) {
     await addLog(db, proj.id, "ExpressTech office", "report-done", "issue:" + r.id, r.text || "");
   }
   if ((b.resolved || []).length) await addLog(db, proj.id, "ExpressTech office", "published", "", "Drawing updated");
-  const have = await db.prepare("SELECT floor_id, v FROM floors WHERE project_id = ?").bind(proj.id).all();
-  return { id: proj.id, team_key: proj.team_key, view_key: proj.view_key, needFloors: have.results.filter(r => !r.v).map(r => r.floor_id) };
+  const have = await db.prepare("SELECT floor_id, v, pdf_parts FROM floors WHERE project_id = ?").bind(proj.id).all();
+  return { id: proj.id, team_key: proj.team_key, view_key: proj.view_key, needFloors: have.results.filter(r => !r.v).map(r => r.floor_id),
+    needPdf: have.results.filter(r => !r.pdf_parts).map(r => r.floor_id) };
 }
 
 async function projectView(db, proj, role) {
   const pid = proj.id;
   const [floors, points, photos, notes, issues, log] = await Promise.all([
-    db.prepare("SELECT floor_id, ord, name, w, h, v FROM floors WHERE project_id = ? ORDER BY ord").bind(pid).all(),
-    db.prepare("SELECT point_id, floor_id, type, cat, label, model, color, x, y, installed, installed_by, installed_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
+    db.prepare("SELECT floor_id, ord, name, w, h, v, pdf_parts, pdf_v, pw, ph FROM floors WHERE project_id = ? ORDER BY ord").bind(pid).all(),
+    db.prepare("SELECT point_id, floor_id, type, cat, label, model, color, x, y, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
     db.prepare("SELECT id, point_id, w, h, by_name, at, caption FROM photos WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT id, point_id, text, by_name, at FROM notes WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT * FROM issues WHERE project_id = ? ORDER BY at DESC").bind(pid).all(),
-    db.prepare("SELECT at, by_name, action, point_id, detail FROM log WHERE project_id = ? ORDER BY at DESC LIMIT 60").bind(pid).all()
+    db.prepare("SELECT at, by_name, by_role, action, point_id, detail FROM log WHERE project_id = ? ORDER BY at DESC LIMIT 80").bind(pid).all()
   ]);
   const byPt = {}, byIssue = {};
-  for (const p of points.results) byPt[p.point_id] = { ...p, photos: [], notes: [] };
+  for (const p of points.results) byPt[p.point_id] = { ...p, steps: stepsOf(p.cat), photos: [], notes: [] };
   const out = {
     role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid },
-    floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v })),
+    floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v, pdf: f.pdf_parts ? f.pdf_v : 0, pw: f.pw, ph: f.ph })),
     points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: []
   };
+  out.steps = STEPS;
   if (role !== "customer") for (const is of issues.results) byIssue[is.id] = {
     id: is.id, floor_id: is.floor_id, x: is.x, y: is.y, kind: is.kind, point_id: is.point_id, suggest_type: is.suggest_type,
     text: is.text, by: is.by_name, at: is.at, status: is.status, status_by: is.status_by, status_at: is.status_at, photos: [], notes: [] };
@@ -361,13 +464,14 @@ async function projectView(db, proj, role) {
   out.points = Object.values(byPt);
   out.issues = Object.values(byIssue);
   out.activity = log.results.filter(a => role !== "customer" || !/^(report|stage-comment)/.test(a.action));
-  if (role === "office") { out.links = { team_key: proj.team_key, view_key: proj.view_key }; out.project.asana_gid = proj.asana_gid; }
+  if (role === "office" || role === "manager") { out.links = { team_key: proj.team_key, view_key: proj.view_key }; out.project.asana_gid = proj.asana_gid; }
   return out;
 }
 
-async function projectList(db) {
+async function projectList(db, withKeys) {
   const ps = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at FROM projects ORDER BY updated_at DESC").all();
-  const cnt = await db.prepare("SELECT project_id, COUNT(*) AS n, SUM(installed) AS done FROM points WHERE active = 1 GROUP BY project_id").all();
+  // done = every installation step ticked (cameras: installed and aligned)
+  const cnt = await db.prepare("SELECT project_id, COUNT(*) AS n, SUM(CASE WHEN installed = 1 AND (cat <> 'cam' OR aligned = 1) THEN 1 ELSE 0 END) AS done FROM points WHERE active = 1 GROUP BY project_id").all();
   const iss = await db.prepare("SELECT project_id, COUNT(*) AS n FROM issues WHERE status = 'open' GROUP BY project_id").all();
   const ph = await db.prepare("SELECT project_id, COUNT(*) AS n FROM photos GROUP BY project_id").all();
   const by = (rows) => Object.fromEntries(rows.results.map(r => [r.project_id, r]));
@@ -375,8 +479,8 @@ async function projectList(db) {
   return ps.results.map(p => {
     const c = safeJson(p.asana_cache);
     let tDone = 0, tAll = 0, next = null;
-    for (const s of (c.sections || [])) for (const t of s.tasks) { tAll++; if (t.completed) tDone++; else if (!next && !PRIVATE_STAGE.test(t.name)) next = t.name; }
-    return { id: p.id, name: p.name, team_key: p.team_key, view_key: p.view_key, updated_at: p.updated_at, points: (C[p.id] || {}).n || 0, installed: (C[p.id] || {}).done || 0,
+    for (const s of (c.sections || [])) for (const t of s.tasks) { if (!withKeys && t.private) continue; tAll++; if (t.completed) tDone++; else if (!next && !PRIVATE_STAGE.test(t.name)) next = t.name; }
+    return { id: p.id, name: p.name, team_key: withKeys ? p.team_key : undefined, view_key: withKeys ? p.view_key : undefined, updated_at: p.updated_at, points: (C[p.id] || {}).n || 0, installed: (C[p.id] || {}).done || 0,
       open_reports: (I[p.id] || {}).n || 0, photos: (H[p.id] || {}).n || 0, asana: !!p.asana_gid, asana_at: p.asana_at, stages_done: tDone, stages_all: tAll, next_stage: next,
       status: c.project && c.project.status ? c.project.status : null };
   });
@@ -438,12 +542,13 @@ async function asanaRefresh(db, env, proj) {
   proj.asana_cache = JSON.stringify(mirror); proj.asana_at = now();
   return mirror;
 }
-// What each role sees: office everything; team no money tasks; customer no money tasks, no comments, no notes
+// What each role sees: office and manager everything; team, technician, engineer no money tasks; customer no money tasks, no comments, no notes
 function stagesFor(m, role) {
+  const full = role === "office" || role === "manager";
   if (!m || !m.sections) return null;
   const strip = (t) => role === "customer" ? { ...t, stories: [], notes: "" } : t;
   return { at: m.at, project: role === "customer" ? { ...m.project, status: m.project && m.project.status ? { title: m.project.status.title, at: m.project.status.at, type: m.project.status.type } : null } : m.project,
-    sections: m.sections.map(s => ({ name: s.name, tasks: s.tasks.filter(t => role === "office" || !t.private).map(t => ({ ...strip(t), subtasks: (t.subtasks || []).map(strip) })) }))
+    sections: m.sections.map(s => ({ name: s.name, tasks: s.tasks.filter(t => full || !t.private).map(t => ({ ...strip(t), subtasks: (t.subtasks || []).map(strip) })) }))
       .filter(s => s.tasks.length) };
 }
 function findTask(m, gid) {
@@ -453,25 +558,27 @@ function findTask(m, gid) {
   }
   return null;
 }
-// After a point tick: when every point of that kind is installed, complete the matching subtask (reopen it if one is unticked)
-async function asanaPush(db, env, proj, cat, by) {
-  const c = CATS[cat]; if (!c || !c.asana) return;
-  const r = await db.prepare("SELECT COUNT(*) AS n, SUM(installed) AS done FROM points WHERE project_id = ? AND active = 1 AND cat = ?").bind(proj.id, cat).first();
+// After a point tick: when every point of that kind has that step ticked (e.g. all cameras aligned), complete the matching
+// Asana subtask (reopen it if one is unticked)
+async function asanaPush(db, env, proj, cat, step, by) {
+  const c = CATS[cat], rx = c && c.asana && c.asana[step]; if (!rx || !STEPS[step]) return;
+  const r = await db.prepare(`SELECT COUNT(*) AS n, SUM(${step}) AS done FROM points WHERE project_id = ? AND active = 1 AND cat = ?`).bind(proj.id, cat).first();
   const n = r.n || 0, done = r.done || 0; if (!n) return;
   let m = safeJson(proj.asana_cache);
   if (!m.sections) m = await asanaRefresh(db, env, proj);
   let target = null;
   for (const s of m.sections) for (const t of s.tasks) {
-    for (const st of (t.subtasks || [])) if (!target && c.asana.test(st.name)) target = st;
-    if (!target && c.asana.test(t.name)) target = t;
+    for (const st of (t.subtasks || [])) if (!target && rx.test(st.name)) target = st;
+    if (!target && rx.test(t.name)) target = t;
   }
   if (!target) return;
   const complete = done >= n;
   if (complete !== target.completed) {
     await asanaApi(env, `/tasks/${target.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: complete } }) });
+    const verb = STEPS[step].label.toLowerCase();
     const text = complete
-      ? `All ${n} ${c.name.toLowerCase()} installed and ticked in the ExpressTech site app (last by ${by}).`
-      : `Reopened: ${done} of ${n} ${c.name.toLowerCase()} installed (unticked by ${by} in the ExpressTech site app).`;
+      ? `All ${n} ${c.name.toLowerCase()} ${verb} and ticked in the ExpressTech site app (last by ${by}).`
+      : `Reopened: ${done} of ${n} ${c.name.toLowerCase()} ${verb} (unticked by ${by} in the ExpressTech site app).`;
     await asanaApi(env, `/tasks/${target.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text } }) });
     await asanaRefresh(db, env, proj);
   }
