@@ -756,7 +756,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-01.6</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -947,7 +947,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-01.6</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.1</p>
     </section>
   </aside>
 
@@ -5958,9 +5958,11 @@
     ["UCG-Fiber","UCG Fiber (on shelf)","Gateway (desktop, on shelf)","gw",1,5,0,4],
     ["UCG-Max","UCG Max (on shelf)","Gateway (desktop, on shelf)","gw",1,5,0,4],
     ["UCG-Ultra","UCG Ultra (on shelf)","Gateway (desktop, on shelf)","gw",1,5,0,0],
-    ["USW-Pro-Max-48-PoE","USW Pro Max 48 PoE","48-port PoE switch","sw",1,48,720,0],
-    ["USW-Pro-Max-24-PoE","USW Pro Max 24 PoE","24-port PoE switch","sw",1,24,400,0],
-    ["USW-Pro-Max-16-PoE","USW Pro Max 16 PoE","16-port PoE switch","sw",1,16,180,0],
+    ["USW-Pro-48-PoE","USW Pro 48 PoE","48-port PoE switch","sw",1,48,600,0],
+    ["USW-Pro-24-PoE","USW Pro 24 PoE","24-port PoE switch","sw",1,24,400,0],
+    ["USW-Pro-Max-48-PoE","USW Pro Max 48 PoE","48-port PoE switch (Etherlighting)","sw",1,48,720,0],
+    ["USW-Pro-Max-24-PoE","USW Pro Max 24 PoE","24-port PoE switch (Etherlighting)","sw",1,24,400,0],
+    ["USW-Pro-Max-16-PoE","USW Pro Max 16 PoE","16-port PoE switch (Etherlighting)","sw",1,16,180,0],
     ["USW-Pro-HD-24-PoE","USW Pro HD 24 PoE","24-port PoE switch (2.5G/10G)","sw",1,24,600,0],
     ["USW-Pro-XG-24-PoE","USW Pro XG 24 PoE","24-port 10G PoE switch","sw",1,24,720,0],
     ["USW-Pro-XG-48-PoE","USW Pro XG 48 PoE","48-port 10G PoE switch","sw",1,48,1080,0],
@@ -6076,18 +6078,18 @@
   function suggestRack(rack){
     var c = pointCounts(rack);
     var list = [];
-    if (rack.main) list.push(c.cam > 0 ? "UDM-Pro-Max" : "UDM-Pro");
+    if (rack.main) list.push("UDM-Pro");     // default gateway; pick another in the rack if needed
     // switches: enough ports (+15% spare, +1 uplink) and PoE budget
     var need = c.total ? Math.ceil(c.total * 1.15) + 1 : 0, watts = c.watts * 1.2, sw = [];
     while (need > 0){
-      var pick = need > 24 ? "USW-Pro-Max-48-PoE" : need > 16 ? "USW-Pro-Max-24-PoE" : "USW-Pro-Max-16-PoE";
+      var pick = need > 24 ? "USW-Pro-48-PoE" : "USW-Pro-24-PoE";   // default USW Pro; Pro Max only when chosen in the rack
       sw.push(pick); need -= EQUIP_BY_SKU[pick].ports;
     }
     var budget = function(){ return sw.reduce(function(a,k){ return a + EQUIP_BY_SKU[k].poeW; }, 0); };
-    var up = { "USW-Pro-Max-16-PoE":"USW-Pro-Max-24-PoE", "USW-Pro-Max-24-PoE":"USW-Pro-Max-48-PoE" };
+    var up = { "USW-Pro-24-PoE":"USW-Pro-48-PoE" };
     for (var guard=0; guard<6 && budget() < watts; guard++){
       var idx = sw.findIndex(function(k){ return up[k]; });
-      if (idx < 0){ sw.push("USW-Pro-Max-24-PoE"); } else sw[idx] = up[sw[idx]];
+      if (idx < 0){ sw.push("USW-Pro-24-PoE"); } else sw[idx] = up[sw[idx]];
     }
     var panels = Math.ceil(c.total / 24);
     for (var i=0; i<Math.max(panels, sw.length); i++){
@@ -6177,6 +6179,8 @@
   }
   // Front-panel layouts per switch: RJ45 rows, SFP+ cages (count, rows), touchscreen, body width (compact models)
   var FACE = {
+    "USW-Pro-48-PoE":    { rows:2, sfp:4, sfpRows:2, screen:true },
+    "USW-Pro-24-PoE":    { rows:1, sfp:2, sfpRows:1, screen:true },
     "USW-Pro-Max-48-PoE":{ rows:2, sfp:4, sfpRows:2, screen:true },
     "USW-Pro-Max-48":    { rows:2, sfp:4, sfpRows:2, screen:true },
     "USW-Pro-XG-48-PoE": { rows:2, sfp:4, sfpRows:2, screen:true },
@@ -6459,6 +6463,8 @@
   if (el.placeRackSel) el.placeRackSel.addEventListener("change", function(){ ui.placeRack = el.placeRackSel.value; updateHint(); });
 
   /* ---------- Hardware list (summary panel + CSV for Zoho Books) ---------- */
+  // Etherlighting patch cables only light up on Etherlighting switches
+  function isEtherlightSwitch(sku){ return /Pro-Max|Pro-HD|Pro-XG/.test(sku || ""); }
   function hardwareItems(){
     var rows = {}, order = [];
     function add(key, name, sku, where, n){
@@ -6473,15 +6479,20 @@
         else add(m.type + (v ? ":"+v.key : ""), v ? t.label + " " + v.name : t.label, "", f.name, 1);
       });
     });
-    var np = buildNetworkPlan(), dac = 0, fib = 0, patch = 0, runs = 0;
+    var np = buildNetworkPlan(), dac = 0, fib = 0, patch = 0, runsEl = 0, runsStd = 0;
     np.links.forEach(function(l){ if (l.kind === "dac") dac++; else if (l.kind === "fibre") fib++; else patch++; });
-    np.racks.forEach(function(r){ r.switches.forEach(function(sw){ sw.ports.forEach(function(pt){ if (pt.dev) runs++; }); }); });
+    np.racks.forEach(function(r){ r.switches.forEach(function(sw){
+      var el = isEtherlightSwitch(sw.item.sku);
+      sw.ports.forEach(function(pt){ if (pt.dev){ if (el) runsEl++; else runsStd++; } });
+    }); });
+    runsStd += patch;   // switch-to-switch copper links
     if (UBNT.on){
       if (dac) add("dac", "UniFi 10G SFP+ DAC cable 0.5 m", "UACC-DAC-SFP10-0.5M", "Racks", dac);
-      if (runs + patch) add("el", "UniFi Etherlighting patch cable 0.15 m", "UACC-Cable-Patch-EL-0.15M-W", "Racks", runs + patch);
+      if (runsEl) add("el", "UniFi Etherlighting patch cable 0.15 m", "UACC-Cable-Patch-EL-0.15M-W", "Racks", runsEl);
+      if (runsStd) add("pc", "Ubiquiti patch cord 0.1 m", "", "Racks", runsStd);
     } else {
       if (dac) add("dac", "10G SFP+ DAC cable 0.5 m", "", "Racks", dac);
-      if (runs + patch) add("el", "Patch cord 0.15 m", "", "Racks", runs + patch);
+      if (runsEl + runsStd) add("el", "Patch cord 0.15 m", "", "Racks", runsEl + runsStd);
     }
     if (fib) add("fib", "10G SFP+ multi-mode fibre module", "", "Racks", fib*2);
     var cc = cableCalc();
@@ -6548,6 +6559,8 @@
   }
   // Switch port layouts (techspecs.ui.com). Groups in port order: [count, speed, PoE class]
   var SW_LAYOUT = {
+    "USW-Pro-48-PoE":{ rj:[[40,"1G","PoE+"],[8,"1G","PoE++"]], sfp:[4,"10G"] },
+    "USW-Pro-24-PoE":{ rj:[[16,"1G","PoE+"],[8,"1G","PoE++"]], sfp:[2,"10G"] },
     "USW-Pro-Max-16-PoE":{ rj:[[12,"1G","PoE+"],[4,"2.5G","PoE++"]], sfp:[2,"10G"] },
     "USW-Pro-Max-24-PoE":{ rj:[[8,"1G","PoE+"],[8,"1G","PoE++"],[8,"2.5G","PoE++"]], sfp:[2,"10G"] },
     "USW-Pro-Max-48-PoE":{ rj:[[24,"1G","PoE+"],[8,"1G","PoE++"],[8,"2.5G","PoE+"],[8,"2.5G","PoE++"]], sfp:[4,"10G"] },
@@ -6679,7 +6692,7 @@
 
   function uplinkCableName(kind){
     if (kind === "fibre") return "Fibre + SFP+ modules";
-    if (kind === "patch") return UBNT.on ? "Etherlighting patch" : "Patch cord";
+    if (kind === "patch") return "Patch cord";
     return UBNT.on ? "UniFi 10G DAC" : "10G DAC";
   }
   var nv = { tab:"ports", sel:null };
