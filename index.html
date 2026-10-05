@@ -779,7 +779,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.9</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.10</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -971,7 +971,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.9</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.10</p>
     </section>
   </aside>
 
@@ -6331,19 +6331,20 @@
       } else if (e.kind === "gw"){
         var lanN = e.sku === "EFG" ? 2 : (e.sku.indexOf("UCG") === 0 ? 4 : 8);
         if (/^UDM/.test(e.sku)){
-          // UDM Pro / SE / Pro Max front, left to right (Ubiquiti quick start guide):
-          // 1.3" touchscreen (model name under it) · LAN 1–8 (2×4) · port 9 RJ45 Internet · SFP+ 10 Internet (top) / 11 LAN (bottom)
-          // · then the 3.5" drive bay(s) at the right (Pro Max: two bays side by side) with the reset pinhole beside them
+          // UDM Pro / SE / Pro Max front, left to right:
+          // 1.3" touchscreen (model name under it) · 3.5" drive bay(s) (Pro Max: two side by side)
+          // · LAN 1–8 (2×4) · port 9 RJ45 Internet · SFP+ 10 Internet (top) / 11 LAN (bottom) at the far right
           var colW = 44, left = x + pad - 2;
           out += screenBlockSvg(left, y, h, colW, e); left += colW + 6;
-          var lanPitch = 16.2, lanW = lanN/2*lanPitch - 2.4;
-          var gL = portRowSvg(left, cy, lanW, ch, lanN, 2, {}); out += gL.svg; geo.rj = gL.pos; left += lanW + 7;          // LAN 1–8
-          var gW = portRowSvg(left, cy, gL.pw, ch, 1, 2, {}); out += gW.svg; left += gL.pw + 7;                            // 9 Internet
-          var gGs = sfpCagesSvg(left, cy, ch, 2, 2); out += gGs.svg; geo.sfp = gGs.pos.slice().reverse(); left += gGs.w; // 10 / 11 (LAN first)
-          var bays = e.sku === "UDM-Pro-Max" ? 2 : (e.sku === "UDM-Beast" ? 0 : 1), bayW = 106;
-          var bayX0 = x + w - pad - bays*bayW - (bays-1)*4;
-          for (var bI=0;bI<bays;bI++) out += driveBaySvg(bayX0 + bI*(bayW+4), y + 5, bayW, h - 10);
-          if (bays) out += '<circle cx="'+(bayX0 - 9).toFixed(1)+'" cy="'+(y + h - 9).toFixed(1)+'" r="1.6" fill="#9aa1a9" stroke="#7d848c" stroke-width="0.4"/>';   // reset
+          var bays = e.sku === "UDM-Pro-Max" ? 2 : (e.sku === "UDM-Beast" ? 0 : 1), bayW = 100;
+          for (var bI=0;bI<bays;bI++) out += driveBaySvg(left + bI*(bayW+4), y + 5, bayW, h - 10);
+          var lanPitch = 15.2, lanW = lanN/2*lanPitch - 2.4;
+          var sfpX = x + w - pad - 19;
+          var gGs = sfpCagesSvg(sfpX, cy, ch, 2, 2); out += gGs.svg; geo.sfp = gGs.pos.slice().reverse();               // SFP+ 10 / 11 (LAN first)
+          var wanW = lanPitch - 2.4, wanX = sfpX - 7 - wanW;
+          out += portRowSvg(wanX, cy, wanW, ch, 1, 2, {}).svg;                                                           // 9 Internet
+          var lanX = wanX - 7 - lanW;
+          var gL = portRowSvg(lanX, cy, lanW, ch, lanN, 2, {}); out += gL.svg; geo.rj = gL.pos;                         // LAN 1–8
         } else {
           var pitch = 14.4, lanW2 = lanN/2*pitch - 2.4, ss2 = Math.min(24, h - 12);
           var sfpX = x + w - pad - 19;
