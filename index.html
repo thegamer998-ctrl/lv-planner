@@ -773,7 +773,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.5</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.6</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -965,7 +965,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.5</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.6</p>
     </section>
   </aside>
 
@@ -6111,6 +6111,17 @@
     c.watts = Math.round(c.realW);
     return c;
   }
+  // Recorder hard disks: chosen per rack (size + how many), 8 TB × 1 by default when cameras use the rack
+  var HDD_SIZES = [2,4,6,8,10,12,16,18,20,22,24];
+  var HDD_BAYS = { "UDM-Pro":1, "UDM-SE":1, "UDM-Pro-Max":2, "UNVR":4, "UNVR-Pro":7, "UNVR-G2":4, "UNVR-G2-Pro":7, "ENVR":16 };
+  function rackBays(rack){ return (rack.items || []).reduce(function(a, it){ return a + (HDD_BAYS[it.sku] || 0); }, 0); }
+  function rackHdd(rack){
+    var bays = rackBays(rack), h = rack.hdd || {};
+    var tb = HDD_SIZES.indexOf(h.tb) >= 0 ? h.tb : 8;
+    var cams = pointCounts(rack).cam || (rack.main && project.floors.some(function(f){ return f.markers.some(function(m){ return isCameraType(m.type); }); }) ? 1 : 0);
+    var qty = (h.qty != null) ? Math.min(h.qty, bays) : (bays && cams ? 1 : 0);
+    return { tb:tb, qty:qty, bays:bays };
+  }
   function pickHeight(u){ for (var i=0;i<RACK_HEIGHTS.length;i++) if (RACK_HEIGHTS[i] >= u) return RACK_HEIGHTS[i]; return 42; }
   // Build a starting rack from the points on the floors it serves
   function suggestRack(rack){
@@ -6386,6 +6397,10 @@
       '<div class="rk-grid"><div><label>Height</label><select class="select-input" id="rkH">'+RACK_HEIGHTS.map(function(h){ return '<option'+(h===rack.height?' selected':'')+' value="'+h+'">'+h+'U</option>'; }).join("")+'</select></div>'+
       '<div><label>Size (cm)</label><select class="select-input" id="rkS">'+RACK_SIZES.map(function(z){ return '<option'+(z===rack.size?' selected':'')+'>'+z+'</option>'; }).join("")+'</select></div>'+
       '<div><label>Mount</label><select class="select-input" id="rkM"><option value="wall"'+(rack.mount==="wall"?' selected':'')+'>Wall</option><option value="floor"'+(rack.mount==="floor"?' selected':'')+'>Floor</option></select></div></div>'+
+      (function(){ var hd = rackHdd(rack); if (!hd.bays) return '';
+        var q = ''; for (var i=0;i<=hd.bays;i++) q += '<option value="'+i+'"'+(i===hd.qty?' selected':'')+'>'+(i ? i + ' disk' + (i>1?'s':'') : 'None')+'</option>';
+        return '<div class="rk-grid" style="grid-template-columns:3fr 2fr;"><div><label>Hard disk (HDD)</label><select class="select-input" id="rkHdd">'+HDD_SIZES.map(function(t){ return '<option value="'+t+'"'+(t===hd.tb?' selected':'')+'>'+t+' TB</option>'; }).join("")+'</select></div>'+
+          '<div><label>Qty · '+hd.bays+' bay'+(hd.bays>1?'s':'')+'</label><select class="select-input" id="rkHddQ">'+q+'</select></div></div>'; })()+
       warns.map(function(w){ return '<p class="rk-warn">'+escapeHtml(w)+'</p>'; }).join("")+
       '<div class="rk-actions"><button type="button" class="action-btn primary" id="rkSuggest">Suggest from points</button><button type="button" class="action-btn" id="rkClear">Clear</button></div>'+
       (sel && selE ? '<div class="rk-sel"><b>'+escapeHtml(equipName(selE))+'</b><small>U'+sel.pos+(selE.u>1?'–U'+(sel.pos+selE.u-1):'')+' · '+selE.u+'U'+(UBNT.on && !/^(PP|CM|SHELF|BLANK|UPS)/.test(selE.sku) ? ' · '+selE.sku : '')+'</small>'+
@@ -6411,6 +6426,9 @@
     document.getElementById("rkH").onchange = function(){ rack.height = parseInt(this.value,10); if (rack.height <= 12) rack.mount = "wall"; if (rack.height >= 18) rack.mount = "floor"; renderRacks(); renderHardwareList(); };
     document.getElementById("rkS").onchange = function(){ rack.size = this.value; renderRacks(); renderHardwareList(); };
     document.getElementById("rkM").onchange = function(){ rack.mount = this.value; renderRacks(); renderHardwareList(); };
+    var hddSel = document.getElementById("rkHdd"), hddQ = document.getElementById("rkHddQ");
+    if (hddSel) hddSel.onchange = function(){ rack.hdd = rack.hdd || {}; rack.hdd.tb = parseInt(this.value,10); renderHardwareList(); };
+    if (hddQ) hddQ.onchange = function(){ rack.hdd = rack.hdd || {}; rack.hdd.qty = parseInt(this.value,10); if (!rack.hdd.tb) rack.hdd.tb = 8; renderHardwareList(); };
     document.getElementById("rkSuggest").onclick = function(){
       var run = function(){ var cc = suggestRack(rack); rackUi.sel = null; renderRacks(); renderHardwareList();
         showStatus("Suggested for " + cc.total + " cable runs (" + cc.ap + " APs, " + cc.cam + " cameras) — adjust as needed"); };
@@ -6550,6 +6568,7 @@
         else add("g:"+e.generic, e.generic, "", r.name, 1);
       });
     });
+    project.racks.forEach(function(r){ if (!r.items.length) return; var hd = rackHdd(r); if (hd.qty) add("hdd:"+hd.tb, "Surveillance hard disk " + hd.tb + " TB", "", r.name, hd.qty); });
     if (ppTotal){
       var pp6a = Math.min(ppTotal, Math.ceil(a6 / 24)), pp6 = ppTotal - pp6a, rk = Object.keys(ppWhere)[0] || "Racks";
       if (pp6) add("pp:cat6", "Patch panel 24-port Cat6", "", rk, pp6);
@@ -6620,10 +6639,11 @@
     "_dac":["2276818000000712050",15,"Ubiquiti Dac Cable (Fiber Up-link)"],
     "_pp":["2276818000000187135",26,"Patch Panel 24 Port"],
     "_shelf":["2276818000001127141",4,"Cabinet Shelf"],
-    "_hdd":["2276818000000142151",140,"Surveillance Hard Disk 8TB"],
+    "_hdd":["2276818000000142151",130,"Surveillance Hard Disk 8TB"],
     "_pt":["2276818000003794001",6,"Point Termination"],
     "_ps":["2276818000000069244",200,"Express Tech Professional Services"]
   };
+  var ZOHO_HDD = { 2:["2276818000000078058",28], 4:["2276818000000115046",52], 6:["2276818000000125014",70], 8:["2276818000000142151",130], 10:["2276818000002905337",148], 12:["2276818000004390132",145], 16:["2276818000003454361",175], 18:["2276818000005446077",320], 20:["2276818000005412001",292], 24:["2276818000005412096",354] };
   var ZOHO_CABINETS = { 4:"2276818000004088132", 6:"2276818000003221127", 9:"2276818000003287135", 12:"2276818000002998001", 18:"2276818000003740001", 21:"2276818000003784211", 32:"2276818000003779351", 42:"2276818000005048001" };
   var ZOHO_CAB_RATE = { 4:25, 6:32, 9:60, 12:85, 18:100, 21:140, 32:165, 42:200 };
   var ZOHO_CAB_NAME = { 21:"Network Cabinet 22U" };
@@ -6700,7 +6720,13 @@
     Object.keys(dev.cam).forEach(function(k){ line(q.cctv, k, dev.cam[k]); });
     Object.keys(dev.entry).forEach(function(k){ line(q.cctv, k, dev.entry[k]); });
     nvrs.forEach(function(k){ line(q.cctv, k, 1); });
-    if (q.counts.cameras) line(q.cctv, "_hdd", 1);
+    var hddAny = false;
+    racks.forEach(function(r){ var hd = rackHdd(r); if (!hd.qty) return; hddAny = true;
+      var z = ZOHO_HDD[hd.tb];
+      if (z) line(q.cctv, "", hd.qty, { z:[z[0], z[1], "Surveillance Hard Disk " + hd.tb + "TB"] });
+      else q.notes.push("No Zoho item for a " + hd.tb + " TB hard disk — add one in Zoho or pick another size.");
+    });
+    if (!hddAny && q.counts.cameras && !racks.some(function(r){ return rackBays(r); })) line(q.cctv, "_hdd", 1);
     line(q.cctv, "_pt", q.counts.cameras, { rate:7, description:"Point to Point Tracing, Crimping & Camera Termination." });
     line(q.cctv, "_ps", 1, { description:"Installation, Configuration, Training & Support" });
     Object.keys(unmatched).forEach(function(n){ q.notes.push(n + " ×" + unmatched[n] + ": no Zoho item matched — find or add it."); });
