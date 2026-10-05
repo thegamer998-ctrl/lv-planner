@@ -756,7 +756,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.3</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.4</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -947,7 +947,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.3</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.4</p>
     </section>
   </aside>
 
@@ -4174,7 +4174,7 @@
       if (linkSel) linkSel.addEventListener("change", function(){
         var mk = f.markers.find(function(x){ return x.id===id; }); if (!mk) return;
         project.racks.forEach(function(r){ if (r.markerId === mk.id) r.markerId = null; });
-        if (linkSel.value === "__new"){ var nr = newRack(nextRackName(), false); nr.height = 9; project.racks.push(nr); nr.markerId = mk.id; }
+        if (linkSel.value === "__new"){ var nr = newRack(nextRackName(), false); project.racks.push(nr); nr.markerId = mk.id; }
         else { var r = project.racks.find(function(x){ return x.id === linkSel.value; }); if (r){ if (r.markerId) r.markerId = null; r.markerId = mk.id; } }
         closeEditor(); renderMarkers(); refreshPlaceRack(); updateAllReadouts();
       });
@@ -6029,7 +6029,7 @@
     ensureRacks();
     var free = project.racks.find(function(r){ return !rackLocation(r); });
     var r = free;
-    if (!r){ r = newRack(nextRackName(), false); r.height = 9; project.racks.push(r); }
+    if (!r){ r = newRack(nextRackName(), false); project.racks.push(r); }
     r.markerId = marker.id;
     showStatus(r.name + " placed on " + floorName + (r.main ? " — this is the main rack" : " — choose which points connect to it"));
     refreshPlaceRack();
@@ -6105,7 +6105,7 @@
     }
     var ups = "UPS-2U";
     var used = list.reduce(function(a,k){ return a + EQUIP_BY_SKU[k].u; }, 0) + EQUIP_BY_SKU[ups].u;
-    rack.height = pickHeight(used + Math.max(2, Math.ceil(used * 0.25)));
+    rack.height = Math.max(12, pickHeight(used + Math.max(2, Math.ceil(used * 0.25))));   // default cabinet 12U; bigger only if the gear needs it
     rack.mount = rack.height <= 12 ? "wall" : "floor";
     rack.size = rack.height <= 12 ? "60×60" : rack.height <= 32 ? "60×80" : "60×100";
     rack.items = [];
@@ -6365,7 +6365,7 @@
 
     el.rackTabs.querySelectorAll("[data-rk]").forEach(function(b){ b.onclick = function(){ rackUi.id = b.getAttribute("data-rk"); rackUi.sel = null; renderRacks(); }; });
     document.getElementById("rkAdd").onclick = function(){
-      var r = newRack(nextRackName(), false); r.height = 9; project.racks.push(r); rackUi.id = r.id; rackUi.sel = null;
+      var r = newRack(nextRackName(), false); project.racks.push(r); rackUi.id = r.id; rackUi.sel = null;
       refreshPlaceRack(); renderRacks(); updateAllReadouts();
       showStatus(r.name + " added — place a Cabinet / IT Rack point on the drawing to set its location");
     };
