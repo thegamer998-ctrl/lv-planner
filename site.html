@@ -62,9 +62,26 @@
   .mk.ph::before{ content:""; position:absolute; left:calc(-4px * var(--inv, 1)); bottom:calc(-4px * var(--inv, 1)); width:calc(8px * var(--inv, 1)); height:calc(8px * var(--inv, 1)); border-radius:50%; background:#111827; border:calc(1.5px * var(--inv, 1)) solid #fff; }
   .mk.dim{ opacity:.22; }
   .mk.sel{ outline:calc(3px * var(--inv, 1)) solid var(--accent); outline-offset:calc(2px * var(--inv, 1)); }
-  .mk .lb{ position:absolute; top:calc(100% + 2px * var(--inv, 1)); left:50%; transform:translateX(-50%); white-space:nowrap; font-size:calc(9px * var(--inv, 1)); font-weight:700; color:#111827;
+  .ic{ position:absolute; width:calc(32px * var(--inv, 1)); height:calc(32px * var(--inv, 1)); margin:calc(-16px * var(--inv, 1)) 0 0 calc(-16px * var(--inv, 1)); padding:0; border:0; background:none; }
+  .mk.ic, .mk.ic.done{ background:none; box-shadow:none; border:0; border-radius:0; }
+  .ic > svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 calc(0.5px * var(--inv, 1)) calc(1.2px * var(--inv, 1)) rgba(0,0,0,.35)); }
+  .ic .tg{ position:absolute; transform:translate(-50%,-50%); color:#fff; font-family:Arial, sans-serif; font-weight:700; font-style:normal; line-height:1.2; white-space:nowrap; pointer-events:none;
+       font-size:calc(6.4px * var(--inv, 1)); padding:0 calc(2px * var(--inv, 1)); border-radius:calc(2.3px * var(--inv, 1)); border:calc(0.8px * var(--inv, 1)) solid #fff; left:calc(50% + 9.4px * var(--inv, 1)); top:calc(50% + 8.9px * var(--inv, 1)); }
+  .ic .cb{ position:absolute; transform:translate(-50%,-50%); font-family:Arial, sans-serif; font-weight:700; font-style:normal; line-height:1.15; white-space:nowrap; pointer-events:none; background:#fff;
+       font-size:calc(6px * var(--inv, 1)); padding:0 calc(1.8px * var(--inv, 1)); border-radius:calc(2.3px * var(--inv, 1)); border:calc(1px * var(--inv, 1)) solid currentColor; left:calc(50% + 9.9px * var(--inv, 1)); top:calc(50% - 9.4px * var(--inv, 1)); }
+  .ic.done::after{ content:""; position:absolute; left:calc(-3px * var(--inv, 1)); top:calc(-3px * var(--inv, 1)); width:calc(13px * var(--inv, 1)); height:calc(13px * var(--inv, 1)); border-radius:50%;
+       background:#12a150 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/70% no-repeat; border:calc(1.5px * var(--inv, 1)) solid #fff; box-shadow:0 1px 2px rgba(0,0,0,.3); }
+  .ic.ph::before{ content:""; position:absolute; left:calc(-1px * var(--inv, 1)); bottom:calc(0px * var(--inv, 1)); width:calc(8px * var(--inv, 1)); height:calc(8px * var(--inv, 1)); border-radius:50%; background:#111827; border:calc(1.5px * var(--inv, 1)) solid #fff; }
+  .ic.dim{ opacity:.22; }
+  .ic.sel{ outline:calc(2.5px * var(--inv, 1)) solid var(--accent); outline-offset:calc(1px * var(--inv, 1)); border-radius:50%; }
+  .ic .lb{ top:calc(100% + 1px * var(--inv, 1)); }
+  .labels .ic .lb{ display:block; }
+  .mini{ width:26px; height:26px; flex-shrink:0; display:inline-block; } .mini svg{ width:100%; height:100%; display:block; }
+  .legend .mini{ width:18px; height:18px; }
+  .mk .lb, .ic .lb{ position:absolute; top:calc(100% + 2px * var(--inv, 1)); left:50%; transform:translateX(-50%); white-space:nowrap; font-size:calc(9px * var(--inv, 1)); font-weight:700; color:#111827;
        background:rgba(255,255,255,.92); font-style:normal; padding:calc(1px * var(--inv, 1)) calc(4px * var(--inv, 1)); border-radius:calc(4px * var(--inv, 1)); display:none; box-shadow:0 1px 2px rgba(0,0,0,.2); }
   .labels .mk .lb{ display:block; }
+  .sh-h .badge.icon{ background:var(--panel-2) !important; padding:3px; } .sh-h .badge.icon svg{ width:100%; height:100%; display:block; }
   .pin{ position:absolute; width:calc(26px * var(--inv, 1)); height:calc(26px * var(--inv, 1)); margin:calc(-26px * var(--inv, 1)) 0 0 calc(-13px * var(--inv, 1)); border:0; padding:0; background:none; }
   .pin svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
   .planbar{ position:absolute; left:12px; right:12px; top:10px; display:none; align-items:center; gap:8px; background:#111827; color:#fff; border-radius:12px; padding:10px 12px; font-size:13.5px; font-weight:600; box-shadow:var(--shadow); }
@@ -74,7 +91,7 @@
   .zoom{ position:absolute; right:12px; bottom:12px; display:flex; flex-direction:column; gap:6px; }
   .zoom button{ width:40px; height:40px; border-radius:12px; border:1px solid var(--line-2); background:var(--panel); font-size:20px; font-weight:600; box-shadow:var(--shadow); }
   .legend{ position:absolute; left:10px; bottom:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:6px 9px; font-size:11.5px; box-shadow:var(--shadow); display:flex; flex-wrap:wrap; gap:4px 10px; max-width:calc(100% - 80px); }
-  .legend span{ display:inline-flex; align-items:center; gap:5px; } .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .legend span{ display:inline-flex; align-items:center; gap:4px; font-weight:600; } .legend .lgn{ display:none; font-weight:500; } .legend.open .lgn{ display:inline; } .legend{ cursor:pointer; } .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
   .empty{ padding:40px 24px; text-align:center; color:var(--muted); }
 
   .search{ margin:10px 12px 0; display:flex; gap:8px; }
@@ -423,8 +440,16 @@
     $("floorChips").querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ if (st.floor !== b.dataset.f){ st.floor = b.dataset.f; view.fitNext = true; renderFloors(); } }; });
     $("floorChips").querySelectorAll("[data-flt]").forEach(function(b){ b.onclick = function(){ st.filter = b.dataset.flt; renderFloors(); renderPlanMarks(); }; });
     showFloor();
-    var cats = {}; pts().filter(function(p){ return p.floor_id === st.floor; }).forEach(function(p){ cats[catOf(p)] = p.color; });
-    $("legend").innerHTML = Object.keys(cats).map(function(k){ return '<span><i style="background:' + esc(cats[k]) + '"></i>' + CATS[k].name + "</span>"; }).join("") || '<span class="muted">No points on this floor</span>';
+    var onFloor = pts().filter(function(p){ return p.floor_id === st.floor; });
+    if (icons()){
+      var types = {}; onFloor.forEach(function(p){ if (!types[p.type]) types[p.type] = { p:p, n:0 }; types[p.type].n++; });
+      $("legend").innerHTML = Object.keys(types).map(function(k){ var x = types[k]; return '<span><span class="mini">' + icons()[k] + '</span><b class="lgn">' + esc(x.p.label.replace(/\s+\d+$/, "")) + " </b>" + x.n + "</span>"; }).join("") || '<span class="muted">No points on this floor</span>';
+      $("legend").classList.toggle("open", !!st.legendOpen);
+      $("legend").onclick = function(){ st.legendOpen = !st.legendOpen; $("legend").classList.toggle("open", st.legendOpen); };
+    } else {
+      var cats = {}; onFloor.forEach(function(p){ cats[catOf(p)] = p.color; });
+      $("legend").innerHTML = Object.keys(cats).map(function(k){ return '<span><i style="background:' + esc(cats[k]) + '"></i>' + CATS[k].name + "</span>"; }).join("") || '<span class="muted">No points on this floor</span>';
+    }
   }
   var view = { s:1, x:0, y:0, w:0, h:0, fitS:1, fitNext:true, loadedFor:null };
   function showFloor(){
@@ -438,6 +463,13 @@
     renderPlanMarks();
   }
   function pinSvg(color, txt){ return '<svg viewBox="0 0 26 26"><path d="M13 25s-9-7.6-9-14a9 9 0 0 1 18 0c0 6.4-9 14-9 14z" fill="' + color + '" stroke="#fff" stroke-width="2"/><text x="13" y="14.5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">' + txt + "</text></svg>"; }
+  function icons(){ return (st.data && st.data.project.meta && st.data.project.meta.icons) || null; }
+  function iconSvg(p){
+    var I = icons(), svg = I && I[p.type]; if (!svg) return null;
+    var o = (st.data.project.meta.pt || {})[p.point_id] || {};
+    return o.r ? svg.replace('rotate(0)', 'rotate(' + o.r + ')') : svg;
+  }
+  function miniIcon(p){ var s = iconSvg(p); return s ? '<span class="mini">' + s + '</span>' : '<span class="dot" style="background:' + esc(p.color) + '"></span>'; }
   function issueColor(i){ return i.status === "open" ? "#ea580c" : i.status === "approved" ? "#2563eb" : i.status === "done" ? "#12a150" : "#94a3b8"; }
   function renderPlanMarks(){
     if (!view.w) return;
@@ -445,7 +477,14 @@
     var html = list.map(function(p){
       var done = isDone(p), dim = (st.filter === "todo" && done) || (st.filter === "done" && !done);
       var hasPh = p.photos.length || (st.pending[p.point_id] || []).some(function(i){ return i.kind === "photo"; });
-      return '<button type="button" class="mk' + (done ? " done" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : "") + '" data-pt="' + esc(p.point_id) + '" style="left:' + (p.x * view.w).toFixed(1) + "px;top:" + (p.y * view.h).toFixed(1) + "px;--c:" + esc(p.color) + '" aria-label="' + esc(p.label) + '"><span>' + CATS[catOf(p)].tag + '</span><em class="lb">' + esc(p.label) + "</em></button>";
+      var svg = iconSvg(p), cls = (done ? " done" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : ""), pos = 'left:' + (p.x * view.w).toFixed(1) + "px;top:" + (p.y * view.h).toFixed(1) + "px;";
+      if (svg){
+        var o = (st.data.project.meta.pt || {})[p.point_id] || {};
+        return '<button type="button" class="mk ic' + cls + '" data-pt="' + esc(p.point_id) + '" style="' + pos + '" aria-label="' + esc(p.label) + '">' + svg +
+          (o.tag ? '<em class="tg" style="background:' + esc(o.tc || "#475569") + '">' + esc(o.tag) + "</em>" : "") + (o.cab ? '<em class="cb" style="color:' + esc(o.cc || "#16a34a") + '">' + esc(o.cab) + "</em>" : "") +
+          '<em class="lb">' + esc(p.label) + "</em></button>";
+      }
+      return '<button type="button" class="mk' + cls + '" data-pt="' + esc(p.point_id) + '" style="' + pos + "--c:" + esc(p.color) + '" aria-label="' + esc(p.label) + '"><span>' + CATS[catOf(p)].tag + '</span><em class="lb">' + esc(p.label) + "</em></button>";
     }).join("");
     if (canEdit()){
       html += issues().filter(function(i){ return i.floor_id === st.floor && i.status !== "rejected" && i.status !== "done"; }).map(function(i){
@@ -531,11 +570,11 @@
   }
   function renderDraft(){
     var d = draft, near = d.pointId ? pts().find(function(p){ return p.point_id === d.pointId; }) : null;
-    $("shBadge").style.background = "var(--warn)"; $("shBadge").textContent = "!";
+    $("shBadge").className = "badge"; $("shBadge").style.background = "var(--warn)"; $("shBadge").textContent = "!";
     $("shTitle").textContent = "New site report"; $("shSub").textContent = floorName(d.floorId) + " · sent to the ExpressTech office";
     var h = '<div class="seg">' + ["missing","extra","other"].map(function(k){ return '<button type="button" data-kind="' + k + '"' + (d.kind === k ? ' class="on"' : "") + ">" + { missing:"Extra point<br>found here", extra:"Point not<br>on site", other:"Other<br>issue" }[k] + "</button>"; }).join("") + "</div>";
     if (d.kind === "missing") h += '<div class="lbl">What is here?</div><div class="types">' + SUGGEST.map(function(s){ return '<button type="button" data-sug="' + s[0] + '"' + (d.suggestType === s[0] ? ' class="on"' : "") + '><span class="dot" style="background:' + s[2] + '"></span>' + s[1] + "</button>"; }).join("") + "</div>";
-    if (d.kind === "extra") h += near ? '<div class="status warn"><span class="dot" style="background:' + esc(near.color) + '"></span><div>' + esc(near.label) + "<small>" + esc(near.model || CATS[catOf(near)].name) + " — this point is in the drawing but not on site</small></div></div>"
+    if (d.kind === "extra") h += near ? '<div class="status warn">' + miniIcon(near) + '<div>' + esc(near.label) + "<small>" + esc(near.model || CATS[catOf(near)].name) + " — this point is in the drawing but not on site</small></div></div>"
                                     : '<p class="muted">Tap “Cancel” and tap right on the point that isn’t on site, or describe it below.</p>';
     h += '<div class="lbl">Comment</div><textarea class="ta" id="drText" placeholder="e.g. Client wants a camera over the side gate">' + esc(d.text) + "</textarea>";
     h += '<div class="lbl">Photos (optional)</div>' + (d.photos.length ? '<div class="photos">' + d.photos.map(function(p){ return '<button type="button"><img src="' + URL.createObjectURL(p.blob) + '" alt=""></button>'; }).join("") + "</div>" : "");
@@ -571,7 +610,7 @@
       var fc = counts(all.filter(function(p){ return p.floor_id === f.id; }));
       html += '<div class="grp"><span>' + esc(f.name) + "</span><span>" + fc.d + " / " + fc.n + '</span></div><div class="card">' + list.map(function(p){
         var done = isDone(p), nph = p.photos.length + (st.pending[p.point_id] || []).filter(function(i){ return i.kind === "photo"; }).length;
-        return '<div class="rowi" data-open="' + esc(p.point_id) + '"><span class="dot" style="background:' + esc(p.color) + '"></span><span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) +
+        return '<div class="rowi" data-open="' + esc(p.point_id) + '">' + miniIcon(p) + '<span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) +
           (done && p.installed_by ? " · " + esc(p.installed_by) : "") + "</small></span>" + (nph ? '<span class="pc">📷 ' + nph + "</span>" : "") +
           (canEdit() ? '<button type="button" class="ck' + (done ? " on" : "") + '" data-tick="' + esc(p.point_id) + '" aria-label="Installed">' + CHECK + "</button>" : '<span class="ck' + (done ? " on" : "") + '">' + CHECK + "</span>") + "</div>";
       }).join("") + "</div>";
@@ -708,7 +747,8 @@
   function renderPoint(){
     var p = pts().find(function(x){ return x.point_id === st.sel; }); if (!p){ closeSheet(); return; }
     var done = isDone(p), pend = st.pending[p.point_id] || [];
-    $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag;
+    var bsvg = iconSvg(p); $("shBadge").className = "badge" + (bsvg ? " icon" : "");
+    if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = p.label; $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
     var h = "", pendStatus = pend.some(function(i){ return i.kind === "status"; });
     h += '<div class="status' + (done ? " done" : "") + '"><span class="tick' + (done ? " on" : "") + '">' + CHECK + "</span><div>" + (done ? "Installed" : "Not installed yet") +
@@ -733,7 +773,7 @@
     var i = issues().find(function(x){ return x.id === id; }); if (!i){ closeSheet(); return; }
     var p = i.point_id ? pts().find(function(x){ return x.point_id === i.point_id; }) : null, sug = SUGGEST.find(function(s){ return s[0] === i.suggest_type; });
     var key = "issue:" + i.id, pend = st.pending[key] || [];
-    $("shBadge").style.background = issueColor(i); $("shBadge").textContent = "!";
+    $("shBadge").className = "badge"; $("shBadge").style.background = issueColor(i); $("shBadge").textContent = "!";
     $("shTitle").textContent = KIND[i.kind] + (i.kind === "missing" && sug ? " · " + sug[1] : "");
     $("shSub").textContent = floorName(i.floor_id) + " · " + i.by + " · " + when(i.at);
     var h = '<div class="status' + (i.status === "done" ? " done" : i.status === "open" ? " warn" : "") + '"><div>' + (i.status === "rejected" && i.kind === "extra" ? "Point stays — please install it" : ISTAT[i.status]) + "<small>" + (i.status_by ? esc(i.status_by) + " · " + when(i.status_at) : "The ExpressTech office will check this") + "</small></div></div>";
@@ -763,7 +803,7 @@
   function renderStage(gid){
     var f = findStage(gid); if (!f){ closeSheet(); return; }
     var t = f.task;
-    $("shBadge").style.background = t.completed ? "var(--ok)" : "#64748b"; $("shBadge").innerHTML = t.completed ? CHECK20 : "◷";
+    $("shBadge").className = "badge"; $("shBadge").style.background = t.completed ? "var(--ok)" : "#64748b"; $("shBadge").innerHTML = t.completed ? CHECK20 : "◷";
     $("shTitle").textContent = t.name; $("shSub").textContent = (f.parent ? f.parent.name + " · " : "") + f.section + " · Asana";
     var h = '<div class="meta">' + (t.assignee ? '<span class="pill">👤 ' + esc(t.assignee) + "</span>" : '<span class="pill">Unassigned</span>') +
       (t.due_on ? '<span class="pill' + (overdue(t.due_on, t.completed) ? " late" : "") + '">' + (overdue(t.due_on, t.completed) ? "Overdue · " : "Due ") + day(t.due_on) + "</span>" : "") +

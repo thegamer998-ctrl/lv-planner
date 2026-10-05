@@ -6549,6 +6549,20 @@
     });
     return out;
   }
+  // the exact drawing icons for the site app: one SVG per point type, plus each point's rotation, model tag and cable tag
+  function siteIcons(){
+    var icons = {}, pt = {};
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){
+      var t = getTypeDef(m.type); if (!t || m.type === "uplink") return;
+      if (!icons[m.type]) icons[m.type] = typeIconSVG(t, 0);
+      var v = markerVariant(m), c = CABLE_CATS[m.cable], o = {};
+      if (m.rotation) o.r = Math.round(m.rotation);
+      if (v && v.tag) { o.tag = v.tag; o.tc = v.color; }
+      if (c && c.tag) { o.cab = c.tag; o.cc = c.color; }
+      if (Object.keys(o).length) pt[m.id] = o;
+    }); });
+    return { icons:icons, pt:pt };
+  }
   function siteSheets(){
     var out = [];
     project.floors.forEach(function(f){ if (!f.pdfDoc) return; for (var p=1; p<=f.numPages; p++) out.push({ f:f, page:p, id: f.id + (f.numPages > 1 ? "-p" + p : ""), name: f.name + (f.numPages > 1 ? " · page " + p : "") }); });
@@ -6574,7 +6588,7 @@
     var sheets = siteSheets(), pts = sitePoints();
     msg.textContent = "Publishing " + pts.length + " points…";
     var resolved = (project.site && project.site.resolved) || [];
-    var body = { id: project.site && project.site.id, name: project.name, meta:{ planner: (document.querySelector(".ver") || {}).textContent || "" }, floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
+    var body = { id: project.site && project.site.id, name: project.name, meta: Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "" }, siteIcons()), floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
     siteFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(function(r){
       var isNew = !project.site || project.site.id !== r.id;
       project.site = Object.assign({}, project.site || {}, { id:r.id }); project.site.sig = isNew ? {} : (project.site.sig || {});
