@@ -382,6 +382,23 @@
 
   .overlay{ position:fixed; inset:0; background:var(--overlay-bg); display:none; align-items:center; justify-content:center; z-index:60; }
   .overlay.visible{ display:flex; }
+  .confirm-box.qt-box{ width:620px; max-width:calc(100vw - 32px); max-height:88vh; display:flex; flex-direction:column; gap:8px; }
+  .qt-top{ display:flex; align-items:center; justify-content:space-between; } .qt-top .choice-title{ margin:0; }
+  .qt-lbl{ font-size:11.5px; color:var(--text-muted); } #qtCustomer{ height:36px; margin:0; }
+  .qt-body{ overflow:auto; min-height:0; flex:1; border:1px solid var(--hairline); border-radius:10px; }
+  .qt-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .qt-table th{ position:sticky; top:0; background:var(--bg-panel); text-align:right; font-weight:600; color:var(--text-muted); padding:7px 10px; border-bottom:1px solid var(--hairline); }
+  .qt-table td{ padding:6px 10px; border-bottom:1px solid var(--hairline); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .qt-table th:first-child, .qt-table td:first-child{ text-align:left; white-space:normal; }
+  .qt-table td small{ display:block; color:var(--text-muted); font-size:11px; }
+  .qt-table .qt-h td{ background:var(--accent-soft); color:var(--accent); font-weight:700; text-align:left; }
+  .qt-table tfoot td{ font-weight:800; border-bottom:0; }
+  .qt-counts{ font-size:11.5px; color:var(--text-muted); margin:8px 10px; }
+  .qt-notes{ margin:0 10px 10px; padding-left:18px; font-size:12px; color:#b45309; }
+  .qt-result{ font-size:12.5px; margin:0; min-height:1em; }
+  .qt-btns{ display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+  .qt-set summary{ cursor:pointer; font-size:12px; color:var(--text-muted); }
+  .qt-set .select-input{ height:34px; margin:6px 0; width:100%; }
   .confirm-box{ width:280px; background:var(--bg-panel-raised); border:1px solid var(--hairline); border-radius:var(--radius-lg); padding:18px; }
   .confirm-box p{ font-size:13px; margin:0 0 16px; line-height:1.5; }
   .multipage-row{ display:flex; gap:10px; align-items:flex-start; background:var(--bg-panel-raised); border:1px solid var(--hairline);
@@ -756,7 +773,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.4</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.5</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -768,6 +785,7 @@
     <button class="tbtn" id="newProjectBtn" title="Start a new project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 12v6M9 15h6"/></svg><span class="tlabel">New</span></button>
     <button class="tbtn" id="loadProjectBtn" title="Open project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="tlabel">Open</span></button>
     <button class="tbtn" id="saveProjectBtn" title="Save project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span class="tlabel">Save</span></button>
+    <button class="tbtn" id="quoteBtn" disabled title="Create a Zoho quote from this design"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg><span class="tlabel">Quote</span></button>
     <button class="tbtn primary" id="exportBtn" disabled title="Export PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="tlabel">Export PDF</span></button>
     <button class="tbtn icon" id="summaryToggleBtn" title="Show summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
     <button class="tbtn icon" id="themeToggleBtn" title="Light / dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
@@ -947,7 +965,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.4</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.5</p>
     </section>
   </aside>
 
@@ -1043,6 +1061,26 @@
   <button type="button" id="qbDelete" class="qb-del" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
   <button type="button" id="qbMore" class="qb-more" title="More options"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
   <button type="button" id="qbClose" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<div class="overlay" id="quoteOverlay">
+  <div class="confirm-box qt-box">
+    <div class="qt-top"><p class="choice-title">Zoho quote</p><button type="button" class="popover-close" id="qtClose" title="Close">&times;</button></div>
+    <label class="qt-lbl">Customer (as in Zoho)</label>
+    <input type="text" class="select-input" id="qtCustomer" maxlength="100">
+    <div class="qt-body" id="qtBody"></div>
+    <p class="qt-result" id="qtResult"></p>
+    <div class="qt-btns">
+      <button type="button" class="tbtn" id="qtCopy">Copy</button>
+      <button type="button" class="tbtn" id="qtClaude">Open in Claude</button>
+      <button type="button" class="tbtn primary" id="qtZoho">Create in Zoho now</button>
+    </div>
+    <details class="qt-set"><summary>Direct Zoho link (optional)</summary>
+      <p class="pane-note">With the ExpressTech Zoho relay set up, “Create in Zoho now” makes the Draft directly. Saved on this device only.</p>
+      <input type="url" class="select-input" id="qtRelayUrl" placeholder="Relay URL (https://…)">
+      <input type="password" class="select-input" id="qtRelayKey" placeholder="Relay key">
+      <button type="button" class="tbtn" id="qtRelaySave">Save</button>
+    </details>
+  </div>
 </div>
 <div class="overlay" id="choiceOverlay">
   <div class="confirm-box choice-box">
@@ -2231,12 +2269,12 @@
       el.noFileBlock.style.display="none"; el.fileBlock.style.display="block";
       el.fileNameLabel.textContent = f.fileName; el.fileMetaLabel.textContent = f.numPages + (f.numPages===1?" page":" pages");
       el.canvasStage.style.display="block"; el.emptyState.style.display="none";
-      [el.prevPageBtn, el.nextPageBtn, el.zoomInBtn, el.zoomOutBtn, el.exportBtn].forEach(function(b){ b.disabled=false; });
+      [el.prevPageBtn, el.nextPageBtn, el.zoomInBtn, el.zoomOutBtn, el.exportBtn, document.getElementById("quoteBtn")].forEach(function(b){ b.disabled=false; });
       renderPage(f.currentPage);
     } else {
       el.noFileBlock.style.display="block"; el.fileBlock.style.display="none";
       el.canvasStage.style.display="none"; el.emptyState.style.display="flex";
-      [el.prevPageBtn, el.nextPageBtn, el.zoomInBtn, el.zoomOutBtn, el.exportBtn].forEach(function(b){ b.disabled=true; });
+      [el.prevPageBtn, el.nextPageBtn, el.zoomInBtn, el.zoomOutBtn, el.exportBtn, document.getElementById("quoteBtn")].forEach(function(b){ b.disabled=true; });
       updateAllReadouts();
     }
   }
@@ -2680,7 +2718,7 @@
         el.noFileBlock.style.display="none"; el.fileBlock.style.display="block";
         el.fileNameLabel.textContent = file.name; el.fileMetaLabel.textContent = pdf.numPages + (pdf.numPages===1?" page":" pages");
         el.canvasStage.style.display="block"; el.emptyState.style.display="none";
-        [el.prevPageBtn, el.nextPageBtn, el.zoomInBtn, el.zoomOutBtn, el.exportBtn].forEach(function(b){ b.disabled=false; });
+        [el.prevPageBtn, el.nextPageBtn, el.zoomInBtn, el.zoomOutBtn, el.exportBtn, document.getElementById("quoteBtn")].forEach(function(b){ b.disabled=false; });
         refreshToolButtons(); updateHint(); updateAllReadouts();
         pdf.getPage(1).then(function(page){
           var vp = page.getViewport({ scale:1 });
@@ -6537,6 +6575,217 @@
     var blob = new Blob(["﻿" + lines.join("\r\n")], { type:"text/csv" });
     saveOutputFile(blob, safeName(project.name) + " - hardware list.csv", "text/csv", false);
   });
+
+  /* ---------- Zoho quote (Create quote → Claude, or straight to Zoho through the relay) ---------- */
+  // SKU → [Zoho item_id, catalogue rate KWD, Zoho item name]. Rates are a guide; Claude / Zoho use the live item.
+  var ZOHO_ITEMS = {
+    "UDM-Pro":["2276818000005507086",190,"Ubiquiti Dream Machine PRO"],
+    "UDM-Pro-Max":["2276818000005507129",275,"Ubiquiti Dream Machine Pro Max"],
+    "UDM-SE":["2276818000002464001",190,"Ubiquiti Dream Machine Pro Special Edition"],
+    "UDM-Beast":["2276818000005450042",595,"Ubiquiti Dream Machine Beast"],
+    "USW-Pro-Max-48-PoE":["2276818000005507774",475,"Ubiquiti Switch USW Pro Max 48 PoE"],
+    "USW-Pro-Max-24-PoE":["2276818000005507731",300,"Ubiquiti Switch USW Pro Max 24 PoE"],
+    "USW-Pro-Max-16-PoE":["2276818000005507688",180,"Ubiquiti Switch USW Pro Max 16 POE"],
+    "USW-Pro-48-PoE":["2276818000005507602",395,"Ubiquiti Switch USW 48 Pro POE"],
+    "USW-Pro-24-PoE":["2276818000005507559",285,"Ubiquiti Switch USW 24 Pro PoE"],
+    "USW-Pro-HD-24-PoE":["2276818000004296092",390,"Ubiquiti Switch USW Pro HD 24 POE"],
+    "USW-Pro-XG-24-PoE":["2276818000004546095",650,"Ubiquiti Switch USW Pro XG 24 POE"],
+    "USW-Lite-16-PoE":["2276818000005507516",90,"Ubiquiti Switch USW Lite 16 POE"],
+    "USW-Lite-8-PoE":["2276818000002284044",50,"Ubiquiti Switch USW Lite 8 POE"],
+    "USW-Aggregation":["2276818000003122045",130,"Ubiquiti Switch USW Aggregation"],
+    "UNVR":["2276818000005507258",170,"Ubiquiti UNVR"],
+    "UNVR-Pro":["2276818000005507344",225,"Ubiquiti UNVR PRO"],
+    "U7-Lite":["2276818000005504269",48,"Ubiquiti AP U7 Lite"],
+    "U7-Pro":["2276818000005504613",68,"Ubiquiti AP U7 Pro"],
+    "U7-Pro-Max":["2276818000005504656",110,"Ubiquiti AP U7 Pro Max"],
+    "U7-Pro-XG":["2276818000005504527",80,"Ubiquiti AP U7 Pro XG"],
+    "U7-Pro-XGS":["2276818000004006001",165,"Ubiquiti AP U7 Pro XGS"],
+    "U7-LR":["2276818000005373001",85,"Ubiquiti AP U7 Pro LR"],
+    "U7-Pro-Wall":["2276818000005504699",78,"Ubiquiti AP U7 Pro Wall"],
+    "U7-IW":["2276818000005504570",62,"Ubiquiti AP U7 IW"],
+    "U7-Outdoor":["2276818000003764539",80,"Ubiquiti AP U7 Outdoor"],
+    "U7-Pro-Outdoor":["2276818000005504484",108,"Ubiquiti AP U7 Pro Outdoor"],
+    "UVC-G6-Dome":["2276818000005508161",85,"Ubiquiti Camera G6 Dome"],
+    "UVC-G6-Bullet":["2276818000005508118",89,"Ubiquiti Camera G6 Bullet"],
+    "UVC-G6-Turret":["2276818000005508247",89,"Ubiquiti Camera G6 Turret"],
+    "UVC-G6-INS":["2276818000005508204",68,"Ubiquiti Camera G6 Instant"],
+    "UVC-G5-Dome":["2276818000005507989",61,"Ubiquiti Camera G5 Dome"],
+    "UVC-G5-Dome-Ultra":["2276818000005508032",43,"Ubiquiti Camera G5 Dome Ultra"],
+    "UVC-G5-Turret-Ultra":["2276818000005508075",58,"Ubiquiti Camera G5 Turret Ultra"],
+    "UVC-G5-Bullet":["2276818000005511562",58,"Ubiquiti Camera G5 Bullet"],
+    "UVC-AI-Pro":["2276818000005507903",180,"Ubiquiti Camera AI Professional"],
+    "UVC-G6-Entry":["2276818000004858103",135,"Ubiquiti Protect G6 Entry"],
+    "_el":["2276818000003658010",3,"Ubiquiti Etherlighting Patch Cable 0.15M"],
+    "_pc":["2276818000002489001",1.5,"Ubiquiti Patch Cord 0.1M"],
+    "_dac":["2276818000000712050",15,"Ubiquiti Dac Cable (Fiber Up-link)"],
+    "_pp":["2276818000000187135",26,"Patch Panel 24 Port"],
+    "_shelf":["2276818000001127141",4,"Cabinet Shelf"],
+    "_hdd":["2276818000000142151",140,"Surveillance Hard Disk 8TB"],
+    "_pt":["2276818000003794001",6,"Point Termination"],
+    "_ps":["2276818000000069244",200,"Express Tech Professional Services"]
+  };
+  var ZOHO_CABINETS = { 4:"2276818000004088132", 6:"2276818000003221127", 9:"2276818000003287135", 12:"2276818000002998001", 18:"2276818000003740001", 21:"2276818000003784211", 32:"2276818000003779351", 42:"2276818000005048001" };
+  var ZOHO_CAB_RATE = { 4:25, 6:32, 9:60, 12:85, 18:100, 21:140, 32:165, 42:200 };
+  var ZOHO_CAB_NAME = { 21:"Network Cabinet 22U" };
+  var QUOTE_TERMS = "Payment: 70% Advance, 20% Before Starting Termination & 10% After Project Handover\nCheque: Express Technology Co For Retail Sale of Electrical & Electronic Devices\nWarranty: All hardware is covered under a 3 Years Warranty\nTechnical Support: 1 Year of Technical Support is inclusive\nExceptions: Any hardware or software not explicitly mentioned above";
+  function zohoSkuOf(sku){ sku = SKU_ALIAS[sku] || sku; return ZOHO_ITEMS[sku] ? sku : null; }
+
+  function buildQuote(){
+    var q = { net:[], cctv:[], notes:[], counts:{ network:0, cameras:0, cat6:0, cat6a:0 }, ok:true };
+    ensureRacks();
+    if (!UBNT.on){ q.ok = false; q.notes.push("Turn on Ubiquiti models (Model pane) so points have real models to quote."); return q; }
+    function line(arr, key, qty, o){
+      if (!qty) return;
+      var z = ZOHO_ITEMS[key] || o.z;
+      var ex = arr.find(function(l){ return l.item_id === z[0] && l.rate === (o && o.rate != null ? o.rate : z[1]) && (l.description||"") === ((o && o.description)||""); });
+      if (ex){ ex.qty += qty; return; }
+      arr.push({ item_id:z[0], name:(o && o.name) || z[2], qty:qty, rate:(o && o.rate != null) ? o.rate : z[1], description:(o && o.description) || "" });
+    }
+    // points on the drawing
+    var dev = { ap:{}, cam:{}, entry:{} }, unmatched = {};
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){
+      if (isCablePoint(m)){
+        if (isCameraType(m.type)) q.counts.cameras++; else q.counts.network++;
+        if (cabledOf(m) === "cat6") q.counts.cat6++; else q.counts.cat6a++;
+      }
+      if (!CATALOG[m.type]) return;
+      var sku = markerSku(m); if (!sku) return;
+      var zk = zohoSkuOf(sku);
+      if (!zk){ var nm = (catItem(m.type, sku) || {}).name || sku; unmatched[nm] = (unmatched[nm]||0) + 1; return; }
+      var bucket = isWifiType(m.type) ? dev.ap : isCameraType(m.type) ? dev.cam : dev.entry;
+      bucket[zk] = (bucket[zk]||0) + 1;
+    }); });
+    // racks
+    var racks = project.racks.filter(function(r){ return r.items && r.items.length; });
+    if (!racks.length) q.notes.push("No rack built yet — open Racks and press Suggest, so the gateway, switches and cabinet are quoted.");
+    var gws = [], sws = [], nvrs = [], shelves = 0, pps = 0, skipped = {};
+    racks.forEach(function(r){ r.items.forEach(function(it){
+      var e = EQUIP_BY_SKU[it.sku]; if (!e) return;
+      if (e.sku === "PP-24"){ pps++; return; }
+      if (e.sku === "PP-48"){ pps += 2; return; }
+      if (e.sku === "SHELF-1U"){ shelves++; return; }
+      if (e.sku === "BLANK-1U" || e.sku === "CM-1U") return;
+      var zk = zohoSkuOf(e.sku);
+      if (zk){ (e.kind === "gw" ? gws : e.kind === "nvr" ? nvrs : sws).push(zk); return; }
+      skipped[equipName(e)] = (skipped[equipName(e)]||0) + 1;
+    }); });
+    gws.forEach(function(k){ line(q.net, k, 1); });
+    sws.forEach(function(k){ line(q.net, k, 1); });
+    Object.keys(dev.ap).forEach(function(k){ line(q.net, k, dev.ap[k]); });
+    // patch cords + DAC from the port plan
+    var np = buildNetworkPlan(), dac = 0, runsEl = 0, runsStd = 0;
+    np.links.forEach(function(l){ if (l.kind !== "fibre") dac++; });
+    np.racks.forEach(function(r){ r.switches.forEach(function(sw){
+      var e = isEtherlightSwitch(sw.item.sku);
+      sw.ports.forEach(function(pt){ if (pt.dev){ if (e) runsEl++; else runsStd++; } });
+    }); });
+    if (!racks.length){ runsEl = 0; runsStd = 0; }
+    var noPort = np.racks.reduce(function(n, r){ return n + (r.unassigned ? r.unassigned.length : 0); }, 0);
+    if (noPort) q.notes.push(noPort + " point" + (noPort > 1 ? "s have" : " has") + " no free switch port — add a switch in Racks, or they get no patch cable.");
+    line(q.net, "_el", runsEl); line(q.net, "_pc", runsStd); line(q.net, "_dac", dac);
+    if (np.links.some(function(l){ return l.kind === "fibre"; })) q.notes.push("Fibre link between racks: add fibre modules/cable manually.");
+    racks.forEach(function(r){
+      var id = ZOHO_CABINETS[r.height];
+      if (id) line(q.net, "", 1, { z:[id, ZOHO_CAB_RATE[r.height], ZOHO_CAB_NAME[r.height] || ("Network Cabinet " + r.height + "U")] });
+      else q.notes.push(r.name + ": no Zoho cabinet item for " + r.height + "U.");
+    });
+    line(q.net, "_shelf", shelves);
+    if (pps){
+      var pp6a = Math.min(pps, Math.ceil(q.counts.cat6a / 24)), pp6 = pps - pp6a;
+      line(q.net, "_pp", pp6, { rate:26, description:"Cat 6\nModular Patch Panels\nKuwes Made in Taiwan" });
+      line(q.net, "_pp", pp6a, { rate:32, description:"Cat 6A\nModular Patch Panels\nKuwes Made in Taiwan" });
+    }
+    line(q.net, "_pt", q.counts.network, { rate:6, description:"Point to Point Tracing, Crimping & Termination." });
+    // CCTV
+    Object.keys(dev.cam).forEach(function(k){ line(q.cctv, k, dev.cam[k]); });
+    Object.keys(dev.entry).forEach(function(k){ line(q.cctv, k, dev.entry[k]); });
+    nvrs.forEach(function(k){ line(q.cctv, k, 1); });
+    if (q.counts.cameras) line(q.cctv, "_hdd", 1);
+    line(q.cctv, "_pt", q.counts.cameras, { rate:7, description:"Point to Point Tracing, Crimping & Camera Termination." });
+    line(q.cctv, "_ps", 1, { description:"Installation, Configuration, Training & Support" });
+    Object.keys(unmatched).forEach(function(n){ q.notes.push(n + " ×" + unmatched[n] + ": no Zoho item matched — find or add it."); });
+    Object.keys(skipped).forEach(function(n){ q.notes.push(n + " ×" + skipped[n] + " in the rack is not quoted (no Zoho item)."); });
+    q.lines = q.net.map(function(l){ l.header = "Network Infrastructure"; return l; }).concat(q.cctv.map(function(l){ l.header = "CCTV"; return l; }));
+    q.total = q.lines.reduce(function(a, l){ return a + l.qty * l.rate; }, 0);
+    return q;
+  }
+  function quoteCustomer(){ return (project.name || "").replace(/\s*[-–—]\s*(villa|lv|design).*$/i, "").trim() || "Customer"; }
+  function quotePrompt(q, customer){
+    var out = ["Use the lv-planner-zoho-quote skill.",
+      "Create a DRAFT Zoho Books estimate (Express Tech) for customer: " + customer + " — find the contact, create it if missing. Do not send it.",
+      "Project: " + project.name + " (from the LV Planner, " + new Date().toISOString().slice(0,10) + ").",
+      "Counts: " + q.counts.network + " network points, " + q.counts.cameras + " cameras; runs Cat6 " + q.counts.cat6 + " / Cat6A " + q.counts.cat6a + ".",
+      "Use exactly these lines in this order (item name | item_id | qty | rate KWD), with the skill's descriptions:"];
+    var head = "";
+    q.lines.forEach(function(l){
+      if (l.header !== head){ head = l.header; out.push("[" + head + "]"); }
+      out.push("- " + l.name + (l.description ? " (" + l.description.split("\n")[0] + ")" : "") + " | " + l.item_id + " | " + l.qty + " | " + l.rate);
+    });
+    out.push("Expected total ≈ " + q.total.toFixed(3) + " KWD (check live Zoho rates).");
+    if (q.notes.length) out.push("Notes: " + q.notes.join(" "));
+    out.push("Reply with the estimate number and total.");
+    return out.join("\n");
+  }
+  var ZRELAY_KEY = "lvplanner_zoho_relay", ZRELAY_SECRET = "lvplanner_zoho_secret";
+  function zRelay(){ try { return { url:(localStorage.getItem(ZRELAY_KEY) || "").trim(), key:localStorage.getItem(ZRELAY_SECRET) || "" }; } catch(e){ return { url:"", key:"" }; } }
+  function kwd(n){ return (Math.round(n * 1000) / 1000).toLocaleString("en-US", { minimumFractionDigits:3, maximumFractionDigits:3 }); }
+  function openQuote(){
+    var q = buildQuote(), ov = document.getElementById("quoteOverlay"), body = document.getElementById("qtBody");
+    document.getElementById("qtCustomer").value = quoteCustomer();
+    var rows = "", head = "";
+    (q.lines || []).forEach(function(l){
+      if (l.header !== head){ head = l.header; rows += '<tr class="qt-h"><td colspan="4">' + escapeHtml(head) + '</td></tr>'; }
+      rows += '<tr><td>' + escapeHtml(l.name) + (l.description ? '<small>' + escapeHtml(l.description.split("\n")[0]) + '</small>' : '') + '</td><td>' + l.qty + '</td><td>' + kwd(l.rate) + '</td><td>' + kwd(l.qty * l.rate) + '</td></tr>';
+    });
+    body.innerHTML = (rows ? '<table class="qt-table"><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td colspan="3">Total (KWD)</td><td>' + kwd(q.total || 0) + '</td></tr></tfoot></table>' : '') +
+      '<p class="qt-counts">' + q.counts.network + ' network points · ' + q.counts.cameras + ' cameras · Cat6 ' + q.counts.cat6 + ' / Cat6A ' + q.counts.cat6a + ' runs</p>' +
+      (q.notes.length ? '<ul class="qt-notes">' + q.notes.map(function(n){ return '<li>' + escapeHtml(n) + '</li>'; }).join("") + '</ul>' : '');
+    var r = zRelay();
+    document.getElementById("qtZoho").style.display = r.url ? "" : "none";
+    document.getElementById("qtRelayUrl").value = r.url; document.getElementById("qtRelayKey").value = r.key;
+    document.getElementById("qtResult").textContent = "";
+    ["qtClaude","qtZoho","qtCopy"].forEach(function(id){ document.getElementById(id).disabled = !q.ok || !(q.lines || []).length; });
+    ov._q = q; ov.classList.add("visible");
+  }
+  function closeQuote(){ document.getElementById("quoteOverlay").classList.remove("visible"); }
+  function copyText(t){
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).catch(function(){ return legacyCopy(t); });
+    return Promise.resolve(legacyCopy(t));
+  }
+  function legacyCopy(t){ var a = document.createElement("textarea"); a.value = t; a.style.position = "fixed"; a.style.opacity = "0"; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); } catch(e){} a.remove(); }
+  (function(){
+    var ov = document.getElementById("quoteOverlay"); if (!ov) return;
+    document.getElementById("quoteBtn").addEventListener("click", openQuote);
+    document.getElementById("qtClose").onclick = closeQuote;
+    ov.addEventListener("click", function(e){ if (e.target === ov) closeQuote(); });
+    function cust(){ return document.getElementById("qtCustomer").value.trim() || quoteCustomer(); }
+    document.getElementById("qtCopy").onclick = function(){
+      copyText(quotePrompt(ov._q, cust())).then(function(){ showStatus("Quote request copied — paste it into Claude"); });
+    };
+    document.getElementById("qtClaude").onclick = function(){
+      var p = quotePrompt(ov._q, cust());
+      copyText(p);
+      window.open("https://claude.ai/new?q=" + encodeURIComponent(p), "_blank");
+      document.getElementById("qtResult").textContent = "Opened Claude with the quote filled in — press Enter there. (It's also copied, if the box is empty just paste.)";
+    };
+    document.getElementById("qtZoho").onclick = function(){
+      var r = zRelay(), q = ov._q, btn = this, res = document.getElementById("qtResult");
+      if (!r.url){ res.textContent = "Set up the Zoho link first (below)."; return; }
+      btn.disabled = true; res.textContent = "Creating the Draft in Zoho…";
+      fetch(r.url, { method:"POST", headers:{ "Content-Type":"application/json", "X-Relay-Key":r.key }, body:JSON.stringify({
+        customer_name:cust(), reference_number:"Villa LV Design", project:project.name, terms:QUOTE_TERMS, notes:"Looking forward for your business.",
+        line_items:q.lines.map(function(l){ return { item_id:l.item_id, quantity:l.qty, rate:l.rate, header_name:l.header, description:l.description || null }; })
+      }) }).then(function(x){ return x.json().then(function(j){ if (!x.ok || j.error) throw new Error(j.error || ("HTTP " + x.status)); return j; }); })
+        .then(function(j){ res.innerHTML = 'Draft <b>' + escapeHtml(j.estimate_number || "") + '</b> created — ' + escapeHtml(kwd(+j.total || 0)) + ' KWD' + (j.customer_created ? ' (new customer added)' : '') + '. Review and send it from Zoho Books.'; })
+        .catch(function(err){ res.textContent = "Zoho didn't accept it: " + err.message + " — you can use “Open in Claude” instead."; })
+        .then(function(){ btn.disabled = false; });
+    };
+    document.getElementById("qtRelaySave").onclick = function(){
+      try { localStorage.setItem(ZRELAY_KEY, document.getElementById("qtRelayUrl").value.trim()); localStorage.setItem(ZRELAY_SECRET, document.getElementById("qtRelayKey").value); } catch(e){}
+      document.getElementById("qtZoho").style.display = zRelay().url ? "" : "none";
+      showStatus(zRelay().url ? "Zoho link saved on this device" : "Zoho link removed");
+    };
+  })();
 
 
   /* ================= Network: power, ports, topology ================= */
