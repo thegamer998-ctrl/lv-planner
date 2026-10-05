@@ -657,6 +657,7 @@
   .rk-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px; }
   .rk-grid label{ font-size:10.5px; color:var(--text-dim); font-weight:650; text-transform:uppercase; letter-spacing:.05em; display:block; }
   .rk-grid select{ width:100%; margin:3px 0 0; padding:6px 5px; }
+  .rk-cabtog{ display:flex; align-items:center; gap:7px; font-size:12px; margin:0 0 10px; cursor:pointer; } .rk-cabtog input{ width:15px; height:15px; margin:0; accent-color:var(--accent); } .rk-cabtog small{ color:var(--text-muted); }
   .rk-floors{ display:flex; gap:5px; flex-wrap:wrap; margin:4px 0 10px; }
   .rk-floors button{ border:1px solid var(--hairline-2); background:var(--bg-panel); border-radius:14px; padding:3px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); }
   .rk-floors button.on{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
@@ -773,7 +774,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.6</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.7</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -965,7 +966,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.6</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.7</p>
     </section>
   </aside>
 
@@ -6198,22 +6199,24 @@
     var pw = (w - (cols-1)*gap) / cols;
     if (opts.maxW && pw > opts.maxW){ pw = opts.maxW; }
     var ph = Math.min(pw*1.08, (h - (rows-1)*vgap) / rows);
-    var y0 = y + (h - (rows*ph + (rows-1)*vgap)) / 2, out = "";
+    var y0 = y + (h - (rows*ph + (rows-1)*vgap)) / 2, out = "", pos = [];
     for (var i=1;i<=n;i++){
       var c = Math.floor((i-1)/rows), r = (i-1)%rows;
       var px = x + c*(pw+gap), py = y0 + r*(ph+vgap);
       out += rj45Svg(px, py, pw, ph, rows > 1 ? r === 0 : false, opts);
+      pos.push({ x:px, y:py, w:pw, h:ph, top: rows > 1 ? r === 0 : true });
     }
-    return { svg:out, pw:pw, ph:ph, y0:y0, gap:gap, w: cols*pw + (cols-1)*gap };
+    return { svg:out, pw:pw, ph:ph, y0:y0, gap:gap, w: cols*pw + (cols-1)*gap, pos:pos };
   }
   // SFP+ cages (metal cage, dark slot)
   function sfpCagesSvg(x, y, h, n, rows){
-    var cols = Math.ceil(n/rows), cw = 19, gap = 3, ch = Math.min(11, (h - (rows-1)*3) / rows), y0 = y + (h - (rows*ch + (rows-1)*3))/2, out = "";
+    var cols = Math.ceil(n/rows), cw = 19, gap = 3, ch = Math.min(11, (h - (rows-1)*3) / rows), y0 = y + (h - (rows*ch + (rows-1)*3))/2, out = "", pos = [];
     for (var k=0;k<n;k++){
       var c = Math.floor(k/rows), r = k%rows, cx = x + c*(cw+gap), cy = y0 + r*(ch+3);
       out += sr(cx, cy, cw, ch, "#c3c8ce", ' rx="0.6" stroke="#7f868e" stroke-width="0.6"') + sr(cx+1.8, cy+1.8, cw-3.6, ch-3.6, "#1d2024", ' rx="0.4"');
+      pos.push({ x:cx, y:cy, w:cw, h:ch });
     }
-    return { svg:out, w: cols*cw + (cols-1)*gap };
+    return { svg:out, w: cols*cw + (cols-1)*gap, pos:pos };
   }
   function earsSvg(x, y, w, h, color, u){
     var out = sr(x-11, y+1, 11, h-2, color, ' rx="1.5"') + sr(x+w, y+1, 11, h-2, color, ' rx="1.5"');
@@ -6244,7 +6247,8 @@
     var out = '';
     var SILVER = "#e4e6e9", SILVER_S = "#aeb4bb", BLACK = "#1a1c20", BLACK_S = "#34383e";
     var isShelf = SHELF_SKUS[e.sku] || e.sku === "SHELF-1U";
-    var pad = 7;
+    var pad = 7, geo = {};
+    if (RK_GEO) RK_GEO[it.uid] = geo;
     if (isShelf){
       out += earsSvg(x, y, w, h, "#2f3339", e.u);
       out += sr(x, y+h-6, w, 5, "#2f3339", ' rx="1"') + sr(x, y+4, 3, h-8, "#2f3339") + sr(x+w-3, y+4, 3, h-8, "#2f3339");
@@ -6252,7 +6256,7 @@
         var np = e.sku === "USW-Lite-16-PoE" ? 16 : e.sku === "USW-Lite-8-PoE" ? 8 : 5;
         var bw = np === 16 ? 250 : 175, bx = x + (w - bw)/2, by = y + 6, bh = h - 13;
         out += sr(bx, by, bw, bh, "#f1f2f4", ' rx="3.5" stroke="#c2c7ce" stroke-width="0.7"');
-        out += portRowSvg(bx + 10, by + 3, bw - 20, bh - 6, np, np > 8 ? 2 : 1, {}).svg;
+        var gSh = portRowSvg(bx + 10, by + 3, bw - 20, bh - 6, np, np > 8 ? 2 : 1, {}); out += gSh.svg; geo.rj = gSh.pos;
       }
     } else if (e.kind === "sw" || e.kind === "gw" || e.kind === "nvr"){
       var fc0 = e.kind === "sw" ? (FACE[e.sku] || { rows: e.ports > 24 ? 2 : 1, sfp:2, sfpRows:1, screen:true }) : {};
@@ -6269,8 +6273,8 @@
         if (fc.screen){ var ss = Math.min(24, h - 12); out += screenSvg(left, y + (h - ss)/2, ss); left += ss + 6; }
         var sf = fc.sfp ? sfpCagesSvg(0, 0, ch, fc.sfp, fc.sfpRows) : { w:0 };
         var right = x + bodyW - pad - (sf.w ? sf.w + 6 : 0);
-        if (fc.rows) out += portRowSvg(left, cy, right - left, ch, e.ports, fc.rows, {}).svg;
-        if (fc.sfp) out += sfpCagesSvg(x + bodyW - pad - sf.w, cy, ch, fc.sfp, fc.sfpRows).svg;
+        if (fc.rows){ var gR = portRowSvg(left, cy, right - left, ch, e.ports, fc.rows, {}); out += gR.svg; geo.rj = gR.pos; }
+        if (fc.sfp){ var gS = sfpCagesSvg(x + bodyW - pad - sf.w, cy, ch, fc.sfp, fc.sfpRows); out += gS.svg; geo.sfp = gS.pos; }
       } else if (e.kind === "gw"){
         // Real layout (UDM Pro / SE / Pro Max): drive bay(s) at the left, then the touchscreen,
         // then LAN 1–8 (2×4), the RJ45 WAN and the two SFP+ ports at the far right
@@ -6280,11 +6284,11 @@
         var lanN = e.sku === "EFG" ? 2 : (e.sku.indexOf("UCG") === 0 ? 4 : 8);
         var pitch = 14.4, lanW = lanN/2*pitch - 2.4, ss2 = Math.min(24, h - 12);
         var sfpX = x + w - pad - (19*1);                                   // SFP+ 10 / 11 stacked, far right
-        out += sfpCagesSvg(sfpX, cy, ch, 2, 2).svg;
+        var gGs = sfpCagesSvg(sfpX, cy, ch, 2, 2); out += gGs.svg; geo.sfp = gGs.pos.slice().reverse();   // SFP+ LAN (lower cage) first
         var wanX = sfpX - 6 - 12;
         out += portRowSvg(wanX, cy, 12, ch, 1, 2, {}).svg;                 // port 9 (WAN), top position
         var lanX = wanX - 6 - lanW;
-        out += portRowSvg(lanX, cy, lanW, ch, lanN, 2, {}).svg;            // LAN 1–8
+        var gL = portRowSvg(lanX, cy, lanW, ch, lanN, 2, {}); out += gL.svg; geo.rj = gL.pos;   // LAN 1–8
         if (e.sku.indexOf("UDM") === 0 || e.sku === "EFG") out += screenSvg(lanX - 8 - ss2, y + (h - ss2)/2, ss2);
       } else {
         var nb = NVR_BAYS[e.sku] || 4, left3 = x + pad;
@@ -6301,7 +6305,7 @@
         for (var rP=0; rP<rowsP; rP++){
           var ry = y + rP*RK.U;
           var g = portRowSvg(x + pad, ry + 13, w - pad*2, RK.U - 18, perRowP, 1, { fill:"#0c0d0f", stroke:"#474c54", pins:"#5f5640", gap:3 });
-          out += g.svg;
+          out += g.svg; geo.rj = (geo.rj || []).concat(g.pos);
           for (var q=0;q<perRowP;q++) out += st(x + pad + q*(g.pw + g.gap) + g.pw/2, ry + 10.5, String(rP*perRowP + q + 1), 6.5, "#b7bec7", ' text-anchor="middle"');
         }
       } else if (e.kind === "ups"){
@@ -6340,6 +6344,97 @@
     });
     return byUid;
   }
+
+  /* ---------- Cables drawn on the rack: DAC uplinks + patch cords (Etherlighting = coloured) ---------- */
+  var RK_GEO = null;
+  function rackCablesOn(){ try { return localStorage.getItem("lvplanner_rackcables") !== "0"; } catch(e){ return true; } }
+  function jackPt(p, toward){ // where a cable leaves a jack: the edge facing the other end
+    return { x: p.x + p.w/2, y: toward > 0 ? p.y + p.h : p.y };
+  }
+  function plugSvg(p, color, edge){
+    var bw = p.w*0.86, bh = Math.max(3, p.h*0.62), bx = p.x + (p.w - bw)/2, by = p.y + (p.h - bh)/2;
+    return sr(bx, by, bw, bh, color, ' rx="1" stroke="rgba(0,0,0,.45)" stroke-width="0.5"') + sr(bx + 1, by + 0.8, bw - 2, Math.max(1, bh*0.28), "rgba(255,255,255,.35)", ' rx="0.6"');
+  }
+  function rackCablesSvg(rack, plan, CW){
+    var geo = RK_GEO || {}, pr = plan.racks.find(function(r){ return r.rack === rack; });
+    if (!pr) return "";
+    var under = "", over = "", plugs = "";
+    // --- patch cords: each connected switch port goes to the nearest free patch-panel port, the way installers patch:
+    //     a two-row switch sends its top row to the panel above and its bottom row to the panel below;
+    //     a one-row switch uses the panel below (else above). Columns line up so cords run short and straight.
+    var panels = [];
+    rack.items.slice().sort(function(a,b){ return a.pos - b.pos; }).forEach(function(it){
+      var e = EQUIP_BY_SKU[it.sku], g = geo[it.uid]; if (!e || e.kind !== "pp" || !g || !g.rj) return;
+      panels.push({ pos:it.pos, u:e.u, jacks:g.rj, take:[] });
+    });
+    var cords = [];
+    pr.switches.slice().sort(function(a,b){ return a.item.pos - b.item.pos; }).forEach(function(sw){
+      var elc = isEtherlightSwitch(sw.item.sku), g = geo[sw.item.uid]; if (!g || !g.rj) return;
+      var se = EQUIP_BY_SKU[sw.item.sku], top = sw.item.pos, bottom = sw.item.pos + (se ? se.u : 1) - 1;
+      var twoRow = g.rj.some(function(p){ return !p.top; });
+      var above = panels.filter(function(pn){ return pn.pos + pn.u - 1 < top; }).sort(function(a,b){ return b.pos - a.pos; });
+      var below = panels.filter(function(pn){ return pn.pos > bottom; }).sort(function(a,b){ return a.pos - b.pos; });
+      sw.ports.forEach(function(pt, i){
+        var jp = g.rj[i]; if (!pt.dev || !jp) return;
+        var order = twoRow ? (jp.top ? above.concat(below) : below.concat(above)) : below.concat(above);
+        var pn = order.find(function(x){ return x.take.length < x.jacks.length; });
+        if (pn) pn.take.push({ p:jp, color:pt.dev.color || "#3b82f6", el:elc });
+      });
+    });
+    // inside each panel keep the switch's left-to-right order (no crossing), shifted to line up best
+    panels.forEach(function(pn){
+      var t = pn.take.slice().sort(function(a,b){ return a.p.x - b.p.x; }), n = t.length, m = pn.jacks.length;
+      if (!n) return;
+      var bestS = 0, bestD = Infinity;
+      for (var s0=0; s0<=m-n; s0++){ var dsum = 0; for (var i=0;i<n;i++) dsum += Math.abs(pn.jacks[s0+i].x - t[i].p.x); if (dsum < bestD){ bestD = dsum; bestS = s0; } }
+      t.forEach(function(c, i){ cords.push({ a:pn.jacks[bestS + i], p:c.p, color:c.color, el:c.el }); });
+    });
+    cords.forEach(function(r){
+      var a = r.a;
+      var b = r.p, dir = b.y > a.y ? 1 : -1;
+      var A = jackPt(a, dir), B = jackPt(b, -dir), dy = Math.max(10, Math.abs(B.y - A.y) * 0.55);
+      var d = 'M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' C'+A.x.toFixed(1)+' '+(A.y + dir*dy).toFixed(1)+' '+B.x.toFixed(1)+' '+(B.y - dir*dy).toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1);
+      var col = r.el ? r.color : "#d5d9de", wd = Math.max(2.2, Math.min(3.6, a.w*0.32));
+      if (r.el) under += '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-opacity="0.35" stroke-width="'+(wd + 3.5)+'" stroke-linecap="round"/>';
+      over += '<path d="'+d+'" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="'+(wd + 1.2)+'" stroke-linecap="round"/>' +
+              '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="'+wd+'" stroke-linecap="round"/>';
+      plugs += plugSvg(a, col) + plugSvg(b, col);
+    });
+    // --- uplinks inside this rack: gateway → core switch, switch → switch (DAC on SFP+, patch on copper)
+    function endOf(sw, prefix, used){
+      var g = geo[sw.item.uid] || {}, k;
+      for (k=0;k<sw.sfp.length;k++){ var s1 = sw.sfp[k]; if (s1.up && s1.up.indexOf(prefix) === 0 && !used[sw.item.uid+":s"+k] && g.sfp && g.sfp[k]){ used[sw.item.uid+":s"+k] = 1; return { p:g.sfp[k], sfp:true, kind:s1.kind, label:s1.up }; } }
+      for (k=0;k<sw.ports.length;k++){ var p1 = sw.ports[k]; if (p1.up && p1.up.indexOf(prefix) === 0 && !used[sw.item.uid+":p"+k] && g.rj && g.rj[k]){ used[sw.item.uid+":p"+k] = 1; return { p:g.rj[k], sfp:false, kind:p1.kind, label:p1.up }; } }
+      return null;
+    }
+    var used = {}, links = [];
+    var gwIt = rack.items.find(function(i){ var e = EQUIP_BY_SKU[i.sku]; return e && e.kind === "gw"; });
+    pr.switches.forEach(function(sw){
+      if (sw.fibre) return;
+      var up = endOf(sw, "↑", used); if (!up) return;
+      if (sw.isCore || !pr.switches.some(function(o){ return o !== sw && o.name === sw.uplinkTo; })){
+        var gg = gwIt && geo[gwIt.uid]; if (!gg) return;
+        var gp = up.sfp ? (gg.sfp && gg.sfp[0]) : (gg.rj && gg.rj[0]);
+        if (gp) links.push({ a:gp, b:up.p, dac:up.sfp });
+        return;
+      }
+      var parents = pr.switches.filter(function(o){ return o !== sw && o.name === sw.uplinkTo; });
+      for (var i=0;i<parents.length;i++){ var dn = endOf(parents[i], "↓ " + sw.name, used); if (dn){ links.push({ a:dn.p, b:up.p, dac:up.sfp && dn.sfp }); break; } }
+    });
+    links.forEach(function(l){
+      var A = { x:l.a.x + l.a.w, y:l.a.y + l.a.h/2 }, B = { x:l.b.x + l.b.w, y:l.b.y + l.b.h/2 };
+      var bulge = Math.max(A.x, B.x) + 26 + Math.min(30, Math.abs(B.y - A.y) * 0.08);
+      var d = 'M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' C'+bulge.toFixed(1)+' '+A.y.toFixed(1)+' '+bulge.toFixed(1)+' '+B.y.toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1);
+      if (l.dac){
+        over += '<path d="'+d+'" fill="none" stroke="#050607" stroke-width="6.2" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#2a2e34" stroke-width="3.6" stroke-linecap="round"/>';
+        [l.a, l.b].forEach(function(p){ plugs += sr(p.x - 1, p.y + 1, p.w + 6, p.h - 2, "#c9ced4", ' rx="1" stroke="#7d848c" stroke-width="0.6"') + sr(p.x + p.w + 1, p.y + 2, 4, p.h - 4, "#1e2125", ' rx="0.8"'); });
+      } else {
+        over += '<path d="'+d+'" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="4.6" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#d5d9de" stroke-width="3.4" stroke-linecap="round"/>';
+        plugs += plugSvg(l.a, "#d5d9de") + plugSvg(l.b, "#d5d9de");
+      }
+    });
+    return '<g class="rk-cables" pointer-events="none">' + under + over + plugs + '</g>';
+  }
   function rackSvg(rack, plan, opts){
     opts = opts || {};
     var D = rackDims(rack, opts), fx = RK.frame, railL = fx, railR = fx + RK.rail + RK.face, faceX = fx + RK.rail, H = rack.height;
@@ -6357,16 +6452,24 @@
       }
     });
     var info = rackPortInfo(rack, plan);
+    RK_GEO = {};
     rack.items.forEach(function(it){
       var e = EQUIP_BY_SKU[it.sku]; if (!e) return;
       if (it.pos + e.u - 1 > H) return;
       var y = fx + (it.pos-1)*RK.U;
       out += deviceSvg(e, it, faceX + 12, y + 1, RK.face - 24, e.u*RK.U - 2, info[it.uid], opts.sel === it.uid);
-      if (opts.labels){
-        var my = y + e.u*RK.U/2;
+      if (false){
         out += '<line x1="'+(CW + 4)+'" y1="'+my+'" x2="'+(CW + 14)+'" y2="'+my+'" stroke="currentColor" stroke-opacity="0.35" stroke-width="1"/>';
         out += st(CW + 18, my + 4, equipName(e), 11.5, "currentColor", ' font-weight="600"');
       }
+    });
+    if (rackCablesOn() && plan) out += rackCablesSvg(rack, plan, CW);
+    RK_GEO = null;
+    rack.items.forEach(function(it){
+      var e = EQUIP_BY_SKU[it.sku]; if (!e || it.pos + e.u - 1 > H || !opts.labels) return;
+      var my = fx + (it.pos-1)*RK.U + e.u*RK.U/2;
+      out += '<line x1="'+(CW + 4)+'" y1="'+my+'" x2="'+(CW + 14)+'" y2="'+my+'" stroke="currentColor" stroke-opacity="0.35" stroke-width="1"/>';
+      out += st(CW + 18, my + 4, equipName(e), 11.5, "currentColor", ' font-weight="600"');
     });
     return out + '</svg>';
   }
@@ -6402,6 +6505,7 @@
         return '<div class="rk-grid" style="grid-template-columns:3fr 2fr;"><div><label>Hard disk (HDD)</label><select class="select-input" id="rkHdd">'+HDD_SIZES.map(function(t){ return '<option value="'+t+'"'+(t===hd.tb?' selected':'')+'>'+t+' TB</option>'; }).join("")+'</select></div>'+
           '<div><label>Qty · '+hd.bays+' bay'+(hd.bays>1?'s':'')+'</label><select class="select-input" id="rkHddQ">'+q+'</select></div></div>'; })()+
       warns.map(function(w){ return '<p class="rk-warn">'+escapeHtml(w)+'</p>'; }).join("")+
+      '<label class="rk-cabtog"><input type="checkbox" id="rkCables"'+(rackCablesOn()?' checked':'')+'> Show cables in the rack <small>(DAC + patch cords)</small></label>'+
       '<div class="rk-actions"><button type="button" class="action-btn primary" id="rkSuggest">Suggest from points</button><button type="button" class="action-btn" id="rkClear">Clear</button></div>'+
       (sel && selE ? '<div class="rk-sel"><b>'+escapeHtml(equipName(selE))+'</b><small>U'+sel.pos+(selE.u>1?'–U'+(sel.pos+selE.u-1):'')+' · '+selE.u+'U'+(UBNT.on && !/^(PP|CM|SHELF|BLANK|UPS)/.test(selE.sku) ? ' · '+selE.sku : '')+'</small>'+
         '<div class="row"><button type="button" class="action-btn" id="rkUp">▲ Up</button><button type="button" class="action-btn" id="rkDown">▼ Down</button><button type="button" class="action-btn danger" id="rkRemove">Remove</button></div></div>'
@@ -6426,6 +6530,7 @@
     document.getElementById("rkH").onchange = function(){ rack.height = parseInt(this.value,10); if (rack.height <= 12) rack.mount = "wall"; if (rack.height >= 18) rack.mount = "floor"; renderRacks(); renderHardwareList(); };
     document.getElementById("rkS").onchange = function(){ rack.size = this.value; renderRacks(); renderHardwareList(); };
     document.getElementById("rkM").onchange = function(){ rack.mount = this.value; renderRacks(); renderHardwareList(); };
+    document.getElementById("rkCables").onchange = function(){ try { localStorage.setItem("lvplanner_rackcables", this.checked ? "1" : "0"); } catch(e){} renderRackView(); };
     var hddSel = document.getElementById("rkHdd"), hddQ = document.getElementById("rkHddQ");
     if (hddSel) hddSel.onchange = function(){ rack.hdd = rack.hdd || {}; rack.hdd.tb = parseInt(this.value,10); renderHardwareList(); };
     if (hddQ) hddQ.onchange = function(){ rack.hdd = rack.hdd || {}; rack.hdd.qty = parseInt(this.value,10); if (!rack.hdd.tb) rack.hdd.tb = 8; renderHardwareList(); };
