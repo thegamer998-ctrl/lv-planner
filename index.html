@@ -756,7 +756,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.2</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.3</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -947,7 +947,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.2</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.3</p>
     </section>
   </aside>
 
@@ -6500,14 +6500,23 @@
       var c = cc.cats[k];
       add("cable:"+k, CABLE_CATS[k].label + " cable, " + (c.roll === 1 ? "by the metre (m)" : rollName(c.roll)), "", "All floors", c.order);
     });
+    // Patch panels follow the cable on each point: enough Cat6A panels for the Cat6A runs, the rest Cat6
+    var a6 = 0, ppTotal = 0, ppWhere = {};
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){ if (isCablePoint(m) && cabledOf(m) !== "cat6") a6++; }); });
     project.racks.forEach(function(r){
       if (!r.items.length) return;
       add("rack:"+r.height+":"+r.size+":"+r.mount, "Rack " + r.height + "U " + r.size + " cm " + (r.mount==="wall"?"wall-mount":"floor-standing"), "", r.name, 1);
       r.items.forEach(function(it){ var e = EQUIP_BY_SKU[it.sku]; if (!e) return;
+        if (e.sku === "PP-24"){ ppTotal++; ppWhere[r.name] = (ppWhere[r.name] || 0) + 1; return; }
         if (UBNT.on) add(e.sku, e.name, e.sku.indexOf("PP-")===0||e.sku==="CM-1U"||e.sku==="SHELF-1U"||e.sku==="BLANK-1U"||e.sku.indexOf("UPS-")===0 ? "" : e.sku, r.name, 1);
         else add("g:"+e.generic, e.generic, "", r.name, 1);
       });
     });
+    if (ppTotal){
+      var pp6a = Math.min(ppTotal, Math.ceil(a6 / 24)), pp6 = ppTotal - pp6a, rk = Object.keys(ppWhere)[0] || "Racks";
+      if (pp6) add("pp:cat6", "Patch panel 24-port Cat6", "", rk, pp6);
+      if (pp6a) add("pp:cat6a", "Patch panel 24-port Cat6A", "", rk, pp6a);
+    }
     return order.map(function(k){ return rows[k]; });
   }
   function renderHardwareList(){
