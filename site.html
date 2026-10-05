@@ -152,6 +152,13 @@
   .cfgbar.on{ display:flex; } .cfgbar span{ flex:1; font-weight:700; font-size:14px; }
   .cfgbar button{ height:42px; border-radius:12px; padding:0 14px; font-weight:700; font-size:14px; }
   .cfgbar .yb{ border:0; background:#2563eb; color:#fff; } .cfgbar .nb{ border:1px solid var(--line-2); background:var(--panel); font-weight:600; font-size:13px; padding:0 10px; }
+  .labelcard{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; border:1.5px dashed var(--line-2); margin-bottom:12px; }
+  .labelcard div{ flex:1; min-width:0; } .labelcard small{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .labelcard b{ display:block; font:800 20px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.02em; word-break:break-word; }
+  .labelcard button{ display:flex; align-items:center; gap:5px; height:38px; padding:0 12px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:13.5px; flex-shrink:0; }
+  .labelcard svg, .cpy svg{ width:16px; height:16px; }
+  .lbl-code{ font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.01em; }
+  .cpy{ width:34px; height:34px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); display:grid; place-items:center; flex-shrink:0; color:var(--muted); padding:0; }
   .mini-btn{ height:30px; padding:0 10px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); font-size:12.5px; font-weight:600; flex-shrink:0; }
   .sec{ margin:14px 12px 6px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
   .sec button{ border:0; background:none; color:var(--accent); font-weight:600; font-size:12.5px; padding:0; }
@@ -725,6 +732,10 @@
     var es = Math.max(1, Math.min(2.2, 3600 / Math.max(view.w, view.h)));
     return Math.max(30, Math.min(view.w, view.h) * es * 0.024) * (46/30) / es * z;
   }
+  function typeName(p){ var T = (st.data.project.meta || {}).types || {}; return T[p.type] || CATS[catOf(p)].name; }
+  function kindTxt(p){ return typeName(p) + (p.model && p.model !== typeName(p) ? " · " + p.model : ""); }
+  function copyLabel(p){ copyText(p.label, "Copied “" + p.label + "”"); }
+  var COPY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>';
   function miniIcon(p){ var s = iconSvg(p); return s ? '<span class="mini">' + s + '</span>' : '<span class="dot" style="background:' + esc(p.color) + '"></span>'; }
   function issueColor(i){ return i.status === "open" ? "#ea580c" : i.status === "approved" ? "#2563eb" : i.status === "done" ? "#12a150" : "#94a3b8"; }
   function shown(p){
@@ -899,7 +910,7 @@
     d.floors.forEach(function(f){
       var list = all.filter(function(p){ return p.floor_id === f.id; }).filter(function(p){
         var done = isDone(p); if (st.listFilter === "todo" && done) return false; if (st.listFilter === "done" && !done) return false;
-        return !q || (p.label + " " + p.model + " " + f.name + " " + CATS[catOf(p)].name).toLowerCase().indexOf(q) >= 0; });
+        return !q || (p.label + " " + p.model + " " + f.name + " " + typeName(p) + " " + CATS[catOf(p)].name).toLowerCase().indexOf(q) >= 0; });
       if (!list.length) return;
       var fc = counts(all.filter(function(p){ return p.floor_id === f.id; }));
       html += '<div class="grp"><span>' + esc(f.name) + "</span><span>" + fc.d + " / " + fc.n + '</span></div><div class="card">' + list.map(function(p){
@@ -910,7 +921,7 @@
           var box = canStep(x) ? '<button type="button" class="' + cls + '" data-tick="' + esc(p.point_id) + '" data-step="' + x + '" aria-label="' + STEP_L[x] + '">' + CHECK + "</button>" : '<span class="' + cls + '">' + CHECK + "</span>";
           return multi ? "<label>" + box + { installed:"Fixed", aligned:"Aligned", configured:"Config" }[x] + "</label>" : box;
         }).join("");
-        return '<div class="rowi" data-open="' + esc(p.point_id) + '">' + miniIcon(p) + '<span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) +
+        return '<div class="rowi" data-open="' + esc(p.point_id) + '">' + miniIcon(p) + '<span class="t"><b class="lbl-code">' + esc(p.label) + "</b><small>" + esc(kindTxt(p)) +
           (lastBy ? " · " + esc(lastBy) : "") + (stepsOf(p).indexOf("aligned") >= 0 && o.installed && !o.aligned ? ' · <span style="color:#d97706;font-weight:600">align next</span>' : "") + "</small></span>" + (nph ? '<span class="pc">📷 ' + nph + "</span>" : "") +
           '<span class="cks">' + boxes + "</span></div>";
       }).join("") + "</div>";
@@ -938,12 +949,13 @@
       html += '<div class="grp cfgh"><span>' + CATS[k].name + ' <span class="n">' + nd + " / " + list.length + ' configured</span></span><button type="button" class="selall" data-selcat="' + k + '">' + (allSel ? "Clear" : "Select all") + '</button></div><div class="card">' +
         list.map(function(p){
           var o = state(p), sel = !!st.cfgSel[p.point_id], wait = stepWaiting(p, "configured");
-          var stt = o.configured ? '<span class="pill cfgd">Configured' + (!wait && p.configured_by ? " · " + esc(p.configured_by) : "") + "</span>" : '<span class="pill">Not configured</span>';
-          return '<div class="rowi sel-row' + (sel ? " sel" : "") + '" data-sel="' + esc(p.point_id) + '"><span class="selbox">' + CHECK + "</span>" + miniIcon(p) + '<span class="t"><b>' + esc(p.label) + "</b><small>" + esc(floorName(p.floor_id)) + (p.model ? " · " + esc(p.model) : "") +
-            (!o.installed ? ' · <span style="color:#d97706;font-weight:600">not installed yet</span>' : "") + (wait ? " · waiting for signal" : "") + "</small></span>" + stt + "</div>";
+          var stt = o.configured ? '<span class="pill cfgd">✓ ' + esc(!wait && p.configured_by ? p.configured_by : "Done") + "</span>" : '<span class="pill">To do</span>';
+          return '<div class="rowi sel-row' + (sel ? " sel" : "") + '" data-sel="' + esc(p.point_id) + '"><span class="selbox">' + CHECK + "</span>" + miniIcon(p) + '<span class="t"><b class="lbl-code">' + esc(p.label) + "</b><small>" + esc(floorName(p.floor_id)) +
+            (!o.installed ? ' · <span style="color:#d97706;font-weight:600">not installed</span>' : "") + (wait ? " · waiting for signal" : "") + "</small></span>" + stt + '<button type="button" class="cpy" data-copy="' + esc(p.point_id) + '" aria-label="Copy name">' + COPY_SVG + "</button></div>";
         }).join("") + "</div>";
     });
     $("listBody").innerHTML = (html || '<div class="empty">No devices to configure.</div>') + '<div style="height:70px"></div>';
+    $("listBody").querySelectorAll("[data-copy]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); copyLabel(pts().find(function(x){ return x.point_id === b.dataset.copy; })); }; });
     $("listBody").querySelectorAll("[data-sel]").forEach(function(r){ r.onclick = function(){ var id = r.dataset.sel; if (st.cfgSel[id]) delete st.cfgSel[id]; else st.cfgSel[id] = 1; renderList(); }; });
     $("listBody").querySelectorAll("[data-selcat]").forEach(function(b){ b.onclick = function(){
       var list = all.filter(function(p){ return catOf(p) === b.dataset.selcat; }), on = !list.every(function(p){ return st.cfgSel[p.point_id]; });
@@ -1096,8 +1108,8 @@
     var done = isDone(p), o = state(p), pend = st.pending[p.point_id] || [];
     var bsvg = iconSvg(p); $("shBadge").className = "badge" + (bsvg ? " icon" : "");
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
-    $("shTitle").textContent = p.label; $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
-    var h = "", pendStatus = pend.some(function(i){ return i.kind === "status"; });
+    $("shTitle").textContent = typeName(p); $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
+    var h = '<div class="labelcard"><div><small>' + (canConfig() ? "Label on site · name in UniFi" : "Write this on the label") + '</small><b>' + esc(p.label) + '</b></div><button type="button" id="shCopy">' + COPY_SVG + "Copy</button></div>", pendStatus = pend.some(function(i){ return i.kind === "status"; });
     if (visibleSteps(p).length > 1){
       // installed (+ aligned for cameras) by the technician, configured by the site engineer — each ticked on its own, with who and when
       h += '<div class="steps">' + visibleSteps(p).map(function(x, i){
@@ -1120,6 +1132,7 @@
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-step]").forEach(function(b){ b.onclick = function(){ setStep(p, b.dataset.step, b.dataset.v === "1"); }; });
+    $("shCopy").onclick = function(){ copyLabel(p); };
     if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
@@ -1133,7 +1146,7 @@
     $("shTitle").textContent = KIND[i.kind] + (i.kind === "missing" && sug ? " · " + sug[1] : "");
     $("shSub").textContent = floorName(i.floor_id) + " · " + i.by + " · " + when(i.at);
     var h = '<div class="status' + (i.status === "done" ? " done" : i.status === "open" ? " warn" : "") + '"><div>' + (i.status === "rejected" && i.kind === "extra" ? "Point stays — please install it" : ISTAT[i.status]) + "<small>" + (i.status_by ? esc(i.status_by) + " · " + when(i.status_at) : "The ExpressTech office will check this") + "</small></div></div>";
-    if (p) h += '<div class="rowi" style="padding:0 0 12px;border:0" data-open="' + esc(p.point_id) + '"><span class="dot" style="background:' + esc(p.color) + '"></span><span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) + " — in the drawing</small></span></div>";
+    if (p) h += '<div class="rowi" style="padding:0 0 12px;border:0" data-open="' + esc(p.point_id) + '"><span class="dot" style="background:' + esc(p.color) + '"></span><span class="t"><b>' + esc(p.label) + "</b><small>" + esc(kindTxt(p)) + " — in the drawing</small></span></div>";
     if (i.text) h += '<div class="desc">' + esc(i.text) + "</div>";
     var pendPh = pend.filter(function(x){ return x.kind === "photo"; }), pendN = pend.filter(function(x){ return x.kind === "note"; });
     if (i.photos.length || pendPh.length) h += '<div class="lbl">Photos</div>' + photosHtml(i.photos, pendPh, key);

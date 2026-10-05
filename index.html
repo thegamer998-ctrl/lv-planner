@@ -2481,7 +2481,7 @@
 
   function projectJsonBlob(){ return new Blob([JSON.stringify(projectObject(true))], { type:"application/json" }); }
   function projectObject(withPdf){
-    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, vlans: project.vlans || null, site: project.site || null, cableCalc: project.cableCalc, cableLib: { custom: CABLE_LIB.custom }, floors: project.floors.map(function(f){
+    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, vlans: project.vlans || null, site: project.site || null, ptSeq: project.ptSeq || {}, cableCalc: project.cableCalc, cableLib: { custom: CABLE_LIB.custom }, floors: project.floors.map(function(f){
       return { id:f.id, name:f.name, fileName:f.fileName, pdfBase64:withPdf ? f.pdfBase64 : null, currentPage:f.currentPage,
         markers:f.markers, walls:f.walls, measurements:f.measurements, cableRoutes:f.cableRoutes,
         scaleByPage:f.scaleByPage, heatmapOn:f.heatmapOn, environment:f.environment, legendByPage:f.legendByPage, showCameraCones:f.showCameraCones };
@@ -2598,6 +2598,7 @@
       project.revisions = parsed.revisions || [];
       project.racks = Array.isArray(parsed.racks) ? parsed.racks : [];
       project.vlans = parsed.vlans || null;
+      project.ptSeq = parsed.ptSeq || {};
       project.site = parsed.site || null; if (typeof siteUi !== "undefined" && siteUi) { siteUi.status = null; siteUi.data = null; }
       if (project.site) setTimeout(function(){ if (typeof loadSite === "function") loadSite(); }, 2500);
       project.cableCalc = parsed.cableCalc || null;
@@ -4109,6 +4110,9 @@
         '</div>'+
         fovHtml+
         rackHtml+
+        '<label class="popover-hint" style="display:block;margin-bottom:5px;">Label on site &amp; name in UniFi</label>'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><b style="font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:6px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent);white-space:nowrap;">'+escapeHtml(m.ptId || pointIds()[m.id] || "")+'</b>'+
+        '<input type="text" id="popNameInput" maxlength="30" value="'+escapeHtml(m.ptName||"")+'" placeholder="Name, e.g. Corridor" style="flex:1;margin-bottom:0;"></div>'+
         '<textarea id="popNoteInput" placeholder="Optional note (e.g. ceiling mount, ref wall)">'+escapeHtml(m.note||"")+'</textarea>'+
         '<div class="popover-actions"><button class="btn-delete" id="popDeleteBtn">Delete</button><button class="btn-save" id="popDuplicateBtn" style="background:var(--accent-soft);color:var(--accent);">Copy</button><button class="btn-save" id="popSaveBtn">Save</button></div>'+
         '<p class="popover-hint" style="margin-top:8px;">Drag the icon on the drawing to reposition it.</p>';
@@ -4406,7 +4410,8 @@
     if (kind === "marker"){
       var m = f.markers.find(function(x){ return x.id===id; });
       var val = document.getElementById("popNoteInput").value.trim();
-      if (m){ m.note = val; renderMarkers(); }
+      var nm = document.getElementById("popNameInput"), nmv = nm ? nm.value.trim().replace(/\s+/g, " ").slice(0, 30) : "";
+      if (m){ m.note = val; if (nmv) m.ptName = nmv; else delete m.ptName; renderMarkers(); }
     } else if (kind === "measurement"){
       var ms = f.measurements.find(function(x){ return x.id===id; });
       var raw = parseFloat(document.getElementById("popLengthInput").value);
@@ -4913,7 +4918,7 @@
     function newId(prefix){ return prefix+Date.now()+Math.random().toString(16).slice(2)+(count++); }
 
     src.markers.filter(function(m){ return m.page===srcPage; }).forEach(function(m){
-      var copy = Object.assign({}, m, { id:newId("pt"), page:targetPage });
+      var copy = Object.assign({}, m, { id:newId("pt"), page:targetPage }); delete copy.ptId;
       f.markers.push(copy);
     });
     src.walls.filter(function(w){ return w.page===srcPage; }).forEach(function(w){
@@ -5430,23 +5435,45 @@
   // ---------- point IDs: GF-AP01, FF-CAM03, GF-D12 ----------
   var ID_CODES = { wifi:"AP", outdoorwifi:"OAP", cctv:"CAM", cctvoutdoor:"CAM", network:"D", ipphone:"T", dtv:"DTV", tv:"TV", uplink:"UP",
     speaker:"SP", intercom:"IC", intercomscreen:"ICS", smartlock:"SL", rack:"IT", drawbox:"DB" };
+  // usual site codes for one-word floor names (Roof → RF, Basement → BF…); "Ground Floor" → GF from its initials
+  var FLOOR_CODES = { roof:"RF", basement:"BF", mezzanine:"MF", ground:"GF", first:"FF", second:"SF", third:"TF", fourth:"4F", penthouse:"PH", annex:"AX", outdoor:"OD", outside:"OD", garden:"GD" };
   function floorCode(f, i){
     var n = String(f.name || "").trim(), w = n.split(/\s+/).filter(Boolean);
+    if (w.length === 1 && FLOOR_CODES[w[0].toLowerCase()]) return FLOOR_CODES[w[0].toLowerCase()];
     var c = w.length > 1 ? w.map(function(x){ return x[0]; }).join("") : (n.slice(0, 2) || ("F" + (i + 1)));
     return c.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3) || ("F" + (i + 1));
   }
+  // A point keeps its ID once it is fixed (m.ptId, set when the site is published): the label on site and the device name
+  // in UniFi never change when other points are added, moved or deleted. Points without one get the next free number.
   function pointIds(){
-    var ids = {}, used = {};
+    // numbers are never reused: a new point goes after the highest number this floor and kind ever had (even if deleted)
+    var ids = {}, used = {}, taken = {}, top = Object.assign({}, project.ptSeq || {});
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){ if (!m.ptId) return; taken[m.ptId] = true;
+      var mm = /^(.*?)(\d+)$/.exec(m.ptId); if (mm) top[mm[1]] = Math.max(top[mm[1]] || 0, +mm[2]); }); });
     project.floors.forEach(function(f, fi){
       var fc = floorCode(f, fi); if (used[fc]) fc = fc + (fi + 1); used[fc] = true;
       var n = {};
       f.markers.slice().sort(function(a, b){ return (a.page - b.page) || (a.yRatio - b.yRatio) || (a.xRatio - b.xRatio); }).forEach(function(m){
-        var code = ID_CODES[m.type] || "X"; n[code] = (n[code] || 0) + 1;
-        ids[m.id] = fc + "-" + code + (n[code] < 10 ? "0" : "") + n[code];
+        if (m.ptId){ ids[m.id] = m.ptId; return; }
+        var code = ID_CODES[m.type] || "X", pre = fc + "-" + code, id;
+        if (n[code] == null) n[code] = top[pre] || 0;
+        do { n[code]++; id = pre + (n[code] < 10 ? "0" : "") + n[code]; } while (taken[id]);
+        taken[id] = true; ids[m.id] = id;
       });
     });
     return ids;
   }
+  function freezePointIds(){
+    var ids = pointIds(), changed = false;
+    project.ptSeq = project.ptSeq || {};
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){
+      if (!m.ptId && ids[m.id]){ m.ptId = ids[m.id]; changed = true; }
+      var mm = /^(.*?)(\d+)$/.exec(m.ptId || ""); if (mm && (project.ptSeq[mm[1]] || 0) < +mm[2]){ project.ptSeq[mm[1]] = +mm[2]; changed = true; }
+    }); });
+    return changed;
+  }
+  // the label written on the device and used as its name in UniFi: "GF-CAM03" or, with a name, "GF-CAM03 Corridor"
+  function pointLabel(m, ids){ var id = m.ptId || (ids || pointIds())[m.id] || ""; return id + (m.ptName ? " " + m.ptName : ""); }
   var TYPE_SORT = ["wifi","outdoorwifi","cctv","cctvoutdoor","ipphone","network","dtv","intercom","intercomscreen","smartlock","tv","speaker","uplink","rack","drawbox"];
   function typeRank(t){ var i = TYPE_SORT.indexOf(t); return i < 0 ? 99 : i; }
 
@@ -5642,7 +5669,7 @@
         ms.map(function(m){
           var t = getTypeDef(m.type), v = markerVariant(m), p = pm[m.id];
           var cab = CABLED_TYPES[m.type] ? { t:CABLE_CATS[cabledOf(m)].label, dot:CABLE_CATS[cabledOf(m)].color } : { t:"—", muted:true };
-          return [{ t:ids[m.id], bold:true }, { t:t ? t.label : m.type, dot:t ? t.color : null }, v ? v.name : "—", m.note || "", cab,
+          return [{ t:ids[m.id], bold:true }, { t:t ? t.label : m.type, dot:t ? t.color : null }, v ? v.name : "—", [m.ptName, m.note].filter(Boolean).join(" — "), cab,
             p ? { t:"Port " + p.n } : { t: m.type === "uplink" ? "→ gateway" : "—", muted:true }];
         }));
     });
@@ -6539,14 +6566,13 @@
   }
   // everything placed on the drawing except up-links becomes a point on site
   function sitePoints(){
-    var out = [], n = {};
+    var out = [], ids = pointIds();
     project.floors.forEach(function(f){
-      f.markers.forEach(function(m){
+      f.markers.slice().sort(function(a, b){ return typeRank(a.type) - typeRank(b.type) || String(ids[a.id]).localeCompare(String(ids[b.id]), undefined, { numeric:true }); }).forEach(function(m){
         var t = getTypeDef(m.type); if (!t || m.type === "uplink") return;
         var sheet = f.id + (f.numPages > 1 ? "-p" + m.page : "");
-        n[m.type] = (n[m.type] || 0) + 1;
         var v = markerVariant(m), cat = m.type === "rack" ? "rack" : CABLED_TYPES[m.type] ? vlanKeyOf(m) : "other";
-        var label = m.type === "rack" && v ? v.name : t.label + " " + n[m.type];
+        var label = pointLabel(m, ids) + (m.type === "rack" && v && !m.ptName ? " " + v.name : "");
         out.push({ id:m.id, floorId:sheet, type:m.type, cat:cat, label:label, model: v && !v.rackTag ? v.name : "", color: cat === "rack" ? "#475569" : cat === "other" ? t.color : vlanColorOf(m), x:+m.xRatio.toFixed(5), y:+m.yRatio.toFixed(5) });
       });
     });
@@ -6554,10 +6580,10 @@
   }
   // the exact drawing icons for the site app: one SVG per point type, plus each point's rotation, model tag and cable tag
   function siteIcons(){
-    var icons = {}, pt = {};
+    var icons = {}, pt = {}, types = {};
     project.floors.forEach(function(f){ f.markers.forEach(function(m){
       var t = getTypeDef(m.type); if (!t || m.type === "uplink") return;
-      if (!icons[m.type]) icons[m.type] = typeIconSVG(t, 0);
+      if (!icons[m.type]){ icons[m.type] = typeIconSVG(t, 0); types[m.type] = t.label; }
       var v = markerVariant(m), c = CABLE_CATS[m.cable], o = {};
       if (m.rotation) o.r = Math.round(m.rotation);
       if (m.size && m.size !== 1) o.z = +m.size.toFixed(3);
@@ -6565,7 +6591,7 @@
       if (c && c.tag) { o.cab = c.tag; o.cc = c.color; }
       if (Object.keys(o).length) pt[m.id] = o;
     }); });
-    return { icons:icons, pt:pt };
+    return { icons:icons, pt:pt, types:types };
   }
   function siteSheets(){
     var out = [];
@@ -6621,6 +6647,7 @@
   function publishSite(){
     var msg = document.getElementById("stMsg"), btn = document.getElementById("stPub");
     if (siteUi.busy) return; siteUi.busy = true; if (btn) btn.disabled = true;
+    if (freezePointIds() && typeof autosaveTick === "function") autosaveTick();   // labels on site never renumber after this
     var sheets = siteSheets(), pts = sitePoints(), dims = {};
     msg.textContent = "Publishing " + pts.length + " points…";
     var resolved = (project.site && project.site.resolved) || [];

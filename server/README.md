@@ -101,10 +101,14 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - Enter the office key once on each device.
    - It lists every project with progress, open site reports, Asana stages, the next stage and the status.
    - Open a project to see everything, including office-only tasks such as payments.
-5. **Who ticks what.** Nobody ticks for anyone else.
+5. **Labels.** Every point has a label, e.g. **GF-AP01**, **GF-CAM07 Main gate** or **RF-CAM01**: the floor, then the kind and number, then an optional name.
+   - Set the name in the planner: click the point, open **More**, and type it under **Label on site & name in UniFi**.
+   - The technician writes the label on the device and cable. The site engineer uses the same name in UniFi (the **Copy** button).
+   - A label is fixed the first time you publish. Adding, moving or deleting points never renumbers the others, and a deleted number is never reused.
+6. **Who ticks what.** Nobody ticks for anyone else.
    - **Technician:** **Installed** on every point, plus **Aligned** on cameras. A camera counts as done only when it is installed **and** aligned. Ticking Aligned also ticks Installed, and unticking Installed clears Aligned, since both are his own.
    - **Site engineer:** **Configured** on access points, cameras, IP phones, intercom and the network cabinet. He does it in bulk: **Checklist → Configuration**, **Select all** on a device type, then **Mark configured**. His ticks never change the technician's, and the technician's never change his.
-6. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
+7. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
    - When every point of a kind has a step ticked, the matching Asana subtask is completed with a comment. The subtask is found by its name:
 
    | When all… | completes the Asana task or subtask named like |
@@ -121,11 +125,11 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - Add **Cameras Installation** and **Cameras Alignment** as subtasks in the villa template, so every new project has them.
    - Unticking reopens the subtask.
    - The Asana stages show in the site app's **Progress** tab and stay mirrored every 2 minutes (see step 3b).
-7. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.
+8. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.
    - Technicians see the work stages.
    - Customers see the stages without comments.
    - Payment and invoice tasks are office only.
-8. **Site reports.** A technician taps **Report** on the plan and taps the spot, then chooses one of:
+9. **Site reports.** A technician taps **Report** on the plan and taps the spot, then chooses one of:
    - **Extra point found here**, with the kind of point (AP, camera…)
    - **Point not on site**
    - **Other issue**
@@ -140,6 +144,6 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - **Not needed / Keep the point**, with a reply
 
    Press **Update site**. The technician sees the new or removed point and your answer.
-9. **Changes to the design.** Click **Update site**. Ticks, photos and notes on existing points are kept.
-10. **No signal on site** (basements). Ticks, notes and photos wait on the phone and upload by themselves when the signal returns.
-11. **Lost a link?** Open **Site** in the planner to copy it again. Links can be reset from the server if one is shared by mistake.
+10. **Changes to the design.** Click **Update site**. Ticks, photos and notes on existing points are kept.
+11. **No signal on site** (basements). Ticks, notes and photos wait on the phone and upload by themselves when the signal returns.
+12. **Lost a link?** Open **Site** in the planner to copy it again. Links can be reset from the server if one is shared by mistake.
