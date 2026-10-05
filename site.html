@@ -138,6 +138,20 @@
   .addp{ display:grid; grid-template-columns:1fr auto auto; gap:6px; padding:10px 12px; border-top:1px solid var(--line); }
   .addp input, .addp select{ height:38px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); padding:0 9px; min-width:0; font:inherit; color:inherit; }
   .addp button{ height:38px; border-radius:10px; border:0; background:var(--accent); color:#fff; font-weight:700; padding:0 12px; }
+  .modeseg{ display:inline-flex; background:var(--panel-2); border:1px solid var(--line); border-radius:20px; padding:2px; flex-shrink:0; margin-right:4px; }
+  .modeseg button{ border:0; background:none; border-radius:18px; padding:5px 12px; font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; }
+  .modeseg button.on{ background:#2563eb; color:#fff; }
+  .grp.cfgh{ align-items:center; } .grp.cfgh .n{ font-weight:600; text-transform:none; letter-spacing:0; margin-left:4px; }
+  .selall{ border:0; background:none; color:#2563eb; font-weight:700; font-size:13px; text-transform:none; letter-spacing:0; padding:4px 0; }
+  .sel-row{ cursor:pointer; } .sel-row.sel{ background:#eef3ff; }
+  @media (prefers-color-scheme: dark){ .sel-row.sel{ background:#132744; } }
+  .selbox{ width:24px; height:24px; border-radius:7px; border:2px solid var(--line-2); display:grid; place-items:center; flex-shrink:0; background:var(--panel); }
+  .selbox svg{ width:15px; height:15px; opacity:0; } .sel-row.sel .selbox{ background:#2563eb; border-color:#2563eb; } .sel-row.sel .selbox svg{ opacity:1; }
+  .pill.cfgd{ background:#e8efff; color:#2563eb; } @media (prefers-color-scheme: dark){ .pill.cfgd{ background:#132744; color:#7aa7ff; } }
+  .cfgbar{ position:sticky; bottom:0; display:none; align-items:center; gap:8px; padding:10px 12px calc(10px + var(--safe-b)); background:var(--panel); border-top:1px solid var(--line); box-shadow:0 -6px 20px rgba(15,23,42,.08); }
+  .cfgbar.on{ display:flex; } .cfgbar span{ flex:1; font-weight:700; font-size:14px; }
+  .cfgbar button{ height:42px; border-radius:12px; padding:0 14px; font-weight:700; font-size:14px; }
+  .cfgbar .yb{ border:0; background:#2563eb; color:#fff; } .cfgbar .nb{ border:1px solid var(--line-2); background:var(--panel); font-weight:600; font-size:13px; padding:0 10px; }
   .mini-btn{ height:30px; padding:0 10px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); font-size:12.5px; font-weight:600; flex-shrink:0; }
   .sec{ margin:14px 12px 6px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
   .sec button{ border:0; background:none; color:var(--accent); font-weight:600; font-size:12.5px; padding:0; }
@@ -272,6 +286,7 @@
     <div class="chips" id="listChips"></div>
     <div id="listBody"></div>
     <div style="height:20px"></div>
+    <div class="cfgbar" id="cfgBar"><span id="cfgN"></span><button type="button" class="nb" id="cfgNo">Not configured</button><button type="button" class="yb" id="cfgYes">Mark configured</button></div>
   </section>
   <section class="view" id="vProg"><div id="progBody"></div></section>
   <section class="view" id="vRep"><div id="repBody"></div></section>
@@ -331,7 +346,7 @@
   var ROLE_TAG = { office:"Office", manager:"Manager", engineer:"Site engineer", tech:"Technician", team:"Team", customer:"Customer view" };
   var STEP_L = { installed:"Installed", aligned:"Aligned", configured:"Configured" };
   var STEP_DO = { installed:"Mark installed", aligned:"Mark aligned", configured:"Mark configured" };
-  var st = { me:null, data:null, floor:null, filter:"all", listFilter:"todo", sel:null, view:"vPlan", pending:{}, placing:false, list:null };
+  var st = { listMode:"install", cfgSel:{}, me:null, data:null, floor:null, filter:"all", listFilter:"todo", sel:null, view:"vPlan", pending:{}, placing:false, list:null };
   function okey(){ try { return localStorage.getItem("et_office_key:" + S) || ""; } catch(e){ return ""; } }
   function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function toast(m){ var t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove("on"); }, 2600); }
@@ -371,6 +386,7 @@
   try { issueMap = JSON.parse(localStorage.getItem("et_issue_map") || "{}") || {}; } catch(e){}
   function send(item){
     var base = item.issue ? "/issue/" + (issueMap[item.issue] || item.issue) : "/pt/" + encodeURIComponent(item.pt);
+    if (item.kind === "bulk") return req("POST", "/bulk", JSON.stringify({ step:item.step, done:item.done, ids:item.ids }), "application/json");
     if (item.kind === "status") return req("POST", base + "/status", JSON.stringify({ step:item.step || "installed", done: item.done != null ? item.done : item.installed }), "application/json");
     if (item.kind === "note") return req("POST", base + "/note", JSON.stringify({ text:item.text }), "application/json");
     if (item.kind === "photo") return req("POST", base + "/photo?w=" + item.w + "&h=" + item.h, item.blob, "image/jpeg");
@@ -385,7 +401,9 @@
       return chain.then(function(){ return sent; });
     }).then(function(sent){ flushing = false; updateQueue(); if (sent) load(true); }, function(){ flushing = false; updateQueue(); });
   }
-  function updateQueue(){ return qAll().then(function(items){ var q = $("queue"); st.pending = {}; items.forEach(function(it){ var k = it.issue ? "issue:" + it.issue : it.kind === "report" ? "report" : it.pt; (st.pending[k] = st.pending[k] || []).push(it); }); q.classList.toggle("on", items.length > 0); $("queueTxt").textContent = items.length + " change" + (items.length > 1 ? "s" : "") + " waiting for signal — they upload automatically."; }); }
+  function updateQueue(){ return qAll().then(function(items){ var q = $("queue"); st.pending = {}; items.forEach(function(it){
+      if (it.kind === "bulk"){ it.ids.forEach(function(id){ (st.pending[id] = st.pending[id] || []).push({ kind:"status", step:it.step, done:it.done }); }); return; }
+      var k = it.issue ? "issue:" + it.issue : it.kind === "report" ? "report" : it.pt; (st.pending[k] = st.pending[k] || []).push(it); }); q.classList.toggle("on", items.length > 0); $("queueTxt").textContent = items.length + " change" + (items.length > 1 ? "s" : "") + " waiting for signal — they upload automatically."; }); }
   function enqueue(item){
     item.id = Date.now() + "-" + Math.random().toString(36).slice(2); item.p = P; item.t = Date.now();
     return qPut(item).then(updateQueue).then(function(){ if (st.data && st.sel !== "draft") render(); return flush(); });
@@ -493,15 +511,18 @@
   function pts(){ return st.data ? st.data.points : []; }
   function issues(){ return st.data && st.data.issues ? st.data.issues : []; }
   // the point's steps (cameras: installed → aligned → configured by the site engineer), with ticks still waiting for signal applied
-  function stepsOf(p){ return p.steps || (p.cat === "cam" ? ["installed","aligned","configured"] : ["installed"]); }
+  var CONFIG_CATS = ["ap","cam","phone","icom","rack"];
+  function stepsOf(p){ return p.steps || (p.cat === "cam" ? ["installed","aligned","configured"] : CONFIG_CATS.indexOf(p.cat) >= 0 ? ["installed","configured"] : ["installed"]); }
+  // technicians never see the engineer's "configured" step
+  function visibleSteps(p){ return stepsOf(p).filter(function(x){ return x !== "configured" || canConfig(); }); }
   function teamSteps(p){ return stepsOf(p).filter(function(x){ return x !== "configured"; }); }
   function state(p){
     var o = {}; stepsOf(p).forEach(function(x){ o[x] = !!p[x]; });
     (st.pending[p.point_id] || []).forEach(function(i){
       if (i.kind !== "status") return;
       var step = i.step || "installed", v = !!(i.done != null ? i.done : i.installed);
-      o[step] = v; if (v && step !== "installed") o.installed = true;
-      if (!v && step === "installed") stepsOf(p).forEach(function(x){ if (x !== "installed") o[x] = false; });
+      o[step] = v; if (v && step === "aligned") o.installed = true;
+      if (!v && step === "installed") o.aligned = false;
     });
     return o;
   }
@@ -539,7 +560,7 @@
     $("floorChips").innerHTML = d.floors.map(function(f){ var c = counts(pts().filter(function(p){ return p.floor_id === f.id; }));
       return '<button type="button" class="chip' + (f.id === st.floor ? " on" : "") + '" data-f="' + esc(f.id) + '">' + esc(f.name) + '<span class="n">' + c.d + "/" + c.n + "</span></button>"; }).join("") +
       '<span style="width:8px;flex-shrink:0"></span>' +
-      ["all","todo","done"].concat(canConfig() && pts().some(function(p){ return p.cat === "cam"; }) ? ["config"] : []).map(function(k){ return '<button type="button" class="chip' + (st.filter === k ? " on" : "") + '" data-flt="' + k + '">' + { all:"All", todo:"To do", done:"Done", config:"To configure" }[k] + "</button>"; }).join("");
+      ["all","todo","done"].concat(canConfig() && pts().some(function(p){ return stepsOf(p).indexOf("configured") >= 0; }) ? ["config"] : []).map(function(k){ return '<button type="button" class="chip' + (st.filter === k ? " on" : "") + '" data-flt="' + k + '">' + { all:"All", todo:"To do", done:"Done", config:"To configure" }[k] + "</button>"; }).join("");
     $("floorChips").querySelectorAll("[data-f]").forEach(function(b){ b.onclick = function(){ if (st.floor !== b.dataset.f){ st.floor = b.dataset.f; view.fitNext = true; renderFloors(); } }; });
     $("floorChips").querySelectorAll("[data-flt]").forEach(function(b){ b.onclick = function(){ st.filter = b.dataset.flt; renderFloors(); renderPlanMarks(); }; });
     showFloor();
@@ -710,14 +731,14 @@
     var done = isDone(p);
     if (st.filter === "todo") return !done;
     if (st.filter === "done") return done;
-    if (st.filter === "config") return p.cat === "cam" && !state(p).configured;
+    if (st.filter === "config") return stepsOf(p).indexOf("configured") >= 0 && !state(p).configured;
     return true;
   }
   function renderPlanMarks(){
     if (!view.w) return;
     var list = pts().filter(function(p){ return p.floor_id === st.floor; });
     var html = list.map(function(p){
-      var done = isDone(p), half = !done && isHalf(p), cfg = p.cat === "cam" && state(p).configured, dim = !shown(p);
+      var done = isDone(p), half = !done && isHalf(p), cfg = canConfig() && state(p).configured, dim = !shown(p);
       var hasPh = p.photos.length || (st.pending[p.point_id] || []).some(function(i){ return i.kind === "photo"; });
       var svg = iconSvg(p), cls = (done ? " done" : "") + (half ? " half" : "") + (cfg ? " cfg" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : ""), pos = "";
       if (svg){
@@ -868,8 +889,12 @@
   // ---- checklist
   function renderList(){
     var q = ($("q").value || "").toLowerCase().trim(), d = st.data, all = pts(), c = counts(all);
-    $("listChips").innerHTML = [["todo","To do", c.n - c.d], ["done","Done", c.d], ["all","All", c.n]].map(function(x){ return '<button type="button" class="chip' + (st.listFilter === x[0] ? " on" : "") + '" data-lf="' + x[0] + '">' + x[1] + '<span class="n">' + x[2] + "</span></button>"; }).join("");
-    $("listChips").querySelectorAll("[data-lf]").forEach(function(b){ b.onclick = function(){ st.listFilter = b.dataset.lf; renderList(); }; });
+    var cfgMode = canConfig() && st.listMode === "config";
+    $("cfgBar").classList.toggle("on", cfgMode && Object.keys(st.cfgSel).length > 0);
+    var seg = canConfig() ? '<div class="modeseg"><button type="button" data-mode="install"' + (!cfgMode ? ' class="on"' : "") + ">Installation</button><button type=\"button\" data-mode=\"config\"" + (cfgMode ? ' class="on"' : "") + ">Configuration</button></div>" : "";
+    if (cfgMode) return renderConfigList(q, seg);
+    $("listChips").innerHTML = seg + [["todo","To do", c.n - c.d], ["done","Done", c.d], ["all","All", c.n]].map(function(x){ return '<button type="button" class="chip' + (st.listFilter === x[0] ? " on" : "") + '" data-lf="' + x[0] + '">' + x[1] + '<span class="n">' + x[2] + "</span></button>"; }).join("");
+    bindListTop();
     var html = "";
     d.floors.forEach(function(f){
       var list = all.filter(function(p){ return p.floor_id === f.id; }).filter(function(p){
@@ -879,20 +904,60 @@
       var fc = counts(all.filter(function(p){ return p.floor_id === f.id; }));
       html += '<div class="grp"><span>' + esc(f.name) + "</span><span>" + fc.d + " / " + fc.n + '</span></div><div class="card">' + list.map(function(p){
         var o = state(p), nph = p.photos.length + (st.pending[p.point_id] || []).filter(function(i){ return i.kind === "photo"; }).length;
-        var multi = stepsOf(p).length > 1, lastBy = o.aligned && p.aligned_by ? p.aligned_by : o.installed ? p.installed_by : "";
-        var boxes = stepsOf(p).filter(function(x){ return x !== "configured" || canConfig() || o.configured; }).map(function(x){
+        var vs = visibleSteps(p), multi = vs.length > 1, lastBy = o.aligned && p.aligned_by ? p.aligned_by : o.installed ? p.installed_by : "";
+        var boxes = vs.map(function(x){
           var cls = "ck" + (o[x] ? " on" : "") + (x === "configured" ? " cfg" : "");
           var box = canStep(x) ? '<button type="button" class="' + cls + '" data-tick="' + esc(p.point_id) + '" data-step="' + x + '" aria-label="' + STEP_L[x] + '">' + CHECK + "</button>" : '<span class="' + cls + '">' + CHECK + "</span>";
           return multi ? "<label>" + box + { installed:"Fixed", aligned:"Aligned", configured:"Config" }[x] + "</label>" : box;
         }).join("");
         return '<div class="rowi" data-open="' + esc(p.point_id) + '">' + miniIcon(p) + '<span class="t"><b>' + esc(p.label) + "</b><small>" + esc(p.model || CATS[catOf(p)].name) +
-          (lastBy ? " · " + esc(lastBy) : "") + (multi && o.installed && !o.aligned ? ' · <span style="color:#d97706;font-weight:600">align next</span>' : "") + "</small></span>" + (nph ? '<span class="pc">📷 ' + nph + "</span>" : "") +
+          (lastBy ? " · " + esc(lastBy) : "") + (stepsOf(p).indexOf("aligned") >= 0 && o.installed && !o.aligned ? ' · <span style="color:#d97706;font-weight:600">align next</span>' : "") + "</small></span>" + (nph ? '<span class="pc">📷 ' + nph + "</span>" : "") +
           '<span class="cks">' + boxes + "</span></div>";
       }).join("") + "</div>";
     });
     $("listBody").innerHTML = html || '<div class="empty">' + (st.listFilter === "todo" ? "Everything here is done. 🎉" : "Nothing to show.") + "</div>";
     $("listBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(e){ if (e.target.closest("[data-tick]")) return; openPoint(r.dataset.open); }; });
     $("listBody").querySelectorAll("[data-tick]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); var p = pts().find(function(x){ return x.point_id === b.dataset.tick; }); setStep(p, b.dataset.step, !state(p)[b.dataset.step]); }; });
+  }
+  function bindListTop(){
+    $("listChips").querySelectorAll("[data-lf]").forEach(function(b){ b.onclick = function(){ st.listFilter = b.dataset.lf; renderList(); }; });
+    $("listChips").querySelectorAll("[data-mode]").forEach(function(b){ b.onclick = function(){ st.listMode = b.dataset.mode; st.cfgSel = {}; renderList(); }; });
+  }
+  // ---- configuration (site engineer): by device type for the whole villa — select all, then mark configured in one go
+  var CFG_ORDER = ["ap","cam","phone","icom","rack"];
+  function renderConfigList(q, seg){
+    var all = pts().filter(function(p){ return stepsOf(p).indexOf("configured") >= 0; });
+    var done = all.filter(function(p){ return state(p).configured; }).length;
+    $("listChips").innerHTML = seg + '<span class="chip" style="cursor:default">' + done + " / " + all.length + " configured</span>";
+    bindListTop();
+    var html = "";
+    CFG_ORDER.forEach(function(k){
+      var list = all.filter(function(p){ return catOf(p) === k; }).filter(function(p){ return !q || (p.label + " " + p.model + " " + floorName(p.floor_id) + " " + CATS[k].name).toLowerCase().indexOf(q) >= 0; });
+      if (!list.length) return;
+      var nd = list.filter(function(p){ return state(p).configured; }).length, allSel = list.every(function(p){ return st.cfgSel[p.point_id]; });
+      html += '<div class="grp cfgh"><span>' + CATS[k].name + ' <span class="n">' + nd + " / " + list.length + ' configured</span></span><button type="button" class="selall" data-selcat="' + k + '">' + (allSel ? "Clear" : "Select all") + '</button></div><div class="card">' +
+        list.map(function(p){
+          var o = state(p), sel = !!st.cfgSel[p.point_id], wait = stepWaiting(p, "configured");
+          var stt = o.configured ? '<span class="pill cfgd">Configured' + (!wait && p.configured_by ? " · " + esc(p.configured_by) : "") + "</span>" : '<span class="pill">Not configured</span>';
+          return '<div class="rowi sel-row' + (sel ? " sel" : "") + '" data-sel="' + esc(p.point_id) + '"><span class="selbox">' + CHECK + "</span>" + miniIcon(p) + '<span class="t"><b>' + esc(p.label) + "</b><small>" + esc(floorName(p.floor_id)) + (p.model ? " · " + esc(p.model) : "") +
+            (!o.installed ? ' · <span style="color:#d97706;font-weight:600">not installed yet</span>' : "") + (wait ? " · waiting for signal" : "") + "</small></span>" + stt + "</div>";
+        }).join("") + "</div>";
+    });
+    $("listBody").innerHTML = (html || '<div class="empty">No devices to configure.</div>') + '<div style="height:70px"></div>';
+    $("listBody").querySelectorAll("[data-sel]").forEach(function(r){ r.onclick = function(){ var id = r.dataset.sel; if (st.cfgSel[id]) delete st.cfgSel[id]; else st.cfgSel[id] = 1; renderList(); }; });
+    $("listBody").querySelectorAll("[data-selcat]").forEach(function(b){ b.onclick = function(){
+      var list = all.filter(function(p){ return catOf(p) === b.dataset.selcat; }), on = !list.every(function(p){ return st.cfgSel[p.point_id]; });
+      list.forEach(function(p){ if (on) st.cfgSel[p.point_id] = 1; else delete st.cfgSel[p.point_id]; }); renderList(); }; });
+    var n = Object.keys(st.cfgSel).length;
+    $("cfgN").textContent = n + " selected";
+    $("cfgBar").classList.toggle("on", n > 0);
+  }
+  function bulkConfigure(v){
+    var ids = Object.keys(st.cfgSel); if (!ids.length || !canConfig()) return;
+    needName(function(){
+      enqueue({ kind:"bulk", step:"configured", done:v, ids:ids }).then(function(){ toast(ids.length + " point" + (ids.length > 1 ? "s" : "") + (v ? " marked configured" : " marked not configured")); });
+      st.cfgSel = {}; render();
+    });
   }
   $("q").addEventListener("input", renderList);
 
@@ -929,9 +994,10 @@
       var list = all.filter(function(p){ return catOf(p) === k; }); if (!list.length) return "";
       var c = counts(list), col = list[0].color, ic = list[0] ? miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"') : "";
       var head = '<div class="h"><span>' + ic + CATS[k].name + "</span><small>" + c.d + " / " + c.n + " done</small></div>";
-      if (k !== "cam") return '<div class="catc">' + head + '<div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
-      // cameras: one bar per step
-      var n = list.length, sb = ["installed","aligned","configured"].map(function(x){ var d = list.filter(function(p){ return state(p)[x]; }).length, pc = n ? Math.round(d / n * 100) : 0;
+      var vs = visibleSteps(list[0]);
+      if (vs.length < 2) return '<div class="catc">' + head + '<div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
+      // one bar per step (installed, aligned for cameras, configured for the engineer and manager)
+      var n = list.length, sb = vs.map(function(x){ var d = list.filter(function(p){ return state(p)[x]; }).length, pc = n ? Math.round(d / n * 100) : 0;
         return "<span>" + STEP_L[x] + '</span><div class="bar' + (x === "aligned" ? " al" : x === "configured" ? " cf" : "") + '"><i style="width:' + pc + '%"></i></div><span>' + d + " / " + n + "</span>"; }).join("");
       return '<div class="catc">' + head + '<div class="sbars">' + sb + "</div></div>";
     }).join("") + "</div>";
@@ -967,7 +1033,8 @@
   }
 
   // ---- activity (site + Asana)
-  var ACT = { installed:"installed", uninstalled:"un-ticked", aligned:"aligned", unaligned:"un-ticked the alignment of", configured:"configured", unconfigured:"un-ticked the configuration of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
+  var ACT = { installed:"installed", uninstalled:"un-ticked", aligned:"aligned", unaligned:"un-ticked the alignment of", configured:"configured", unconfigured:"un-ticked the configuration of",
+    "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
     "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing" };
   function renderActivity(){
@@ -1031,11 +1098,11 @@
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = p.label; $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
     var h = "", pendStatus = pend.some(function(i){ return i.kind === "status"; });
-    if (stepsOf(p).length > 1){
-      // cameras: 1 installed, 2 aligned (technician), 3 configured (site engineer) — each ticked on its own, with who and when
-      h += '<div class="steps">' + stepsOf(p).map(function(x, i){
+    if (visibleSteps(p).length > 1){
+      // installed (+ aligned for cameras) by the technician, configured by the site engineer — each ticked on its own, with who and when
+      h += '<div class="steps">' + visibleSteps(p).map(function(x, i){
         var on = o[x], wait = stepWaiting(p, x), by = p[x + "_by"], at = p[x + "_at"];
-        var sub = wait ? "Waiting for signal to upload" : on ? whoTxt(by, at) || "Done" : x === "configured" ? "Site engineer, after alignment" : x === "aligned" ? (o.installed ? "Next: aim and lock the camera" : "After installing") : "Fix the camera in place";
+        var sub = wait ? "Waiting for signal to upload" : on ? whoTxt(by, at) || "Done" : x === "configured" ? "Site engineer" : x === "aligned" ? (o.installed ? "Next: aim and lock the camera" : "After installing") : p.cat === "cam" ? "Fix the camera in place" : "Technician";
         var btn = !canStep(x) ? (x === "configured" && !on ? '<span class="lock">Site engineer</span>' : "")
           : on ? '<button type="button" class="go undo" data-step="' + x + '" data-v="0">Undo</button>'
           : '<button type="button" class="go' + (x === "configured" ? " cfg" : "") + '" data-step="' + x + '" data-v="1">' + STEP_DO[x] + "</button>";
@@ -1125,6 +1192,8 @@
     $("nameModal").classList.add("on"); $("nameIn").focus();
     $("nameOk").onclick = function(){ var n = $("nameIn").value.trim(); if (!n){ $("nameIn").focus(); return; } try { localStorage.setItem("et_site_name", n); } catch(e){} $("nameModal").classList.remove("on"); cb(); };
   }
+  $("cfgYes").onclick = function(){ bulkConfigure(true); };
+  $("cfgNo").onclick = function(){ bulkConfigure(false); };
   function setStep(p, step, v){
     step = step || "installed";
     if (!canStep(step)) return;

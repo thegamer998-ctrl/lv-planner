@@ -89,9 +89,9 @@ Do this once on each office device. The **Quote** dialog uses the same server.
 
    | Role | Can do |
    |---|---|
-   | **Technician** (e.g. Kutbuddin) | tick **Installed** on every point, and **Aligned** on cameras; photos, notes, site reports, Asana stages and comments |
-   | **Site engineer** (e.g. Idris) | everything a technician can, plus **Configured** on cameras; a **To configure** filter on the plan |
-   | **Manager** (e.g. Husain) | everything, plus office-only stages (payments), approving site reports, the customer and team links, and managing the team |
+   | **Technician** (e.g. Kutbuddin) | only his own work: **Installed** on every point and **Aligned** on cameras; photos, notes, site reports, Asana stages and comments. He never sees **Configured**. |
+   | **Site engineer** (e.g. Idris) | **Configured** on access points, cameras, IP phones, intercom and the network cabinet, many at once (**Checklist → Configuration → Select all → Mark configured**). He can also correct technician ticks. Has a **To configure** filter on the plan. |
+   | **Manager** (e.g. Husain) | sees everything, including office-only stages (payments); approves site reports; manages the team and links |
 
    A personal link opens all the projects. Every tick, photo and note shows the person's name and role. Press ✕ to stop someone's link.
 3. **Other links** (in the planner's **Site** window):
@@ -101,12 +101,9 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - Enter the office key once on each device.
    - It lists every project with progress, open site reports, Asana stages, the next stage and the status.
    - Open a project to see everything, including office-only tasks such as payments.
-5. **Cameras: three ticks.** In the app each camera has three steps:
-   1. **Installed**: the technician fixed it
-   2. **Aligned**: the technician aimed and locked it
-   3. **Configured**: the site engineer adopted, named and set recording
-
-   A camera counts as done for the installation only when it is installed **and** aligned. Ticking Aligned also ticks Installed. Unticking Installed clears the later steps.
+5. **Who ticks what.** Nobody ticks for anyone else.
+   - **Technician:** **Installed** on every point, plus **Aligned** on cameras. A camera counts as done only when it is installed **and** aligned. Ticking Aligned also ticks Installed, and unticking Installed clears Aligned, since both are his own.
+   - **Site engineer:** **Configured** on access points, cameras, IP phones, intercom and the network cabinet. He does it in bulk: **Checklist → Configuration**, **Select all** on a device type, then **Mark configured**. His ticks never change the technician's, and the technician's never change his.
 6. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
    - When every point of a kind has a step ticked, the matching Asana subtask is completed with a comment. The subtask is found by its name:
 
@@ -116,6 +113,9 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    | cameras are installed | **Cameras Installation** (any name with "camera" and "install") |
    | cameras are aligned | **Cameras Alignment** (any name with "camera" and "align") |
    | cameras are configured | **CCTV - Camera Naming…** or **Camera Adoption** |
+   | access points are configured | a name with "Wi-Fi" or "access point" and "config", "setup" or "SSID" |
+   | IP phones / intercom are configured | a name with "phone" / "intercom" and "config" or "setup" |
+   | the network cabinet is configured | a name with "switch", "gateway", "UDM" or "UNVR" and "config" |
    | data points are installed | a name with "data point" or "network point" |
 
    - Add **Cameras Installation** and **Cameras Alignment** as subtasks in the villa template, so every new project has them.

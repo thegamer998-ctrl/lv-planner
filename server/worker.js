@@ -46,27 +46,32 @@ async function ensureSchema(db) {
   schemaReady = true;
 }
 
-// The work steps of each point. Cameras: the technician installs it, then aligns it; the site engineer then configures it.
-// Every other point has one step: installed. A point counts as done for the installation team when all its "team" steps are ticked.
+// The work steps of each point. Technician: installed (and aligned, for cameras). Site engineer: configured, for every
+// device that is set up in software (access points, cameras, IP phones, intercom, the network cabinet).
+// Nobody ticks for anyone: technicians can't tick "configured"; the engineer and the manager can change everything.
+// A point counts as done for the installation when all its technician steps are ticked.
 const STEPS = {
   installed:  { label: "Installed",  who: "team" },
   aligned:    { label: "Aligned",    who: "team" },
   configured: { label: "Configured", who: "engineer" }
 };
-function stepsOf(cat) { return cat === "cam" ? ["installed", "aligned", "configured"] : ["installed"]; }
+const CONFIG_CATS = ["ap", "cam", "phone", "icom", "rack"];
+function stepsOf(cat) { return cat === "cam" ? ["installed", "aligned", "configured"] : CONFIG_CATS.includes(cat) ? ["installed", "configured"] : ["installed"]; }
+function canTick(role, step) { return STEPS[step].who === "engineer" ? ["office", "manager", "engineer"].includes(role) : role !== "customer"; }
 const ROLE_NAME = { office: "Office", manager: "Manager", engineer: "Site engineer", tech: "Technician", team: "Team", customer: "Customer" };
 
 // Point categories (the planner's VLAN groups) and the Asana subtask each completes when every point of it is installed
 // (per step: cameras have separate Asana steps for installation, alignment and configuration/naming)
 const CATS = {
-  ap:    { name: "Access points", asana: { installed: /access point.*install|install.*access point|ceiling access point/i } },
+  ap:    { name: "Access points", asana: { installed: /access point.*install|install.*access point|ceiling access point/i,
+                                           configured: /(access point|wi-?fi)[^,]*\b(config|configuration|setup|ssids?)\b|\bssids?\b/i } },
   cam:   { name: "Cameras",       asana: { installed: /camera.*install|install.*camera|cctv.*install/i,
                                            aligned: /camera.*align|align.*camera|cctv.*align/i,
                                            configured: /(camera|cctv)[^,]*\b(naming|adoption|adopt)\b|\bcameras? (config|configuration|setup)\b/i } },
   data:  { name: "Data points",   asana: { installed: /data point|network point/i } },
-  phone: { name: "IP phones",     asana: { installed: /phone.*install|install.*phone/i } },
-  icom:  { name: "Intercom",      asana: { installed: /intercom|door entry/i } },
-  rack:  { name: "Cabinet",       asana: {} },
+  phone: { name: "IP phones",     asana: { installed: /phone.*install|install.*phone/i, configured: /phone[^,]*\b(config|configuration|setup|extensions?)\b/i } },
+  icom:  { name: "Intercom",      asana: { installed: /intercom.*install|install.*intercom|door entry/i, configured: /intercom[^,]*\b(config|configuration|setup)\b/i } },
+  rack:  { name: "Cabinet",       asana: { configured: /(switch|gateway|udm|unvr|network)[^,]*\b(config|configuration|setup)\b|\b(config|configure|configuration)\b[^,]*(switch|gateway|udm|unvr)/i } },
   other: { name: "Other",         asana: {} }
 };
 // money / admin tasks: shown in the office view only
@@ -237,11 +242,8 @@ export default {
           const b = await req.json();
           const step = b.step || "installed", done = (b.done != null ? b.done : b.installed) ? 1 : 0, t = now();
           if (!stepsOf(pt.cat).includes(step)) return json({ error: "This point has no " + step + " step" }, 400);
-          if (STEPS[step].who === "engineer" && !(officeLike || role === "engineer")) return json({ error: "Only the site engineer can tick " + STEPS[step].label }, 403);
-          // order: aligned or configured implies installed; un-ticking installed clears the later steps
-          const set = { [step]: done };
-          if (done && step !== "installed" && !pt.installed) set.installed = 1;
-          if (!done && step === "installed") for (const s of stepsOf(pt.cat)) if (s !== "installed" && pt[s]) set[s] = 0;
+          if (!canTick(role, step)) return json({ error: "Only the site engineer can tick " + STEPS[step].label }, 403);
+          const set = stepSet(pt, step, done);
           for (const s of Object.keys(set)) {
             await db.prepare(`UPDATE points SET ${s} = ?, ${s}_by = ?, ${s}_at = ? WHERE project_id = ? AND point_id = ?`)
               .bind(set[s], set[s] ? by : null, set[s] ? t : null, pid, ptid).run();
@@ -254,6 +256,36 @@ export default {
         }
         if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, ptid, by, pt.label, byRole));
         if (mm[2] === "note") return json(await saveNote(db, req, pid, ptid, by, pt.label, byRole));
+      }
+      // many points at once (the site engineer configures all access points, all cameras… together)
+      if (rest === "bulk" && req.method === "POST") {
+        if (!canEdit) return json({ error: "View only" }, 403);
+        const b = await req.json(), step = String(b.step || ""), done = b.done ? 1 : 0, t = now();
+        if (!STEPS[step]) return json({ error: "Unknown step" }, 400);
+        if (!canTick(role, step)) return json({ error: "Only the site engineer can tick " + STEPS[step].label }, 403);
+        const ids = (Array.isArray(b.ids) ? b.ids : []).slice(0, 500).map(String);
+        const cats = {}, changed = [], kinds = {};
+        for (const id of ids) {
+          const pt = await db.prepare("SELECT * FROM points WHERE project_id = ? AND point_id = ? AND active = 1").bind(pid, id).first();
+          if (!pt || !stepsOf(pt.cat).includes(step)) continue;
+          const set = stepSet(pt, step, done);
+          for (const s of Object.keys(set)) {
+            if (!!pt[s] === !!set[s]) continue;
+            await db.prepare(`UPDATE points SET ${s} = ?, ${s}_by = ?, ${s}_at = ? WHERE project_id = ? AND point_id = ?`)
+              .bind(set[s], set[s] ? by : null, set[s] ? t : null, pid, id).run();
+            (cats[pt.cat] = cats[pt.cat] || new Set()).add(s); if (s === step) { changed.push(pt.label); kinds[pt.cat] = (kinds[pt.cat] || 0) + 1; }
+          }
+        }
+        if (changed.length) {
+          // e.g. "14 access points, 8 cameras"
+          const NOUN = { ap: ["access point", "access points"], cam: ["camera", "cameras"], phone: ["IP phone", "IP phones"], icom: ["intercom", "intercoms"],
+            rack: ["network cabinet", "network cabinets"], data: ["data point", "data points"], other: ["point", "points"] };
+          const what = Object.keys(kinds).map(c => kinds[c] + " " + (NOUN[c] || NOUN.other)[kinds[c] === 1 ? 0 : 1]).join(", ");
+          await log("bulk-" + stepAction(step, done), "", what);
+          await touch(db, pid);
+          if (asanaOn) ctx.waitUntil((async () => { for (const c of Object.keys(cats)) for (const s of cats[c]) await asanaPush(db, env, proj, c, s, by); })().catch(e => console.log("asana push", e)));
+        }
+        return json({ ok: true, changed: changed.length });
       }
       // site reports (technician pins: extra point found, point not on site, other)
       if (rest === "issue" && req.method === "POST") {
@@ -370,6 +402,14 @@ function clamp01(v) { v = +v; return isFinite(v) ? Math.max(0, Math.min(1, v)) :
 function toBytes(v) { if (Array.isArray(v)) return new Uint8Array(v); return v; }
 function safeJson(s) { try { return JSON.parse(s || "{}") || {}; } catch (e) { return {}; } }
 async function touch(db, pid) { await db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").bind(now(), pid).run(); }
+// what one tick changes: aligned also means installed (both the technician's own work); un-ticking installed also clears
+// aligned. "Configured" is the engineer's and is never set or cleared by a technician's tick.
+function stepSet(pt, step, done) {
+  const set = { [step]: done };
+  if (done && step === "aligned" && !pt.installed) set.installed = 1;
+  if (!done && step === "installed" && pt.aligned) set.aligned = 0;
+  return set;
+}
 function stepAction(step, done) { return step === "installed" ? (done ? "installed" : "uninstalled") : (done ? step : "un" + step); }
 async function addLog(db, pid, by, action, ptid, detail, byRole) {
   await db.prepare("INSERT INTO log (project_id, at, by_name, action, point_id, detail, by_role) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(pid, now(), by, action, ptid, detail || "", byRole || "").run();
