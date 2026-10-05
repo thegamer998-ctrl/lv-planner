@@ -1,0 +1,84 @@
+# ExpressTech server: setup guide
+
+One free Cloudflare Worker runs two things for the LV Planner:
+
+- **Site app.** Technicians tick points, take photos and add notes on their phones. Customers follow progress. Asana stays in sync.
+- **Direct Zoho quotes.** The planner's **Quote → Create in Zoho now** button.
+
+Everything lives in your Cloudflare account. The free plan is enough and needs no card.
+- Photos and data are stored in a Cloudflare **D1** database (5 GB free).
+- Photos are shrunk on the phone to about 300 KB each, so that's roughly 15,000 photos.
+
+Setup takes about 20 minutes, once.
+
+---
+
+## 1. Create the Worker
+1. Go to **https://dash.cloudflare.com** and sign up or sign in.
+2. Open **Workers & Pages**, click **Create**, then **Create Worker**. Name it `expresstech` and click **Deploy**.
+3. Click **Edit code**, delete what's there, and paste all of `worker.js` from this folder. Click **Deploy**.
+4. Copy the Worker address, for example `https://expresstech.yourname.workers.dev`.
+
+## 2. Create the database and connect it
+1. In the Cloudflare menu, go to **Storage & Databases → D1** and click **Create database**. Name it `expresstech`.
+2. Open your Worker and go to **Settings → Bindings**. Click **Add → D1 database**.
+   - **Variable name:** `DB` (exactly).
+   - **Database:** `expresstech`.
+3. Click **Save**. The tables are created automatically on first use.
+
+## 3. Add the settings
+In the Worker, go to **Settings → Variables and Secrets** and add:
+
+| Name | Type | Value | Needed for |
+|---|---|---|---|
+| `ADMIN_KEY` | Secret | a long password you make up (the **office key**) | everything |
+| `ALLOWED_ORIGIN` | Text | `https://thegamer998-ctrl.github.io` | everything |
+| `ASANA_TOKEN` | Secret | your Asana personal access token (step 4) | Asana sync |
+| `ZOHO_CLIENT_ID` | Secret | from the Zoho API console (step 5) | Zoho quotes |
+| `ZOHO_CLIENT_SECRET` | Secret | from the Zoho API console | Zoho quotes |
+| `ZOHO_REFRESH_TOKEN` | Secret | from step 5 | Zoho quotes |
+| `ZOHO_DC` | Text | `com` (or `sa` / `eu` / `in`, the ending of your Zoho Books address) | Zoho quotes |
+| `ORG_ID` | Text | `716314143` | Zoho quotes |
+| `TEMPLATE_ID` | Text | `2276818000000071050` | Zoho quotes |
+| `SALESPERSON` | Text | `Hussain Kazi` | Zoho quotes |
+
+Click **Deploy** after adding them. You can start with only `ADMIN_KEY` and `ALLOWED_ORIGIN`, so the site app works, and add Asana and Zoho later.
+
+## 4. Asana token (for the sync)
+1. In Asana, click your photo, then **Settings → Apps → Developer apps → Personal access tokens**. On some accounts the page is at https://app.asana.com/0/my-apps.
+2. Click **Create new token**, name it `ExpressTech Site`, and copy it into `ASANA_TOKEN`.
+
+Ticks from the site app will show in Asana as coming from this account.
+
+## 5. Zoho (for "Create in Zoho now")
+1. Go to **https://api-console.zoho.com**. Click **Add Client**, choose **Self Client**, then **Create**. Copy the Client ID and Client Secret.
+2. Open the **Generate Code** tab and fill it in:
+   - **Scope:** `ZohoBooks.estimates.CREATE,ZohoBooks.contacts.READ,ZohoBooks.contacts.CREATE,ZohoBooks.settings.READ`
+   - **Time duration:** 10 minutes
+3. Click **Create**, pick Express Tech, and copy the code.
+4. Within 10 minutes, open **Terminal** on the Mac and run this one line, with your values filled in:
+   ```
+   curl -s -X POST "https://accounts.zoho.com/oauth/v2/token?grant_type=authorization_code&client_id=CLIENT_ID&client_secret=CLIENT_SECRET&code=CODE"
+   ```
+5. Copy the `refresh_token` from the reply into `ZOHO_REFRESH_TOKEN`.
+
+## 6. Connect the planner
+1. In the planner, click **Site** and open **ExpressTech server**.
+2. Paste the Worker address and the office key (`ADMIN_KEY`), then click **Save**.
+
+Do this once on each office device. The **Quote** dialog uses the same server.
+
+---
+
+## Using it
+1. **Publish.** Open the project in the planner, click **Site**, then **Publish to site**. The drawings and points go up.
+2. **Send the links.**
+   - **Team link:** for technicians. They can tick, take photos and add notes. The first time, the phone asks for their name.
+   - **Customer link:** view only, with progress, photos and stages. It never shows the team link or payment tasks.
+3. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
+   - When every point of a kind is ticked, the matching subtask is completed with a comment. For example, all APs ticked completes **Ceiling Access Points Installation**, and all cameras ticked completes a subtask with "camera install" in its name.
+   - Unticking reopens it.
+   - The Asana stages show in the site app's **Progress** tab, refreshed every 5 minutes. Payment and invoice tasks are hidden.
+4. **Changes to the design.** Click **Update site**. Ticks, photos and notes on existing points are kept.
+5. **No signal on site** (basements). Ticks, notes and photos wait on the phone and upload by themselves when the signal returns.
+6. **Lost a link?** Open **Site** in the planner to copy it again. Links can be reset from the server if one is shared by mistake.

@@ -1,10 +1,10 @@
-// LV Planner offline cache - v2
+// LV Planner offline cache - v4 (planner + site app)
 // The app page itself: always fetched fresh when online (you get updates immediately);
 // the saved copy is only used when there's no internet.
 // Libraries and icons: served from the saved copy, refreshed in the background.
-var CACHE = "lvplanner-v3";
+var CACHE = "lvplanner-v4";
 var SHELL = [
-  "./", "./index.html", "./manifest.webmanifest",
+  "./", "./index.html", "./site.html", "./manifest.webmanifest",
   "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
@@ -24,23 +24,26 @@ self.addEventListener("activate", function(e){
   }).then(function(){ return self.clients.claim(); }));
 });
 function isAppPage(req, url){
+  if (url.origin !== self.location.origin) return false;
   if (req.mode === "navigate") return true;
-  return url.origin === self.location.origin && (/\/$/.test(url.pathname) || /index\.html$/.test(url.pathname));
+  return /\/$/.test(url.pathname) || /(index|site)\.html$/.test(url.pathname);
 }
+function pageKey(url){ return /site\.html$/.test(url.pathname) ? "./site.html" : "./index.html"; }
 self.addEventListener("fetch", function(e){
   var req = e.request;
   if (req.method !== "GET") return;
   var url = new URL(req.url);
-  if (url.hostname === "api.anthropic.com") return;
+  // only our own pages and the cdnjs libraries are cached; server data (ticks, photos, quotes) always comes live
+  if (url.origin !== self.location.origin && url.hostname !== "cdnjs.cloudflare.com") return;
 
   if (isAppPage(req, url)){
     e.respondWith(
       fetch(new Request(url.href, { cache:"no-store", credentials:"same-origin" })).then(function(res){
-        if (res && res.ok){ var copy = res.clone(); caches.open(CACHE).then(function(c){ c.put("./index.html", copy); }); }
+        if (res && res.ok){ var copy = res.clone(); caches.open(CACHE).then(function(c){ c.put(pageKey(url), copy); }); }
         return res;
       }).catch(function(){
         return caches.open(CACHE).then(function(c){
-          return c.match(req).then(function(hit){ return hit || c.match("./index.html"); });
+          return c.match(pageKey(url)).then(function(hit){ return hit || c.match(req); });
         });
       })
     );
