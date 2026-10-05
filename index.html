@@ -657,6 +657,11 @@
   .rk-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px; }
   .rk-grid label{ font-size:10.5px; color:var(--text-dim); font-weight:650; text-transform:uppercase; letter-spacing:.05em; display:block; }
   .rk-grid select{ width:100%; margin:3px 0 0; padding:6px 5px; }
+  .rk-vlans{ margin:0 0 12px; border:1px solid var(--hairline); border-radius:10px; padding:8px 10px; } .rk-vlans summary{ cursor:pointer; font-size:12px; font-weight:650; }
+  .vl-row{ display:flex; align-items:center; gap:6px; margin:6px 0; } .vl-row input[type=color]{ width:28px; height:26px; padding:0; border:1px solid var(--hairline-2); border-radius:6px; background:none; flex-shrink:0; }
+  .vl-row input[type=text]{ flex:1; min-width:0; height:28px; border:1px solid var(--hairline-2); border-radius:7px; background:var(--bg-panel-raised); color:var(--text-main); padding:0 7px; font-size:12px; }
+  .vl-row input[type=number]{ width:58px; height:28px; border:1px solid var(--hairline-2); border-radius:7px; background:var(--bg-panel-raised); color:var(--text-main); padding:0 5px; font-size:12px; } .vl-row span{ font-size:10.5px; color:var(--text-muted); }
+  .rv-vlans{ display:flex; flex-wrap:wrap; gap:6px 12px; margin:10px 2px 2px; font-size:11.5px; } .rv-vlans span{ display:inline-flex; align-items:center; gap:5px; } .rv-vlans i{ width:10px; height:10px; border-radius:3px; box-shadow:0 0 6px currentColor; display:inline-block; } .rv-vlans small{ color:var(--text-muted); }
   .rk-cabtog{ display:flex; align-items:center; gap:7px; font-size:12px; margin:0 0 10px; cursor:pointer; } .rk-cabtog input{ width:15px; height:15px; margin:0; accent-color:var(--accent); } .rk-cabtog small{ color:var(--text-muted); }
   .rk-floors{ display:flex; gap:5px; flex-wrap:wrap; margin:4px 0 10px; }
   .rk-floors button{ border:1px solid var(--hairline-2); background:var(--bg-panel); border-radius:14px; padding:3px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); }
@@ -774,7 +779,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.8</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.9</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -966,7 +971,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.8</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.9</p>
     </section>
   </aside>
 
@@ -2440,7 +2445,7 @@
 
   function projectJsonBlob(){ return new Blob([JSON.stringify(projectObject(true))], { type:"application/json" }); }
   function projectObject(withPdf){
-    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, cableCalc: project.cableCalc, cableLib: { custom: CABLE_LIB.custom }, floors: project.floors.map(function(f){
+    var out = { name: project.name, customTypes: project.customTypes, typeSizeDefaults: project.typeSizeDefaults, revisions: project.revisions, racks: project.racks, vlans: project.vlans || null, cableCalc: project.cableCalc, cableLib: { custom: CABLE_LIB.custom }, floors: project.floors.map(function(f){
       return { id:f.id, name:f.name, fileName:f.fileName, pdfBase64:withPdf ? f.pdfBase64 : null, currentPage:f.currentPage,
         markers:f.markers, walls:f.walls, measurements:f.measurements, cableRoutes:f.cableRoutes,
         scaleByPage:f.scaleByPage, heatmapOn:f.heatmapOn, environment:f.environment, legendByPage:f.legendByPage, showCameraCones:f.showCameraCones };
@@ -2556,6 +2561,7 @@
       project.typeSizeDefaults = parsed.typeSizeDefaults || {};
       project.revisions = parsed.revisions || [];
       project.racks = Array.isArray(parsed.racks) ? parsed.racks : [];
+      project.vlans = parsed.vlans || null;
       project.cableCalc = parsed.cableCalc || null;
       mergeCableLib(parsed.cableLib);
       ui.placeRack = "";
@@ -6323,21 +6329,31 @@
         if (fc.rows){ var gR = portRowSvg(left, cy, right - left, ch, e.ports, fc.rows, {}); out += gR.svg; geo.rj = gR.pos; }
         if (fc.sfp){ var gS = sfpCagesSvg(x + bodyW - pad - sf.w, cy, ch, fc.sfp, fc.sfpRows); out += gS.svg; geo.sfp = gS.pos; }
       } else if (e.kind === "gw"){
-        // Real layout (UDM Pro / SE / Pro Max): drive bay(s) at the left, then the touchscreen,
-        // then LAN 1–8 (2×4), the RJ45 WAN and the two SFP+ ports at the far right
-        var bays = e.sku === "UDM-Pro-Max" ? 2 : (/UDM/.test(e.sku) && e.sku !== "UDM-Beast" ? 1 : 0);
-        var bayW = 100;
-        for (var bI=0;bI<bays;bI++) out += driveBaySvg(x + pad + bI*(bayW+4), y + 5, bayW, h - 10);
         var lanN = e.sku === "EFG" ? 2 : (e.sku.indexOf("UCG") === 0 ? 4 : 8);
-        var pitch = 14.4, lanW = lanN/2*pitch - 2.4, ss2 = Math.min(24, h - 12);
-        var sfpX = x + w - pad - (19*1);                                   // SFP+ 10 / 11 stacked, far right
-        var gGs = sfpCagesSvg(sfpX, cy, ch, 2, 2); out += gGs.svg; geo.sfp = gGs.pos.slice().reverse();   // SFP+ LAN (lower cage) first
-        var wanX = sfpX - 6 - 12;
-        out += portRowSvg(wanX, cy, 12, ch, 1, 2, {}).svg;                 // port 9 (WAN), top position
-        var lanX = wanX - 6 - lanW;
-        var gL = portRowSvg(lanX, cy, lanW, ch, lanN, 2, {}); out += gL.svg; geo.rj = gL.pos;   // LAN 1–8
-        if (e.sku.indexOf("UDM") === 0) out += screenBlockSvg(lanX - 10 - 44, y, h, 44, e);
-        else if (e.sku === "EFG") out += screenSvg(lanX - 8 - ss2, y + (h - ss2)/2, ss2);
+        if (/^UDM/.test(e.sku)){
+          // UDM Pro / SE / Pro Max front, left to right (Ubiquiti quick start guide):
+          // 1.3" touchscreen (model name under it) · LAN 1–8 (2×4) · port 9 RJ45 Internet · SFP+ 10 Internet (top) / 11 LAN (bottom)
+          // · then the 3.5" drive bay(s) at the right (Pro Max: two bays side by side) with the reset pinhole beside them
+          var colW = 44, left = x + pad - 2;
+          out += screenBlockSvg(left, y, h, colW, e); left += colW + 6;
+          var lanPitch = 16.2, lanW = lanN/2*lanPitch - 2.4;
+          var gL = portRowSvg(left, cy, lanW, ch, lanN, 2, {}); out += gL.svg; geo.rj = gL.pos; left += lanW + 7;          // LAN 1–8
+          var gW = portRowSvg(left, cy, gL.pw, ch, 1, 2, {}); out += gW.svg; left += gL.pw + 7;                            // 9 Internet
+          var gGs = sfpCagesSvg(left, cy, ch, 2, 2); out += gGs.svg; geo.sfp = gGs.pos.slice().reverse(); left += gGs.w; // 10 / 11 (LAN first)
+          var bays = e.sku === "UDM-Pro-Max" ? 2 : (e.sku === "UDM-Beast" ? 0 : 1), bayW = 106;
+          var bayX0 = x + w - pad - bays*bayW - (bays-1)*4;
+          for (var bI=0;bI<bays;bI++) out += driveBaySvg(bayX0 + bI*(bayW+4), y + 5, bayW, h - 10);
+          if (bays) out += '<circle cx="'+(bayX0 - 9).toFixed(1)+'" cy="'+(y + h - 9).toFixed(1)+'" r="1.6" fill="#9aa1a9" stroke="#7d848c" stroke-width="0.4"/>';   // reset
+        } else {
+          var pitch = 14.4, lanW2 = lanN/2*pitch - 2.4, ss2 = Math.min(24, h - 12);
+          var sfpX = x + w - pad - 19;
+          var gGs2 = sfpCagesSvg(sfpX, cy, ch, 2, 2); out += gGs2.svg; geo.sfp = gGs2.pos.slice().reverse();
+          var wanX = sfpX - 6 - 12;
+          out += portRowSvg(wanX, cy, 12, ch, 1, 2, {}).svg;
+          var lanX = wanX - 6 - lanW2;
+          var gL2 = portRowSvg(lanX, cy, lanW2, ch, lanN, 2, {}); out += gL2.svg; geo.rj = gL2.pos;
+          if (e.sku === "EFG") out += screenSvg(lanX - 8 - ss2, y + (h - ss2)/2, ss2);
+        }
       } else {
         var nb = NVR_BAYS[e.sku] || 4, left3 = x + pad;
         if (/Pro|ENVR/.test(e.sku)){ var ss3 = Math.min(24, RK.U - 12); out += screenSvg(left3, y + (RK.U - ss3)/2, ss3); left3 += ss3 + 6; }
@@ -6400,6 +6416,29 @@
     return byUid;
   }
 
+  /* ---------- VLANs: each kind of point has its own network and Etherlighting colour (editable per project) ---------- */
+  var VLAN_GROUPS = [
+    ["ap",    "Access points", 1,  "#3b82f6"],
+    ["cam",   "Cameras",       20, "#ef4444"],
+    ["data",  "Data points",   30, "#22c55e"],
+    ["phone", "IP phones",     40, "#a855f7"],
+    ["icom",  "Intercom",      50, "#f59e0b"]
+  ];
+  function vlans(){
+    var v = project.vlans || {}, out = {};
+    VLAN_GROUPS.forEach(function(g){ var c = v[g[0]] || {}; out[g[0]] = { name: c.name || g[1], id: c.id != null && c.id !== "" ? c.id : g[2], color: c.color || g[3] }; });
+    return out;
+  }
+  function vlanKeyOf(m){
+    if (!m) return "data";
+    if (isWifiType(m.type)) return "ap";
+    if (isCameraType(m.type)) return "cam";
+    if (m.type === "ipphone") return "phone";
+    if (m.type === "intercom" || m.type === "intercomscreen" || m.type === "smartlock") return "icom";
+    return "data";
+  }
+  function vlanColorOf(m){ return vlans()[vlanKeyOf(m)].color; }
+
   /* ---------- Cables drawn on the rack: DAC uplinks + patch cords (Etherlighting = coloured) ---------- */
   var RK_GEO = null;
   function rackCablesOn(){ try { return localStorage.getItem("lvplanner_rackcables") !== "0"; } catch(e){ return true; } }
@@ -6453,7 +6492,7 @@
         var jp = g.rj[i]; if (!pt.dev || !jp) return;
         var order = twoRow ? (jp.top ? above.concat(below) : below.concat(above)) : below.concat(above);
         var pn = order.find(function(x){ return x.take.length < x.jacks.length; });
-        if (pn) pn.take.push({ p:jp, color:pt.dev.color || "#3b82f6", el:elc, cable: pt.dev.m ? cabledOf(pt.dev.m) : "cat6" });
+        if (pn) pn.take.push({ p:jp, color: pt.dev.m ? vlanColorOf(pt.dev.m) : (pt.dev.color || "#3b82f6"), el:elc, cable: pt.dev.m ? cabledOf(pt.dev.m) : "cat6" });
       });
     });
     var cords = [];
@@ -6507,7 +6546,12 @@
         // SFP+ DAC: metal module in each cage with a pull tab, thick black cable looping out to the right
         var mods = [l.a, l.b].map(function(p){ return { x:p.x + p.w + 5, y:p.y + p.h/2 }; });
         var bulge = Math.max(mods[0].x, mods[1].x) + 20 + Math.min(26, Math.abs(mods[1].y - mods[0].y) * 0.07);
-        var d = 'M'+mods[0].x.toFixed(1)+' '+mods[0].y.toFixed(1)+' C'+bulge.toFixed(1)+' '+mods[0].y.toFixed(1)+' '+bulge.toFixed(1)+' '+mods[1].y.toFixed(1)+' '+mods[1].x.toFixed(1)+' '+mods[1].y.toFixed(1);
+        var d;
+        if (mods[1].x - mods[0].x > 60){   // gateway SFP+ sits left of the switch's: dress the cable along the gateway's lower edge, then down the right side
+          var A = mods[0], B = mods[1], yRun = A.y + 10.5, xr = bulge;
+          d = 'M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' C'+(A.x+9).toFixed(1)+' '+A.y.toFixed(1)+' '+(A.x+9).toFixed(1)+' '+yRun.toFixed(1)+' '+(A.x+20).toFixed(1)+' '+yRun.toFixed(1)+
+              ' L'+(xr-22).toFixed(1)+' '+yRun.toFixed(1)+' C'+xr.toFixed(1)+' '+yRun.toFixed(1)+' '+xr.toFixed(1)+' '+B.y.toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1);
+        } else d = 'M'+mods[0].x.toFixed(1)+' '+mods[0].y.toFixed(1)+' C'+bulge.toFixed(1)+' '+mods[0].y.toFixed(1)+' '+bulge.toFixed(1)+' '+mods[1].y.toFixed(1)+' '+mods[1].x.toFixed(1)+' '+mods[1].y.toFixed(1);
         cordsSvg += '<path d="'+d+'" fill="none" stroke="#020203" stroke-width="5.6" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#25292f" stroke-width="3.8" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#5b626b" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.8" transform="translate(-0.6,-0.8)"/>';
         [l.a, l.b].forEach(function(p){
           plugsSvg += sr(p.x - 0.8, p.y + 0.6, p.w + 5.5, p.h - 1.2, "#cfd4da", ' rx="0.8" stroke="#7d848c" stroke-width="0.55"') +
@@ -6592,6 +6636,9 @@
           '<div><label>Qty · '+hd.bays+' bay'+(hd.bays>1?'s':'')+'</label><select class="select-input" id="rkHddQ">'+q+'</select></div></div>'; })()+
       warns.map(function(w){ return '<p class="rk-warn">'+escapeHtml(w)+'</p>'; }).join("")+
       '<label class="rk-cabtog"><input type="checkbox" id="rkCables"'+(rackCablesOn()?' checked':'')+'> Show cables in the rack <small>(DAC + patch cords)</small></label>'+
+      (function(){ var V = vlans(); return '<details class="rk-vlans"'+(rackUi.vlanOpen?' open':'')+'><summary>VLANs · Etherlighting colours</summary><p class="pane-note">Pro Max ports light up in the colour of each point&rsquo;s VLAN.</p>'+
+        VLAN_GROUPS.map(function(g){ var c = V[g[0]]; return '<div class="vl-row"><input type="color" data-vc="'+g[0]+'" value="'+c.color+'" title="Colour"><input type="text" data-vn="'+g[0]+'" value="'+escapeHtml(c.name)+'" maxlength="24"><span>VLAN</span><input type="number" data-vi="'+g[0]+'" value="'+escapeHtml(String(c.id))+'" min="1" max="4094"></div>'; }).join("") +
+        '<button type="button" class="link-btn" id="vlReset">Reset to defaults</button></details>'; })()+
       '<div class="rk-actions"><button type="button" class="action-btn primary" id="rkSuggest">Suggest from points</button><button type="button" class="action-btn" id="rkClear">Clear</button></div>'+
       (sel && selE ? '<div class="rk-sel"><b>'+escapeHtml(equipName(selE))+'</b><small>U'+sel.pos+(selE.u>1?'–U'+(sel.pos+selE.u-1):'')+' · '+selE.u+'U'+(UBNT.on && !/^(PP|CM|SHELF|BLANK|UPS)/.test(selE.sku) ? ' · '+selE.sku : '')+'</small>'+
         '<div class="row"><button type="button" class="action-btn" id="rkUp">▲ Up</button><button type="button" class="action-btn" id="rkDown">▼ Down</button><button type="button" class="action-btn danger" id="rkRemove">Remove</button></div></div>'
@@ -6616,6 +6663,15 @@
     document.getElementById("rkH").onchange = function(){ rack.height = parseInt(this.value,10); if (rack.height <= 12) rack.mount = "wall"; if (rack.height >= 18) rack.mount = "floor"; renderRacks(); renderHardwareList(); };
     document.getElementById("rkS").onchange = function(){ rack.size = this.value; renderRacks(); renderHardwareList(); };
     document.getElementById("rkM").onchange = function(){ rack.mount = this.value; renderRacks(); renderHardwareList(); };
+    var vlBox = el.rackEditor.querySelector(".rk-vlans");
+    if (vlBox){
+      vlBox.addEventListener("toggle", function(){ rackUi.vlanOpen = vlBox.open; });
+      function setV(k, field, val){ project.vlans = project.vlans || {}; project.vlans[k] = project.vlans[k] || {}; project.vlans[k][field] = val; renderRackView(); }
+      vlBox.querySelectorAll("[data-vc]").forEach(function(i){ i.oninput = function(){ setV(i.getAttribute("data-vc"), "color", i.value); }; });
+      vlBox.querySelectorAll("[data-vn]").forEach(function(i){ i.onchange = function(){ setV(i.getAttribute("data-vn"), "name", i.value.trim()); renderRackView(); }; });
+      vlBox.querySelectorAll("[data-vi]").forEach(function(i){ i.onchange = function(){ var n = parseInt(i.value, 10); setV(i.getAttribute("data-vi"), "id", isNaN(n) ? "" : Math.max(1, Math.min(4094, n))); }; });
+      document.getElementById("vlReset").onclick = function(){ project.vlans = null; renderRacks(); };
+    }
     document.getElementById("rkCables").onchange = function(){ try { localStorage.setItem("lvplanner_rackcables", this.checked ? "1" : "0"); } catch(e){} renderRackView(); };
     var hddSel = document.getElementById("rkHdd"), hddQ = document.getElementById("rkHddQ");
     if (hddSel) hddSel.onchange = function(){ rack.hdd = rack.hdd || {}; rack.hdd.tb = parseInt(this.value,10); renderHardwareList(); };
@@ -6661,6 +6717,7 @@
         '<small>'+r.height+'U · '+escapeHtml(r.size)+' cm · '+(r.mount==="wall"?"wall-mount":"floor-standing")+'</small></div>'+
         '<span class="rv-loc'+(loc?'':' none')+'">'+(loc ? '◉ ' + escapeHtml(loc.f.name) : 'Not placed')+'</span></div>'+
         '<div class="rv-svgbox" data-box="'+r.id+'">'+rackSvg(r, plan, { labels:true, sel: r.id===rackUi.id ? rackUi.sel : null })+'</div>'+
+        (r.items.some(function(it){ return isEtherlightSwitch(it.sku); }) ? '<div class="rv-vlans">'+VLAN_GROUPS.map(function(g){ var c = vlans()[g[0]]; return '<span><i style="background:'+c.color+'"></i>'+escapeHtml(c.name)+' <small>VLAN '+escapeHtml(String(c.id))+'</small></span>'; }).join("")+'</div>' : '')+
         '<div class="rv-foot"><span class="trk"><i style="width:'+Math.min(100, Math.round(used/r.height*100))+'%"></i></span>'+used+' of '+r.height+'U used</div></div>';
     }).join("");
     // Fit the racks side by side on screen (never smaller than ~380px wide; scroll after that)
@@ -7627,7 +7684,7 @@
   var hist = { undo:[], redo:[], last:null, restoring:false, timer:null };
   function stateSig(){
     return JSON.stringify({ f:project.floors.map(function(f){ return { id:f.id, m:f.markers, w:f.walls, ms:f.measurements, c:f.cableRoutes, s:f.scaleByPage }; }),
-      r:project.racks, n:project.name, rev:project.revisions, ct:project.customTypes });
+      r:project.racks, v:project.vlans || null, n:project.name, rev:project.revisions, ct:project.customTypes });
   }
   function histReset(){ hist.undo = []; hist.redo = []; hist.last = stateSig(); refreshUndoButtons(); }
   function histCheck(){
@@ -7653,7 +7710,7 @@
       var f = project.floors.find(function(x){ return x.id === sf.id; }); if (!f) return;
       f.markers = sf.m; f.walls = sf.w; f.measurements = sf.ms; f.cableRoutes = sf.c; f.scaleByPage = sf.s || {}; f.heatmapCache = {};
     });
-    project.racks = st.r || []; project.name = st.n; project.revisions = st.rev || []; project.customTypes = st.ct || {};
+    project.racks = st.r || []; project.vlans = st.v || null; project.name = st.n; project.revisions = st.rev || []; project.customTypes = st.ct || {};
     el.projectNameInput.value = project.name;
     closeEditor(); rebuildTypeList(); renderRevisionList(); renderMarkers(); renderOverlay(); paintHeatmap(); updateAllReadouts();
     if (el.sidePanel.querySelector('.pane[data-pane="racks"]').classList.contains("on")) renderRacks();
