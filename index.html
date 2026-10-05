@@ -774,7 +774,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.7</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-05.8</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -966,7 +966,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.7</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-05.8</p>
     </section>
   </aside>
 
@@ -6224,7 +6224,54 @@
     return out;
   }
   // 1.3" touchscreen: black glass with a thin bezel
-  function screenSvg(x, y, s){ return sr(x, y, s, s, "#08090b", ' rx="2.2"') + sr(x+1.6, y+1.6, s-3.2, s-3.2, "#12161c", ' rx="1.4"'); }
+  // 1.3" touchscreen as on UniFi gear: black glass, centre button with a blue ring, blue cross lines, four small icons
+  function screenSvg(x, y, s){
+    var cx = x + s/2, cy = y + s/2, r = s*0.15, out = sr(x, y, s, s, "#06070a", ' rx="'+(s*0.12).toFixed(1)+'" stroke="#2a2f36" stroke-width="0.6"');
+    out += sr(x+1.2, y+1.2, s-2.4, s-2.4, "#0b0e13", ' rx="'+(s*0.09).toFixed(1)+'"');
+    var ln = ' stroke="#1f6fe5" stroke-width="'+(s*0.03).toFixed(2)+'" stroke-opacity="0.9"';
+    out += '<line x1="'+(x+s*0.12)+'" y1="'+cy+'" x2="'+(cx-r)+'" y2="'+cy+'"'+ln+'/><line x1="'+(cx+r)+'" y1="'+cy+'" x2="'+(x+s*0.88)+'" y2="'+cy+'"'+ln+'/>';
+    out += '<line x1="'+cx+'" y1="'+(y+s*0.12)+'" x2="'+cx+'" y2="'+(cy-r)+'"'+ln+'/><line x1="'+cx+'" y1="'+(cy+r)+'" x2="'+cx+'" y2="'+(y+s*0.88)+'"'+ln+'/>';
+    out += '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r*1.25).toFixed(2)+'" fill="none" stroke="#2f80ff" stroke-width="'+(s*0.035).toFixed(2)+'"/><circle cx="'+cx+'" cy="'+cy+'" r="'+(r*0.75).toFixed(2)+'" fill="#e9eef5"/>';
+    var q = s*0.25, ic = s*0.11;
+    out += sr(x+q-ic/2, y+q-ic/2, ic, ic*0.8, "none", ' rx="0.4" stroke="#cfd6df" stroke-width="'+(s*0.025).toFixed(2)+'"');                     // network
+    out += sr(x+s-q-ic/2, y+q-ic/2, ic*0.35, ic, "#cfd6df") + sr(x+s-q+ic*0.1, y+q-ic*0.15, ic*0.35, ic*0.65, "#cfd6df");                       // stats
+    out += '<circle cx="'+(x+q)+'" cy="'+(y+s-q)+'" r="'+(ic*0.55).toFixed(2)+'" fill="none" stroke="#cfd6df" stroke-width="'+(s*0.025).toFixed(2)+'"/>';   // info
+    out += '<circle cx="'+(x+s-q)+'" cy="'+(y+s-q)+'" r="'+(ic*0.55).toFixed(2)+'" fill="#2f80ff"/>';                                                     // settings
+    return out;
+  }
+  // Model name printed on the front, under the screen (e.g. "USW Pro Max ⚡", "UDM Pro")
+  function frontModel(e){
+    var sku = e.sku, t;
+    if (/^USW-Pro-Max/.test(sku)) t = "USW Pro Max";
+    else if (/^USW-Pro-HD/.test(sku)) t = "USW Pro HD";
+    else if (/^USW-Pro-XG/.test(sku)) t = "USW Pro XG";
+    else if (/^USW-Pro/.test(sku)) t = "USW Pro";
+    else if (sku === "USW-Aggregation") t = "USW Aggregation";
+    else if (sku === "UDM-Pro-Max") t = "UDM Pro Max";
+    else if (sku === "UDM-Pro") t = "UDM Pro";
+    else if (sku === "UDM-SE") t = "UDM SE";
+    else if (sku === "UDM-Beast") t = "UDM Beast";
+    else t = e.name;
+    return { text:t, poe: /PoE/i.test(sku) };
+  }
+  function boltSvg(x, y, s, fill){ // small PoE lightning bolt, top-left at (x,y), height s
+    var k = s/10;
+    return '<path d="M'+(x+5.5*k)+' '+y+' L'+(x+1*k)+' '+(y+5.6*k)+' L'+(x+4.2*k)+' '+(y+5.6*k)+' L'+(x+3.2*k)+' '+(y+10*k)+' L'+(x+8*k)+' '+(y+4.2*k)+' L'+(x+4.8*k)+' '+(y+4.2*k)+' Z" fill="'+fill+'"/>';
+  }
+  var _twC = null;
+  function textW(t, size, bold){
+    try { _twC = _twC || document.createElement("canvas").getContext("2d"); _twC.font = (bold ? "bold " : "") + size + "px Arial, Helvetica, sans-serif"; return _twC.measureText(t).width; }
+    catch(e){ return t.length * size * 0.6; }
+  }
+  // Screen with the model name under it, centred in a column of width colW starting at x
+  function screenBlockSvg(x, y, h, colW, e){
+    var ss = Math.min(23, h - 16), sx = x + (colW - ss)/2, out = screenSvg(sx, y + 3.5, ss);
+    var fm = frontModel(e), fs = fm.text.length > 11 ? 4.6 : 5.2, txtW = textW(fm.text, fs, true), boltW = fm.poe ? fs*0.85 : 0;
+    var tw = txtW + boltW, tx = x + (colW - tw)/2, ty = y + h - 4.2;
+    out += st(tx, ty, fm.text, fs, "#30353c", ' font-weight="700"');
+    if (fm.poe) out += boltSvg(tx + txtW + fs*0.12, ty - fs*0.86, fs*0.95, "#30353c");
+    return out;
+  }
   function driveBaySvg(x, y, w, h){
     return sr(x, y, w, h, "#d6dade", ' rx="1.2" stroke="#9aa1a9" stroke-width="0.6"') +
       sr(x+4, y+h/2-0.7, w-18, 1.4, "#a5acb4") + '<circle cx="'+(x+w-7)+'" cy="'+(y+h/2)+'" r="1.6" fill="#8a9098"/>';
@@ -6270,7 +6317,7 @@
       var cy = y + 4, ch = h - 8;
       if (e.kind === "sw"){
         var fc = fc0, left = x + pad;
-        if (fc.screen){ var ss = Math.min(24, h - 12); out += screenSvg(left, y + (h - ss)/2, ss); left += ss + 6; }
+        if (fc.screen){ var colW = 44; out += screenBlockSvg(left - 2, y, h, colW, e); left += colW + 2; }
         var sf = fc.sfp ? sfpCagesSvg(0, 0, ch, fc.sfp, fc.sfpRows) : { w:0 };
         var right = x + bodyW - pad - (sf.w ? sf.w + 6 : 0);
         if (fc.rows){ var gR = portRowSvg(left, cy, right - left, ch, e.ports, fc.rows, {}); out += gR.svg; geo.rj = gR.pos; }
@@ -6289,7 +6336,8 @@
         out += portRowSvg(wanX, cy, 12, ch, 1, 2, {}).svg;                 // port 9 (WAN), top position
         var lanX = wanX - 6 - lanW;
         var gL = portRowSvg(lanX, cy, lanW, ch, lanN, 2, {}); out += gL.svg; geo.rj = gL.pos;   // LAN 1–8
-        if (e.sku.indexOf("UDM") === 0 || e.sku === "EFG") out += screenSvg(lanX - 8 - ss2, y + (h - ss2)/2, ss2);
+        if (e.sku.indexOf("UDM") === 0) out += screenBlockSvg(lanX - 10 - 44, y, h, 44, e);
+        else if (e.sku === "EFG") out += screenSvg(lanX - 8 - ss2, y + (h - ss2)/2, ss2);
       } else {
         var nb = NVR_BAYS[e.sku] || 4, left3 = x + pad;
         if (/Pro|ENVR/.test(e.sku)){ var ss3 = Math.min(24, RK.U - 12); out += screenSvg(left3, y + (RK.U - ss3)/2, ss3); left3 += ss3 + 6; }
@@ -6304,9 +6352,16 @@
         var rowsP = e.u, perRowP = e.ports / rowsP;
         for (var rP=0; rP<rowsP; rP++){
           var ry = y + rP*RK.U;
-          var g = portRowSvg(x + pad, ry + 13, w - pad*2, RK.U - 18, perRowP, 1, { fill:"#0c0d0f", stroke:"#474c54", pins:"#5f5640", gap:3 });
-          out += g.svg; geo.rj = (geo.rj || []).concat(g.pos);
-          for (var q=0;q<perRowP;q++) out += st(x + pad + q*(g.pw + g.gap) + g.pw/2, ry + 10.5, String(rP*perRowP + q + 1), 6.5, "#b7bec7", ' text-anchor="middle"');
+          // white keystone modules (label "CAT 6"/"CAT 6A" printed on top — filled in by the cable layer)
+          var g = portRowSvg(x + pad + 1.5, ry + 17, w - pad*2 - 3, RK.U - 21, perRowP, 1, { fill:"#121417", stroke:"#5a6068", pins:"#7a6d48", gap:4.2 });
+          var ks = "";
+          g.pos.forEach(function(pp0){
+            var kx = pp0.x - 1.4, ky = ry + 9.6, kw = pp0.w + 2.8, kh = pp0.y + pp0.h + 1.6 - ky;
+            ks += sr(kx, ky, kw, kh, "#e9ebee", ' rx="1.2" stroke="#9aa1a9" stroke-width="0.5"') + sr(kx + 0.8, ky + 0.8, kw - 1.6, 2, "#f8f9fa", ' rx="0.6"');
+            pp0.kx = kx; pp0.ky = ky; pp0.kw = kw;
+          });
+          out += ks + g.svg; geo.rj = (geo.rj || []).concat(g.pos);
+          for (var q=0;q<perRowP;q++) out += st(g.pos[q].x + g.pos[q].w/2, ry + 7.6, String(rP*perRowP + q + 1), 5.6, "#9aa3ad", ' text-anchor="middle"');
         }
       } else if (e.kind === "ups"){
         var lh = Math.min(18, h - 14);
@@ -6348,26 +6403,46 @@
   /* ---------- Cables drawn on the rack: DAC uplinks + patch cords (Etherlighting = coloured) ---------- */
   var RK_GEO = null;
   function rackCablesOn(){ try { return localStorage.getItem("lvplanner_rackcables") !== "0"; } catch(e){ return true; } }
-  function jackPt(p, toward){ // where a cable leaves a jack: the edge facing the other end
-    return { x: p.x + p.w/2, y: toward > 0 ? p.y + p.h : p.y };
+  // Patch-cord plug as in the photos: frosted clear body in the jack, latch tab, boot towards the cable.
+  // On Etherlighting switches the port light glows through the plug (colour); otherwise it stays frosted white.
+  function plugSvg(p, dir, glow, onSwitch){
+    var out = "", bx = p.x + 0.7, by = p.y + 0.6, bw = p.w - 1.4, bh = p.h - 1.2;
+    var bootL = p.h*0.5, bootW = p.w*0.6, bootX = p.x + (p.w - bootW)/2, bootY = dir > 0 ? p.y + p.h - 0.6 : p.y - bootL + 0.6;
+    if (glow){   // port LED shining through the clear plug
+      out += sr(p.x - 3, p.y - 3, p.w + 6, p.h + 6, glow, ' rx="4" fill-opacity="0.16"') + sr(p.x - 1.4, p.y - 1.4, p.w + 2.8, p.h + 2.8, glow, ' rx="2.6" fill-opacity="0.34"');
+      out += sr(bootX - 1.4, dir > 0 ? bootY : bootY - 1.4, bootW + 2.8, bootL + 1.4, glow, ' rx="2" fill-opacity="0.18"');
+    }
+    out += sr(bootX, bootY, bootW, bootL, "#eef1f4", ' rx="1.5" stroke="#a3abb4" stroke-width="0.45" fill-opacity="0.95"');                 // boot
+    out += sr(bx, by, bw, bh, "#f5f7f9", ' rx="0.9" stroke="#a3abb4" stroke-width="0.45" fill-opacity="0.9"');                              // clear plug body
+    if (glow){
+      out += sr(bx, by, bw, bh, glow, ' rx="0.9" fill-opacity="0.42"') + sr(bootX, bootY, bootW, bootL, glow, ' rx="1.5" fill-opacity="0.22"');
+      out += sr(bx + bw*0.2, by + bh*0.25, bw*0.6, bh*0.5, "#ffffff", ' rx="1" fill-opacity="0.55"');                                    // bright core
+    }
+    out += sr(bx + 0.9, dir > 0 ? by + bh - 1.9 : by + 0.6, bw - 1.8, 1.2, "#ffffff", ' rx="0.5" fill-opacity="0.8"');                        // frosted edge highlight
+    out += sr(p.x + p.w*0.32, dir > 0 ? p.y - 0.8 : p.y + p.h - 0.6, p.w*0.36, 1.4, glow || "#e3e7eb", ' rx="0.5" stroke="#9aa2ab" stroke-width="0.3"'); // latch
+    return { svg:out, end:{ x:p.x + p.w/2, y: dir > 0 ? bootY + bootL - 0.6 : bootY + 0.6 } };
   }
-  function plugSvg(p, color, edge){
-    var bw = p.w*0.86, bh = Math.max(3, p.h*0.62), bx = p.x + (p.w - bw)/2, by = p.y + (p.h - bh)/2;
-    return sr(bx, by, bw, bh, color, ' rx="1" stroke="rgba(0,0,0,.45)" stroke-width="0.5"') + sr(bx + 1, by + 0.8, bw - 2, Math.max(1, bh*0.28), "rgba(255,255,255,.35)", ' rx="0.6"');
+  function cordPath(A, B, dir){
+    var dy = Math.max(9, Math.abs(B.y - A.y) * 0.5);
+    return 'M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' C'+A.x.toFixed(1)+' '+(A.y + dir*dy).toFixed(1)+' '+B.x.toFixed(1)+' '+(B.y - dir*dy).toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1);
   }
-  function rackCablesSvg(rack, plan, CW){
+  function whiteCordSvg(d, wd){
+    return '<path d="'+d+'" fill="none" stroke="#6f767e" stroke-width="'+(wd + 1.3).toFixed(2)+'" stroke-linecap="round" stroke-opacity="0.85"/>' +
+           '<path d="'+d+'" fill="none" stroke="#e7eaee" stroke-width="'+wd.toFixed(2)+'" stroke-linecap="round"/>' +
+           '<path d="'+d+'" fill="none" stroke="#ffffff" stroke-width="'+(wd*0.32).toFixed(2)+'" stroke-linecap="round" stroke-opacity="0.8" transform="translate(-0.5,-0.3)"/>';
+  }
+  function rackCablesSvg(rack, plan, CW, drawCords){
     var geo = RK_GEO || {}, pr = plan.racks.find(function(r){ return r.rack === rack; });
     if (!pr) return "";
-    var under = "", over = "", plugs = "";
+    var cordsSvg = "", plugsSvg = "", labels = "";
     // --- patch cords: each connected switch port goes to the nearest free patch-panel port, the way installers patch:
     //     a two-row switch sends its top row to the panel above and its bottom row to the panel below;
-    //     a one-row switch uses the panel below (else above). Columns line up so cords run short and straight.
+    //     a one-row switch uses the panel below (else above). Inside a panel the switch's left-to-right order is kept.
     var panels = [];
     rack.items.slice().sort(function(a,b){ return a.pos - b.pos; }).forEach(function(it){
       var e = EQUIP_BY_SKU[it.sku], g = geo[it.uid]; if (!e || e.kind !== "pp" || !g || !g.rj) return;
-      panels.push({ pos:it.pos, u:e.u, jacks:g.rj, take:[] });
+      panels.push({ pos:it.pos, u:e.u, jacks:g.rj, take:[], cat:{} });
     });
-    var cords = [];
     pr.switches.slice().sort(function(a,b){ return a.item.pos - b.item.pos; }).forEach(function(sw){
       var elc = isEtherlightSwitch(sw.item.sku), g = geo[sw.item.uid]; if (!g || !g.rj) return;
       var se = EQUIP_BY_SKU[sw.item.sku], top = sw.item.pos, bottom = sw.item.pos + (se ? se.u : 1) - 1;
@@ -6378,62 +6453,73 @@
         var jp = g.rj[i]; if (!pt.dev || !jp) return;
         var order = twoRow ? (jp.top ? above.concat(below) : below.concat(above)) : below.concat(above);
         var pn = order.find(function(x){ return x.take.length < x.jacks.length; });
-        if (pn) pn.take.push({ p:jp, color:pt.dev.color || "#3b82f6", el:elc });
+        if (pn) pn.take.push({ p:jp, color:pt.dev.color || "#3b82f6", el:elc, cable: pt.dev.m ? cabledOf(pt.dev.m) : "cat6" });
       });
     });
-    // inside each panel keep the switch's left-to-right order (no crossing), shifted to line up best
+    var cords = [];
     panels.forEach(function(pn){
-      var t = pn.take.slice().sort(function(a,b){ return a.p.x - b.p.x; }), n = t.length, m = pn.jacks.length;
-      if (!n) return;
-      var bestS = 0, bestD = Infinity;
-      for (var s0=0; s0<=m-n; s0++){ var dsum = 0; for (var i=0;i<n;i++) dsum += Math.abs(pn.jacks[s0+i].x - t[i].p.x); if (dsum < bestD){ bestD = dsum; bestS = s0; } }
-      t.forEach(function(c, i){ cords.push({ a:pn.jacks[bestS + i], p:c.p, color:c.color, el:c.el }); });
+      var t = pn.take.slice().sort(function(a,b){ return a.p.x - b.p.x; }), n = t.length, m = pn.jacks.length, used = {};
+      if (n){
+        var bestS = 0, bestD = Infinity;
+        for (var s0=0; s0<=m-n; s0++){ var dsum = 0; for (var i=0;i<n;i++) dsum += Math.abs(pn.jacks[s0+i].x - t[i].p.x); if (dsum < bestD){ bestD = dsum; bestS = s0; } }
+        t.forEach(function(c, i){ var j = pn.jacks[bestS + i]; used[bestS + i] = c.cable; pn.cat[c.cable === "cat6" ? "6" : "6A"] = (pn.cat[c.cable === "cat6" ? "6" : "6A"] || 0) + 1; cords.push({ a:j, p:c.p, color:c.color, el:c.el }); });
+      }
+      // keystone labels: the cable of the point patched there; empty keystones take the panel's main type
+      var main = (pn.cat["6A"] || 0) > (pn.cat["6"] || 0) ? "6A" : "6";
+      pn.jacks.forEach(function(j, k){
+        if (j.kx == null) return;
+        var c = used[k] != null ? (used[k] === "cat6" ? "6" : "6A") : main;
+        labels += st(j.kx + j.kw/2, j.ky + 5.2, "CAT " + c, 3.4, c === "6A" ? "#1d4ed8" : "#6b7280", ' text-anchor="middle" font-weight="700"');
+      });
     });
-    cords.forEach(function(r){
-      var a = r.a;
-      var b = r.p, dir = b.y > a.y ? 1 : -1;
-      var A = jackPt(a, dir), B = jackPt(b, -dir), dy = Math.max(10, Math.abs(B.y - A.y) * 0.55);
-      var d = 'M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' C'+A.x.toFixed(1)+' '+(A.y + dir*dy).toFixed(1)+' '+B.x.toFixed(1)+' '+(B.y - dir*dy).toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1);
-      var col = r.el ? r.color : "#d5d9de", wd = Math.max(2.2, Math.min(3.6, a.w*0.32));
-      if (r.el) under += '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-opacity="0.35" stroke-width="'+(wd + 3.5)+'" stroke-linecap="round"/>';
-      over += '<path d="'+d+'" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="'+(wd + 1.2)+'" stroke-linecap="round"/>' +
-              '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="'+wd+'" stroke-linecap="round"/>';
-      plugs += plugSvg(a, col) + plugSvg(b, col);
-    });
+    if (drawCords){
+      cords.forEach(function(r){
+        var a = r.a, b = r.p, dir = b.y > a.y ? 1 : -1, glow = r.el ? r.color : null;
+        var pa = plugSvg(a, dir, null, false), pb = plugSvg(b, -dir, glow, true);
+        var wd = Math.max(2.8, Math.min(4.6, a.w*0.36));
+        cordsSvg += whiteCordSvg(cordPath(pa.end, pb.end, dir), wd);
+        plugsSvg += pa.svg + pb.svg;
+      });
+    }
     // --- uplinks inside this rack: gateway → core switch, switch → switch (DAC on SFP+, patch on copper)
-    function endOf(sw, prefix, used){
+    function endOf(sw, prefix, usedE){
       var g = geo[sw.item.uid] || {}, k;
-      for (k=0;k<sw.sfp.length;k++){ var s1 = sw.sfp[k]; if (s1.up && s1.up.indexOf(prefix) === 0 && !used[sw.item.uid+":s"+k] && g.sfp && g.sfp[k]){ used[sw.item.uid+":s"+k] = 1; return { p:g.sfp[k], sfp:true, kind:s1.kind, label:s1.up }; } }
-      for (k=0;k<sw.ports.length;k++){ var p1 = sw.ports[k]; if (p1.up && p1.up.indexOf(prefix) === 0 && !used[sw.item.uid+":p"+k] && g.rj && g.rj[k]){ used[sw.item.uid+":p"+k] = 1; return { p:g.rj[k], sfp:false, kind:p1.kind, label:p1.up }; } }
+      for (k=0;k<sw.sfp.length;k++){ var s1 = sw.sfp[k]; if (s1.up && s1.up.indexOf(prefix) === 0 && !usedE[sw.item.uid+":s"+k] && g.sfp && g.sfp[k]){ usedE[sw.item.uid+":s"+k] = 1; return { p:g.sfp[k], sfp:true }; } }
+      for (k=0;k<sw.ports.length;k++){ var p1 = sw.ports[k]; if (p1.up && p1.up.indexOf(prefix) === 0 && !usedE[sw.item.uid+":p"+k] && g.rj && g.rj[k]){ usedE[sw.item.uid+":p"+k] = 1; return { p:g.rj[k], sfp:false }; } }
       return null;
     }
-    var used = {}, links = [];
+    var usedE = {}, links = [];
     var gwIt = rack.items.find(function(i){ var e = EQUIP_BY_SKU[i.sku]; return e && e.kind === "gw"; });
     pr.switches.forEach(function(sw){
       if (sw.fibre) return;
-      var up = endOf(sw, "↑", used); if (!up) return;
+      var up = endOf(sw, "↑", usedE); if (!up) return;
       if (sw.isCore || !pr.switches.some(function(o){ return o !== sw && o.name === sw.uplinkTo; })){
         var gg = gwIt && geo[gwIt.uid]; if (!gg) return;
         var gp = up.sfp ? (gg.sfp && gg.sfp[0]) : (gg.rj && gg.rj[0]);
-        if (gp) links.push({ a:gp, b:up.p, dac:up.sfp });
+        if (gp) links.push({ a:gp, b:up.p, dac:up.sfp, elB: isEtherlightSwitch(sw.item.sku) });
         return;
       }
       var parents = pr.switches.filter(function(o){ return o !== sw && o.name === sw.uplinkTo; });
-      for (var i=0;i<parents.length;i++){ var dn = endOf(parents[i], "↓ " + sw.name, used); if (dn){ links.push({ a:dn.p, b:up.p, dac:up.sfp && dn.sfp }); break; } }
+      for (var i=0;i<parents.length;i++){ var dn = endOf(parents[i], "↓ " + sw.name, usedE); if (dn){ links.push({ a:dn.p, b:up.p, dac:up.sfp && dn.sfp }); break; } }
     });
-    links.forEach(function(l){
-      var A = { x:l.a.x + l.a.w, y:l.a.y + l.a.h/2 }, B = { x:l.b.x + l.b.w, y:l.b.y + l.b.h/2 };
-      var bulge = Math.max(A.x, B.x) + 26 + Math.min(30, Math.abs(B.y - A.y) * 0.08);
-      var d = 'M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' C'+bulge.toFixed(1)+' '+A.y.toFixed(1)+' '+bulge.toFixed(1)+' '+B.y.toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1);
+    if (drawCords) links.forEach(function(l){
       if (l.dac){
-        over += '<path d="'+d+'" fill="none" stroke="#050607" stroke-width="6.2" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#2a2e34" stroke-width="3.6" stroke-linecap="round"/>';
-        [l.a, l.b].forEach(function(p){ plugs += sr(p.x - 1, p.y + 1, p.w + 6, p.h - 2, "#c9ced4", ' rx="1" stroke="#7d848c" stroke-width="0.6"') + sr(p.x + p.w + 1, p.y + 2, 4, p.h - 4, "#1e2125", ' rx="0.8"'); });
+        // SFP+ DAC: metal module in each cage with a pull tab, thick black cable looping out to the right
+        var mods = [l.a, l.b].map(function(p){ return { x:p.x + p.w + 5, y:p.y + p.h/2 }; });
+        var bulge = Math.max(mods[0].x, mods[1].x) + 20 + Math.min(26, Math.abs(mods[1].y - mods[0].y) * 0.07);
+        var d = 'M'+mods[0].x.toFixed(1)+' '+mods[0].y.toFixed(1)+' C'+bulge.toFixed(1)+' '+mods[0].y.toFixed(1)+' '+bulge.toFixed(1)+' '+mods[1].y.toFixed(1)+' '+mods[1].x.toFixed(1)+' '+mods[1].y.toFixed(1);
+        cordsSvg += '<path d="'+d+'" fill="none" stroke="#020203" stroke-width="5.6" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#25292f" stroke-width="3.8" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#5b626b" stroke-width="0.9" stroke-linecap="round" stroke-opacity="0.8" transform="translate(-0.6,-0.8)"/>';
+        [l.a, l.b].forEach(function(p){
+          plugsSvg += sr(p.x - 0.8, p.y + 0.6, p.w + 5.5, p.h - 1.2, "#cfd4da", ' rx="0.8" stroke="#7d848c" stroke-width="0.55"') +
+                      sr(p.x + 1, p.y + 1.8, p.w - 3, 1, "#eef1f4") +
+                      sr(p.x + p.w + 3.5, p.y + 1.6, 3.2, p.h - 3.2, "#15171a", ' rx="0.8"');
+        });
       } else {
-        over += '<path d="'+d+'" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="4.6" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#d5d9de" stroke-width="3.4" stroke-linecap="round"/>';
-        plugs += plugSvg(l.a, "#d5d9de") + plugSvg(l.b, "#d5d9de");
+        var pa = plugSvg(l.a, 1, null, false), pb = plugSvg(l.b, -1, null, true);
+        cordsSvg += whiteCordSvg(cordPath(pa.end, pb.end, 1), 3.4); plugsSvg += pa.svg + pb.svg;
       }
     });
-    return '<g class="rk-cables" pointer-events="none">' + under + over + plugs + '</g>';
+    return '<g class="rk-cables" pointer-events="none">' + labels + cordsSvg + plugsSvg + '</g>';
   }
   function rackSvg(rack, plan, opts){
     opts = opts || {};
@@ -6463,7 +6549,7 @@
         out += st(CW + 18, my + 4, equipName(e), 11.5, "currentColor", ' font-weight="600"');
       }
     });
-    if (rackCablesOn() && plan) out += rackCablesSvg(rack, plan, CW);
+    if (plan) out += rackCablesSvg(rack, plan, CW, rackCablesOn());
     RK_GEO = null;
     rack.items.forEach(function(it){
       var e = EQUIP_BY_SKU[it.sku]; if (!e || it.pos + e.u - 1 > H || !opts.labels) return;
