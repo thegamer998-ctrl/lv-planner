@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#006fff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ET Site">
 <meta name="robots" content="noindex">
 <title>ExpressTech Site</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -159,6 +160,11 @@
   .labelcard svg, .cpy svg{ width:16px; height:16px; }
   .lbl-code{ font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.01em; }
   .cpy{ width:34px; height:34px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); display:grid; place-items:center; flex-shrink:0; color:var(--muted); padding:0; }
+  .tip{ position:relative; margin:14px 12px 0; padding:12px 40px 12px 12px; border-radius:var(--radius); background:var(--accent-soft); color:var(--text); font-size:13px; }
+  .tip .tt{ display:block; font-size:14px; margin-bottom:3px; color:var(--accent); } .tip .ik{ display:inline-block; font-weight:700; }
+  .tip button{ position:absolute; right:8px; top:8px; width:28px; height:28px; border-radius:50%; border:0; background:rgba(0,0,0,.06); font-size:16px; color:var(--muted); }
+  .donegrp{ margin:14px 0 0; } .donegrp summary{ margin:0 12px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; padding:6px 0; }
+  .donegrp .pcard{ opacity:.85; }
   .mini-btn{ height:30px; padding:0 10px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); font-size:12.5px; font-weight:600; flex-shrink:0; }
   .sec{ margin:14px 12px 6px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
   .sec button{ border:0; background:none; color:var(--accent); font-weight:600; font-size:12.5px; padding:0; }
@@ -349,6 +355,11 @@
   //             site.html#office&s=<server>[&p=<project>]     (office, with the office key)
   var hp = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
   var S = (hp.get("s") || "").replace(/\/+$/, ""), OFFICE = hp.has("office"), P = hp.get("p"), K = hp.get("k"), U = hp.get("u");
+  // a personal link is remembered on the phone: the app saved to the home screen (or opened without the link) still opens their projects
+  try {
+    if (U && S) localStorage.setItem("et_me", JSON.stringify({ u:U, s:S }));
+    else if (!S && !OFFICE && !P){ var me0 = JSON.parse(localStorage.getItem("et_me") || "null"); if (me0 && me0.u && me0.s){ U = me0.u; S = me0.s; history.replaceState(null, "", "#u=" + encodeURIComponent(U) + "&s=" + encodeURIComponent(S)); } }
+  } catch(e){}
   var STAFF = !!U && !OFFICE; if (STAFF) K = U;
   var ROLE_TAG = { office:"Office", manager:"Manager", engineer:"Site engineer", tech:"Technician", team:"Team", customer:"Customer view" };
   var STEP_L = { installed:"Installed", aligned:"Aligned", configured:"Configured" };
@@ -457,21 +468,38 @@
       var manage = !STAFF || (st.me && st.me.role === "manager");
       var open = manage ? j.projects.reduce(function(a,p){ return a + (p.open_reports || 0); }, 0) : 0;
       $("homeBody").innerHTML = '<div class="sec"><span>' + j.projects.length + " project" + (j.projects.length === 1 ? "" : "s") + (open ? ' · <span style="color:var(--warn)">' + open + " open report" + (open > 1 ? "s" : "") + "</span>" : "") + '</span><button type="button" id="homeRef">Refresh</button></div>' +
-        (j.projects.map(function(p){
+        ((function(){
+          var act = j.projects.filter(function(p){ return p.state !== "done"; }), dn = j.projects.filter(function(p){ return p.state === "done"; });
+          var out = act.map(card).join("") || (dn.length ? '<div class="empty" style="padding:20px">No project in progress.</div>' : "");
+          if (dn.length) out += '<details class="donegrp"' + (act.length ? "" : " open") + '><summary>Completed · ' + dn.length + "</summary>" + dn.map(card).join("") + "</details>";
+          return out;
+        })() || "") + (j.projects.length ? "" : '<div class="empty">' + (STAFF ? "No projects yet. When the office starts a project you are on, it appears here by itself." : "No projects yet. Start one from the planner (Start button).") + "</div>") +
+        installTip() +
+        (manage ? '<div class="sec" style="margin-top:20px"><span>Team</span></div><div class="card staff" id="staffCard"><div class="rowi"><span class="t"><small>Loading…</small></span></div></div>' +
+          '<p class="note">Each person gets their own link. Their name and role go on every tick, photo and note. Technicians install and align; the site engineer configures; managers see everything, approve reports and manage the team.</p>' : "") +
+        '<div style="height:20px"></div>';
+      function card(p){
           var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
           return '<button type="button" class="pcard" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (manage && p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
             '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
             '<div class="ft"><span class="pill">' + p.installed + " / " + p.points + " done</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
             (p.asana ? '<span class="pill">Stages ' + p.stages_done + " / " + p.stages_all + "</span>" + (p.next_stage ? '<span class="pill approved">Next: ' + esc(p.next_stage) + "</span>" : "") : manage ? '<span class="pill">Asana not linked</span>' : "") +
-            "<small>" + when(p.updated_at) + "</small></div>" + (p.status ? '<div class="muted" style="margin-top:6px">' + esc(p.status.title) + "</div>" : "") + "</button>";
-        }).join("") || '<div class="empty">' + (STAFF ? "No projects yet." : "No projects yet. Publish one from the planner (Site button).") + "</div>") +
-        (manage ? '<div class="sec" style="margin-top:20px"><span>Team</span></div><div class="card staff" id="staffCard"><div class="rowi"><span class="t"><small>Loading…</small></span></div></div>' +
-          '<p class="note">Each person gets their own link. Their name and role go on every tick, photo and note. Technicians install and align; the site engineer also ticks <b>Configured</b> on cameras; managers see everything, approve reports and manage the team.</p>' : "") +
-        '<div style="height:20px"></div>';
+            "<small>" + (p.state === "done" && p.completed_at ? "completed " + day(new Date(p.completed_at).toISOString().slice(0,10)) : "started " + day(new Date(p.started_at || p.updated_at).toISOString().slice(0,10))) + "</small></div>" + (p.status ? '<div class="muted" style="margin-top:6px">' + esc(p.status.title) + "</div>" : "") + "</button>";
+      }
       $("homeBody").querySelectorAll("[data-p]").forEach(function(b){ b.onclick = function(){ openProject(b.dataset.p); }; });
       $("homeRef").onclick = showHome;
+      if ($("tipX")) $("tipX").onclick = function(){ try { localStorage.setItem("et_tip_off", "1"); } catch(e){} $("tip").remove(); };
       if (manage) renderStaff();
     }).catch(function(e){ $("loading").classList.add("hidden"); $("homeBody").innerHTML = '<div class="empty">' + esc(e.message) + '<br><br><button type="button" class="btn" id="homeRetry" style="margin:0 auto;padding:0 16px">Try again</button></div>'; $("homeRetry").onclick = showHome; });
+  }
+  // "add to home screen" — shown on a personal link until it runs as an app (or is dismissed)
+  function installTip(){
+    var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+    var off = false; try { off = localStorage.getItem("et_tip_off") === "1"; } catch(e){}
+    if (!STAFF || standalone || off) return "";
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    return '<div class="tip" id="tip"><b class="tt">Keep this as an app</b><span>' + (ios ? "In Safari tap <b>Share</b> (the square with ↑) then <b>Add to Home Screen</b>." : "Tap the browser menu <b>⋮</b> then <b>Add to Home screen</b> (or <b>Install app</b>).") +
+      " Every project you are on shows here by itself.</span><button type=\"button\" id=\"tipX\" aria-label=\"Close\">×</button></div>";
   }
   var ROLE_OPTS = [["tech","Technician"],["engineer","Site engineer"],["manager","Manager"]];
   function renderStaff(){
@@ -551,7 +579,8 @@
     var rt = $("roleTag"); rt.textContent = ROLE_TAG[d.role] || "Team";
     rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" || d.role === "manager" ? " office" : "");
     var c = counts(pts());
-    $("pct").textContent = c.pct + "%"; $("cnt").textContent = c.d + " of " + c.n + " done" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
+    var fin = d.project.status === "done";
+    $("pct").textContent = fin ? "✓" : c.pct + "%"; $("cnt").textContent = (fin ? "Completed " + day(new Date(d.project.completed_at || Date.now()).toISOString().slice(0,10)) + " · " : "") + c.d + " of " + c.n + " done" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
     $("barI").style.width = c.pct + "%";
     $("tabRep").classList.toggle("hidden", !canEdit());
     $("reportBtn").classList.toggle("hidden", !canEdit());
@@ -1048,6 +1077,7 @@
   var ACT = { installed:"installed", uninstalled:"un-ticked", aligned:"aligned", unaligned:"un-ticked the alignment of", configured:"configured", unconfigured:"un-ticked the configuration of",
     "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
+    "project-started":"started the project", "project-done":"marked the project complete", "project-reopened":"reopened the project",
     "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });

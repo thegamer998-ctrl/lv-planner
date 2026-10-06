@@ -81,22 +81,24 @@ Do this once on each office device. The **Quote** dialog uses the same server.
 ---
 
 ## Using it
-1. **Publish.** Open the project in the planner, click **Site**, then **Publish to site**. The points go up with each floor's original vector drawing.
-   - The site app draws the drawing itself, so it stays sharp at every zoom, and the points sit exactly where they are in the planner.
-   - Each phone keeps a copy of the drawing, so it opens instantly and works with no signal.
-   - Projects published before this version show a picture of the drawing until you press **Update site** once.
-2. **Your team: one personal link each.** In the office view (step 4), scroll to **Team**, type the name, pick the role and press **Add**. Their link is copied: send it on WhatsApp.
+1. **Your team, once.** In the office view (step 4), scroll to **Team**, add each person with their role, and send them their own link (**Copy link** → WhatsApp). They open it once on their phone and add it to the home screen: it becomes their ExpressTech app, with every project they are on.
 
    | Role | Can do |
    |---|---|
    | **Technician** (e.g. Kutbuddin) | only his own work: **Installed** on every point and **Aligned** on cameras; photos, notes, site reports, Asana stages and comments. He never sees **Configured**. |
    | **Site engineer** (e.g. Idris) | **Configured** on access points, cameras, IP phones, intercom and the network cabinet, many at once (**Checklist → Configuration → Select all → Mark configured**). He can also correct technician ticks. Has a **To configure** filter on the plan. |
-   | **Manager** (e.g. Husain) | sees everything, including office-only stages (payments); approves site reports; manages the team and links |
+   | **Manager** (e.g. Husain) | sees every project, including office-only stages (payments); approves site reports; manages the team and links |
 
-   A personal link opens all the projects. Every tick, photo and note shows the person's name and role. Press ✕ to stop someone's link.
-3. **Other links** (in the planner's **Site** window):
-   - **Team link:** a shared link for a helper without a personal link. The phone asks for a name once.
-   - **Customer link:** view only, with progress, photos and stages. It never shows the team link or payment tasks.
+   Press ✕ next to a person to stop their link.
+2. **Start the project** after the customer approves the quotation. In the planner, click **Start** in the toolbar:
+   - tick who works on it (everyone is ticked; new people added later also get it while everyone is ticked)
+   - paste the Asana project link (optional, can be done later)
+   - press **▶ Start project**
+
+   The drawing and points go up, the project appears in each team member's app by itself, and you get the **client link** to send (Copy or WhatsApp). The window also shows each team member's own link, if someone doesn't have it yet.
+   - The site app draws each floor's original vector drawing: sharp at every zoom, points exactly where they are in the planner, and it works with no signal once opened.
+   - After that the toolbar button reads **Site**: send drawing changes with **Update site**, change the team with **Change**.
+3. **Finish.** **Mark project complete** moves it to **Completed** in the team's app. The client link keeps working (read-only). **Reopen project** brings it back.
 4. **Office view (all projects).** In the planner, open **Site → Open office view**, or bookmark `https://thegamer998-ctrl.github.io/lv-planner/site.html#office&s=<server address>`.
    - Enter the office key once on each device.
    - It lists every project with progress, open site reports, Asana stages, the next stage and the status.

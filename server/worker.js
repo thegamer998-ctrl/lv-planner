@@ -36,7 +36,8 @@ const COLUMNS = [
   "points ADD COLUMN aligned INTEGER DEFAULT 0", "points ADD COLUMN aligned_by TEXT", "points ADD COLUMN aligned_at INTEGER",
   "points ADD COLUMN configured INTEGER DEFAULT 0", "points ADD COLUMN configured_by TEXT", "points ADD COLUMN configured_at INTEGER",
   "floors ADD COLUMN pdf_parts INTEGER DEFAULT 0", "floors ADD COLUMN pdf_v INTEGER DEFAULT 0", "floors ADD COLUMN pw REAL", "floors ADD COLUMN ph REAL",
-  "log ADD COLUMN by_role TEXT"
+  "log ADD COLUMN by_role TEXT",
+  "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT"
 ];
 let schemaReady = false;
 async function ensureSchema(db) {
@@ -130,7 +131,7 @@ export default {
       const isManager = adminOk() || (person && person.role === "manager");
       if (path === "/site/me" && req.method === "GET") {
         if (!person) return json({ error: "This link is not valid any more — ask the ExpressTech office for a new one" }, 403);
-        return json({ person: { id: person.id, name: person.name, role: person.role }, projects: await projectList(db, person.role === "manager") });
+        return json({ person: { id: person.id, name: person.name, role: person.role }, projects: await projectList(db, person.role === "manager", person) });
       }
       // staff: office and managers add people (technician / engineer / manager) and get their personal links
       if (path === "/site/staff" && req.method === "GET") {
@@ -148,6 +149,7 @@ export default {
         return json({ ok: true, person: { id, name: nm, role: rl, key: k, active: 1 } });
       }
       if ((mm0 = path.match(/^\/site\/staff\/([A-Za-z0-9]+)$/)) && req.method === "POST") {
+        // (update a person: name, role, active, new link)
         if (!isManager) return json({ error: "Office only" }, 403);
         const b = await req.json(), cur = await db.prepare("SELECT * FROM staff WHERE id = ?").bind(mm0[1]).first();
         if (!cur) return json({ error: "Not found" }, 404);
@@ -166,6 +168,7 @@ export default {
       const key = staffKey;
       const role = adminOk() ? "office" : person ? person.role : key && key === proj.team_key ? "team" : key && key === proj.view_key ? "customer" : null;
       if (!role) return json({ error: "This link is not valid any more — ask ExpressTech for a new one" }, 403);
+      if (person && !onTeam(proj, person)) return json({ error: "You are not on this project's team — ask the ExpressTech office" }, 403);
       const canEdit = role !== "customer";
       const officeLike = role === "office" || role === "manager";
       // a staff member's name comes from their own link; the shared team link and the office type theirs once per device
@@ -363,6 +366,21 @@ export default {
         const stages = await asanaRefresh(db, env, proj);
         return json({ ok: true, stages: stagesFor(stages, role) });
       }
+      // project status: in progress → completed (the client link keeps working, read-only) → reopened
+      if (rest === "state" && req.method === "POST") {
+        if (!officeLike) return json({ error: "Office only" }, 403);
+        const b = await req.json(), st = b.status === "done" ? "done" : "active", t = now();
+        await db.prepare("UPDATE projects SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?").bind(st, st === "done" ? t : null, t, pid).run();
+        await log(st === "done" ? "project-done" : "project-reopened", "", "");
+        return json({ ok: true, status: st });
+      }
+      // who works on it: a list of staff ids (empty or missing = everyone)
+      if (rest === "team" && req.method === "POST") {
+        if (!officeLike) return json({ error: "Office only" }, 403);
+        const b = await req.json(), team = Array.isArray(b.team) && b.team.length ? JSON.stringify(b.team.map(String).slice(0, 100)) : null;
+        await db.prepare("UPDATE projects SET team = ? WHERE id = ?").bind(team, pid).run();
+        return json({ ok: true });
+      }
       if (rest === "keys" && req.method === "POST") {
         if (!officeLike) return json({ error: "Office only" }, 403);
         const b = await req.json().catch(() => ({}));
@@ -398,6 +416,12 @@ export default {
   }
 };
 
+function onTeam(proj, person) {
+  if (!person || person.role === "manager") return true;
+  const t = safeJsonArr(proj.team);
+  return !t.length || t.includes(person.id);
+}
+function safeJsonArr(s) { try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 function clamp01(v) { v = +v; return isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5; }
 function toBytes(v) { if (Array.isArray(v)) return new Uint8Array(v); return v; }
 function safeJson(s) { try { return JSON.parse(s || "{}") || {}; } catch (e) { return {}; } }
@@ -440,12 +464,16 @@ async function publish(db, b) {
   if (!b || !b.name || !Array.isArray(b.points)) throw new Error("name and points are required");
   let proj = b.id ? await db.prepare("SELECT * FROM projects WHERE id = ?").bind(String(b.id)).first() : null;
   const t = now();
+  const team = Array.isArray(b.team) ? (b.team.length ? JSON.stringify(b.team.map(String).slice(0, 100)) : null) : undefined;
   if (!proj) {
+    // "Start project" in the planner: the project appears in its team's apps and the client link is made
     proj = { id: rid(12), team_key: rid(), view_key: rid() };
-    await db.prepare("INSERT INTO projects (id, name, team_key, view_key, meta, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(proj.id, b.name, proj.team_key, proj.view_key, JSON.stringify(b.meta || {}), t, t).run();
+    await db.prepare("INSERT INTO projects (id, name, team_key, view_key, meta, created_at, updated_at, status, started_at, team) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
+      .bind(proj.id, b.name, proj.team_key, proj.view_key, JSON.stringify(b.meta || {}), t, t, t, team || null).run();
+    await addLog(db, proj.id, "ExpressTech office", "project-started", "", "", "Office");
   } else {
     await db.prepare("UPDATE projects SET name = ?, meta = ?, updated_at = ? WHERE id = ?").bind(b.name, JSON.stringify(b.meta || {}), t, proj.id).run();
+    if (team !== undefined) await db.prepare("UPDATE projects SET team = ? WHERE id = ?").bind(team, proj.id).run();
   }
   const floorIds = (b.floors || []).map(f => String(f.id));
   for (const [i, f] of (b.floors || []).entries()) {
@@ -490,7 +518,8 @@ async function projectView(db, proj, role) {
   const byPt = {}, byIssue = {};
   for (const p of points.results) byPt[p.point_id] = { ...p, steps: stepsOf(p.cat), photos: [], notes: [] };
   const out = {
-    role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid },
+    role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid,
+      status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null },
     floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v, pdf: f.pdf_parts ? f.pdf_v : 0, pw: f.pw, ph: f.ph })),
     points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: []
   };
@@ -504,12 +533,13 @@ async function projectView(db, proj, role) {
   out.points = Object.values(byPt);
   out.issues = Object.values(byIssue);
   out.activity = log.results.filter(a => role !== "customer" || !/^(report|stage-comment)/.test(a.action));
-  if (role === "office" || role === "manager") { out.links = { team_key: proj.team_key, view_key: proj.view_key }; out.project.asana_gid = proj.asana_gid; }
+  if (role === "office" || role === "manager") { out.links = { team_key: proj.team_key, view_key: proj.view_key }; out.project.asana_gid = proj.asana_gid; out.project.team = safeJsonArr(proj.team); }
   return out;
 }
 
-async function projectList(db, withKeys) {
-  const ps = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at FROM projects ORDER BY updated_at DESC").all();
+async function projectList(db, withKeys, person) {
+  const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team FROM projects ORDER BY updated_at DESC").all();
+  const ps = { results: all.results.filter(p => !person || onTeam(p, person)) };
   // done = every installation step ticked (cameras: installed and aligned)
   const cnt = await db.prepare("SELECT project_id, COUNT(*) AS n, SUM(CASE WHEN installed = 1 AND (cat <> 'cam' OR aligned = 1) THEN 1 ELSE 0 END) AS done FROM points WHERE active = 1 GROUP BY project_id").all();
   const iss = await db.prepare("SELECT project_id, COUNT(*) AS n FROM issues WHERE status = 'open' GROUP BY project_id").all();
@@ -522,7 +552,8 @@ async function projectList(db, withKeys) {
     for (const s of (c.sections || [])) for (const t of s.tasks) { if (!withKeys && t.private) continue; tAll++; if (t.completed) tDone++; else if (!next && !PRIVATE_STAGE.test(t.name)) next = t.name; }
     return { id: p.id, name: p.name, team_key: withKeys ? p.team_key : undefined, view_key: withKeys ? p.view_key : undefined, updated_at: p.updated_at, points: (C[p.id] || {}).n || 0, installed: (C[p.id] || {}).done || 0,
       open_reports: (I[p.id] || {}).n || 0, photos: (H[p.id] || {}).n || 0, asana: !!p.asana_gid, asana_at: p.asana_at, stages_done: tDone, stages_all: tAll, next_stage: next,
-      status: c.project && c.project.status ? c.project.status : null };
+      status: c.project && c.project.status ? c.project.status : null,
+      state: p.status || "active", started_at: p.started_at || p.created_at, completed_at: p.completed_at || null, team: withKeys ? safeJsonArr(p.team) : undefined };
   });
 }
 
