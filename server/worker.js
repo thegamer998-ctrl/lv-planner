@@ -429,8 +429,8 @@ async function touch(db, pid) { await db.prepare("UPDATE projects SET updated_at
 // what one tick changes: aligned also means installed (both the technician's own work); un-ticking installed also clears
 // aligned. "Configured" is the engineer's and is never set or cleared by a technician's tick.
 function stepSet(pt, step, done) {
+  if (done && step === "aligned" && !pt.installed) return { installed: 1, aligned: 1 };   // logged in the order the work happens
   const set = { [step]: done };
-  if (done && step === "aligned" && !pt.installed) set.installed = 1;
   if (!done && step === "installed" && pt.aligned) set.aligned = 0;
   return set;
 }

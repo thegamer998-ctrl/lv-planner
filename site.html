@@ -396,10 +396,15 @@
 
   // ---- offline queue (IndexedDB): ticks, notes, photos and reports wait here when there is no signal
   var idb = null;
+  // if the browser blocks storage (private mode, locked-down frames) changes wait in memory instead, never lost
+  var memQ = null;
   function openDb(){ return idb || (idb = new Promise(function(res, rej){ var o = indexedDB.open("et-site", 1); o.onupgradeneeded = function(){ o.result.createObjectStore("q", { keyPath:"id" }); }; o.onsuccess = function(){ res(o.result); }; o.onerror = function(){ rej(o.error); }; })); }
-  function qAll(){ return openDb().then(function(db){ return new Promise(function(res){ var out = []; var c = db.transaction("q").objectStore("q").openCursor(); c.onsuccess = function(){ var cur = c.result; if (cur){ if (cur.value.p === P) out.push(cur.value); cur.continue(); } else res(out.sort(function(a,b){ return a.t - b.t; })); }; c.onerror = function(){ res(out); }; }); }).catch(function(){ return []; }); }
-  function qPut(item){ return openDb().then(function(db){ return new Promise(function(res){ var tx = db.transaction("q", "readwrite"); tx.objectStore("q").put(item); tx.oncomplete = res; tx.onerror = res; }); }).catch(function(){}); }
-  function qDel(id){ return openDb().then(function(db){ return new Promise(function(res){ var tx = db.transaction("q", "readwrite"); tx.objectStore("q").delete(id); tx.oncomplete = res; tx.onerror = res; }); }).catch(function(){}); }
+  function qAll(){ if (memQ) return Promise.resolve(memQ.filter(function(x){ return x.p === P; }).sort(function(a,b){ return a.t - b.t; }));
+    return openDb().then(function(db){ return new Promise(function(res){ var out = []; var c = db.transaction("q").objectStore("q").openCursor(); c.onsuccess = function(){ var cur = c.result; if (cur){ if (cur.value.p === P) out.push(cur.value); cur.continue(); } else res(out.sort(function(a,b){ return a.t - b.t; })); }; c.onerror = function(){ res(out); }; }); }).catch(function(){ return []; }); }
+  function qPut(item){ if (memQ){ memQ.push(item); return Promise.resolve(); }
+    return openDb().then(function(db){ return new Promise(function(res, rej){ var tx = db.transaction("q", "readwrite"); tx.objectStore("q").put(item); tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); }; }); })
+      .catch(function(){ memQ = memQ || []; memQ.push(item); }); }
+  function qDel(id){ if (memQ){ memQ = memQ.filter(function(x){ return x.id !== id; }); return Promise.resolve(); } return openDb().then(function(db){ return new Promise(function(res){ var tx = db.transaction("q", "readwrite"); tx.objectStore("q").delete(id); tx.oncomplete = res; tx.onerror = res; }); }).catch(function(){}); }
   var flushing = false, issueMap = {};   // local report id → server id (photos taken before the report reached the server)
   try { issueMap = JSON.parse(localStorage.getItem("et_issue_map") || "{}") || {}; } catch(e){}
   function send(item){
@@ -633,12 +638,13 @@
   function sheetInfo(f){ var m = st.data.project.meta || {}, d = m.sheets && m.sheets[f.id]; if (d) return d; return f.pw ? { pw:f.pw, ph:f.ph } : null; }
   function pdfUrl(f){ return api("/pdf/" + encodeURIComponent(f.id)) + "?k=" + encodeURIComponent(imgKey()) + "&v=" + f.pdf; }
   // the drawing is kept on the phone: opens instantly next time and works with no signal
+  function hasCaches(){ try { return !!window.caches; } catch(e){ return false; } }
   function getPdfBytes(f){
     var url = pdfUrl(f), ck = S + "/drawing/" + P + "/" + encodeURIComponent(f.id) + "?v=" + f.pdf;
     var net = function(){ return fetch(url, { cache:"no-store" }).then(function(r){ if (!r.ok) throw new Error("Drawing " + r.status);
-      var copy = r.clone(); if (window.caches) caches.open("et-drawings").then(function(c){ c.keys().then(function(ks){ ks.forEach(function(k){ if (k.url.indexOf(S + "/drawing/" + P + "/" + encodeURIComponent(f.id) + "?") === 0 && k.url !== ck) c.delete(k); }); }); return c.put(ck, copy); }).catch(function(e){ console.log("drawing not saved on this phone", e); });
+      var copy = r.clone(); if (hasCaches()) caches.open("et-drawings").then(function(c){ c.keys().then(function(ks){ ks.forEach(function(k){ if (k.url.indexOf(S + "/drawing/" + P + "/" + encodeURIComponent(f.id) + "?") === 0 && k.url !== ck) c.delete(k); }); }); return c.put(ck, copy); }).catch(function(e){ console.log("drawing not saved on this phone", e); });
       return r.arrayBuffer(); }); };
-    if (!window.caches) return net();
+    if (!hasCaches()) return net();
     return caches.open("et-drawings").then(function(c){ return c.match(ck); }).then(function(hit){ return hit ? hit.arrayBuffer() : net(); }, net);
   }
   function resetPdf(){
