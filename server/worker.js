@@ -388,6 +388,10 @@ export default {
         await db.prepare("UPDATE projects SET team_key = ?, view_key = ? WHERE id = ?").bind(team, view, pid).run();
         return json({ ok: true, team_key: team, view_key: view });
       }
+      // the phones ask this every 20 s: one row read; they load the whole project only when something changed
+      if (rest === "v" && req.method === "GET") {
+        return json({ v: (proj.updated_at || 0) + ":" + (proj.asana_at || 0) + ":" + (proj.status || "") });
+      }
       if (rest === "" && req.method === "GET") {
         // keep the Asana mirror fresh: refresh now if it is old, in the background if it is a little stale
         if (asanaOn) {
@@ -524,6 +528,7 @@ async function projectView(db, proj, role) {
     points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: []
   };
   out.steps = STEPS;
+  out.v = (proj.updated_at || 0) + ":" + (proj.asana_at || 0) + ":" + (proj.status || "");   // same as GET …/v
   if (role !== "customer") for (const is of issues.results) byIssue[is.id] = {
     id: is.id, floor_id: is.floor_id, x: is.x, y: is.y, kind: is.kind, point_id: is.point_id, suggest_type: is.suggest_type,
     text: is.text, by: is.by_name, at: is.at, status: is.status, status_by: is.status_by, status_at: is.status_at, photos: [], notes: [] };

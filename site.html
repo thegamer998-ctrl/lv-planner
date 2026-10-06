@@ -364,6 +364,7 @@
   var ROLE_TAG = { office:"Office", manager:"Manager", engineer:"Site engineer", tech:"Technician", team:"Team", customer:"Customer view" };
   var STEP_L = { installed:"Installed", aligned:"Aligned", configured:"Configured" };
   var STEP_DO = { installed:"Mark installed", aligned:"Mark aligned", configured:"Mark configured" };
+  var lastV = null;   // the project's version from the last full load ("anything new?" check)
   var st = { listMode:"install", cfgSel:{}, me:null, data:null, floor:null, filter:"all", listFilter:"todo", sel:null, view:"vPlan", pending:{}, placing:false, list:null };
   function okey(){ try { return localStorage.getItem("et_office_key:" + S) || ""; } catch(e){ return ""; } }
   function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -540,7 +541,7 @@
     return fetch(api("") + (OFFICE ? "" : "?k=" + encodeURIComponent(K)), { headers:auth(), cache:"no-store" }).then(function(r){
       return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || "Could not open the project"); return j; });
     }).then(function(d){
-      st.data = d;
+      st.data = d; if (d.v) lastV = d.v;
       if (!st.floor || !d.floors.find(function(f){ return f.id === st.floor; })) st.floor = d.floors.length ? d.floors[0].id : null;
       $("loading").classList.add("hidden");
       render();
@@ -1307,7 +1308,13 @@
   else if (STAFF){ homeFetch("/site/me").then(function(j){ st.me = j.person; }).catch(function(){}).then(function(){ if (P) openProject(P); else showHome(); }); }
   else if (!P || !K){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
   else load().then(function(){ updateQueue(); flush(); });
-  setInterval(function(){ if (P && !document.hidden && !$("viewer").classList.contains("on") && !st.placing && st.sel !== "draft") load(true); }, 20000);
+  // every 20 s a tiny "anything new?" check; the whole project is reloaded only when something changed (keeps the server light)
+  setInterval(function(){
+    if (!P || document.hidden || $("viewer").classList.contains("on") || st.placing || st.sel === "draft") return;
+    fetch(api("/v") + (OFFICE ? "" : "?k=" + encodeURIComponent(K)), { headers:auth(), cache:"no-store" }).then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ if (j && j.v !== lastV) load(true); }).catch(function(){});
+  }, 20000);
+  setInterval(function(){ if (P && !document.hidden && !st.placing && st.sel !== "draft") load(true); }, 180000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && P){ load(true); flush(); } });
 })();
 </script>
