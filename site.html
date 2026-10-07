@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="ET Site">
 <meta name="robots" content="noindex">
 <title>ExpressTech Site</title>
+<link rel="manifest" href="site.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -174,6 +175,7 @@
   .cpy{ width:34px; height:34px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); display:grid; place-items:center; flex-shrink:0; color:var(--muted); padding:0; }
   .tip{ position:relative; margin:14px 12px 0; padding:12px 40px 12px 12px; border-radius:var(--radius); background:var(--accent-soft); color:var(--text); font-size:13px; }
   .tip .tt{ display:block; font-size:14px; margin-bottom:3px; color:var(--accent); } .tip .ik{ display:inline-block; font-weight:700; }
+  .tip #tipInstall{ position:static; display:flex; width:auto; height:40px; margin-top:10px; padding:0 16px; border-radius:10px; font-size:14px; background:var(--accent); color:#fff; }
   .tip button{ position:absolute; right:8px; top:8px; width:28px; height:28px; border-radius:50%; border:0; background:rgba(0,0,0,.06); font-size:16px; color:var(--muted); }
   .donegrp{ margin:14px 0 0; } .donegrp summary{ margin:0 12px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; padding:6px 0; }
   .donegrp .pcard{ opacity:.85; }
@@ -366,6 +368,13 @@
   // ---- links: site.html#p=<project>&k=<key>&s=<server>      (shared team link or customer link)
   //             site.html#u=<personal key>&s=<server>[&p=]    (a staff member's own link: technician, site engineer, manager)
   //             site.html#office&s=<server>[&p=<project>]     (office, with the office key)
+  // the installed app (Android) always opens plain site.html: bring back the last link opened on this phone
+  try {
+    if (!location.hash.slice(1) && !location.search.slice(1)){
+      var last0 = localStorage.getItem("et_last_link");
+      if (last0) history.replaceState(null, "", "#" + last0);
+    } else if (/(^|&)s=/.test(location.hash.slice(1))) localStorage.setItem("et_last_link", location.hash.slice(1).replace(/(^|&)team(?=&|$)/, ""));
+  } catch(e){}
   var hp = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
   var S = (hp.get("s") || "").replace(/\/+$/, ""), OFFICE = hp.has("office"), P = hp.get("p"), K = hp.get("k"), U = hp.get("u");
   // a personal link is remembered on the phone: the app saved to the home screen (or opened without the link) still opens their projects
@@ -514,14 +523,22 @@
       if (manage) renderStaff();
     }).catch(function(e){ $("loading").classList.add("hidden"); $("homeBody").innerHTML = '<div class="empty">' + esc(e.message) + '<br><br><button type="button" class="btn" id="homeRetry" style="margin:0 auto;padding:0 16px">Try again</button></div>'; $("homeRetry").onclick = showHome; });
   }
+  // Android Chrome: keep its install offer so the tip can show a one-tap "Install the app" button
+  var installEvt = null;
+  window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); installEvt = e; var t = $("tip"); if (t && !$("tipInstall")){ var b = document.createElement("button"); b.type = "button"; b.className = "btn pri"; b.id = "tipInstall"; b.textContent = "Install the app"; t.appendChild(b); } });
+  window.addEventListener("appinstalled", function(){ installEvt = null; var t = $("tip"); if (t) t.remove(); });
+  document.addEventListener("click", function(e){
+    if (!e.target || e.target.id !== "tipInstall" || !installEvt) return;
+    var ev = installEvt; installEvt = null; ev.prompt(); (ev.userChoice || Promise.resolve()).then(function(){ var t = $("tip"); if (t) t.remove(); });
+  });
   // "add to home screen" — shown on a personal link until it runs as an app (or is dismissed)
   function installTip(){
     var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
     var off = false; try { off = localStorage.getItem("et_tip_off") === "1"; } catch(e){}
     if (!STAFF || standalone || off) return "";
     var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    return '<div class="tip" id="tip"><b class="tt">Keep this as an app</b><span>' + (ios ? "In Safari tap <b>Share</b> (the square with ↑) then <b>Add to Home Screen</b>." : "Tap the browser menu <b>⋮</b> then <b>Add to Home screen</b> (or <b>Install app</b>).") +
-      " Every project you are on shows here by itself.</span><button type=\"button\" id=\"tipX\" aria-label=\"Close\">×</button></div>";
+    return '<div class="tip" id="tip"><b class="tt">Keep this as an app</b><span>' + (ios ? "In Safari tap <b>Share</b> (the square with ↑) then <b>Add to Home Screen</b>." : "Tap the browser menu <b>⋮</b> then <b>Install app</b> (or <b>Add to Home screen</b> → <b>Install</b>).") +
+      " Every project you are on shows here by itself.</span>" + (!ios && installEvt ? '<button type="button" class="btn pri" id="tipInstall">Install the app</button>' : "") + "<button type=\"button\" id=\"tipX\" aria-label=\"Close\">×</button></div>";
   }
   var ROLE_OPTS = [["tech","Technician"],["engineer","Site engineer"],["manager","Manager"]];
   function renderStaff(){
