@@ -1,3 +1,4 @@
+// Deployed automatically by GitHub Actions (.github/workflows/deploy-server.yml) on every push to main.
 // ExpressTech server (Cloudflare Worker + D1 database bound as DB)
 //   /zoho          → Draft estimate in Zoho Books from the planner's quote
 //   /site/...      → installation site app: floor plans, points, ticks, photos, notes, site reports, Asana mirror
