@@ -113,20 +113,18 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - **Technician:** **Installed** on every point, plus **Aligned** on cameras. A camera counts as done only when it is installed **and** aligned. Ticking Aligned also ticks Installed, and unticking Installed clears Aligned, since both are his own.
    - **Site engineer:** **Configured** on access points, cameras, IP phones, intercom and the network cabinet. He does it in bulk: **Checklist → Configuration**, **Select all** on a device type, then **Mark configured**. His ticks never change the technician's, and the technician's never change his.
 7. **Link Asana.** Paste the villa's Asana project link and click **Link Asana**.
-   - When every point of a kind has a step ticked, the matching Asana subtask is completed with a comment. The subtask is found by its name:
+   - **Points:** an Asana step is completed only when **every** point of that kind has the step ticked (e.g. all cameras aligned). One point unticked reopens it. A comment says who ticked the last one. Steps are found by their names in your villa template:
 
-   | When all… | completes the Asana task or subtask named like |
+   | When all… | completes |
    |---|---|
-   | access points are installed | **Ceiling Access Point Installation** |
-   | cameras are installed | **Cameras Installation** (any name with "camera" and "install") |
-   | cameras are aligned | **Cameras Alignment** (any name with "camera" and "align") |
-   | cameras are configured | **CCTV - Camera Naming…** or **Camera Adoption** |
-   | access points are configured | a name with "Wi-Fi" or "access point" and "config", "setup" or "SSID" |
-   | IP phones / intercom are configured | a name with "phone" / "intercom" and "config" or "setup" |
-   | the network cabinet is configured | a name with "switch", "gateway", "UDM" or "UNVR" and "config" |
-   | data points are installed | a name with "data point" or "network point" |
+   | ceiling access points are installed | **Peripheral Works › Ceiling Access Points Installation** |
+   | wall access points (the WAP type) are installed | **Peripheral Works › Wall Access Points Installation** |
+   | data / phone points are installed | **Peripheral Works › Faceplates Punching** |
+   | intercom points are installed | **Peripheral Works › Intercom Installation** |
+   | cameras are installed / aligned | **Peripheral Works › CCTV Installation / CCTV Alignment** |
+   | access points / cameras / IP phones / intercom are configured | **Hardware Configuration › Access Points / CCTV / IP Phones / IP Intercom and Screens** |
 
-   - Add **Cameras Installation** and **Cameras Alignment** as subtasks in the villa template, so every new project has them.
+   - **The cabinet:** tap the cabinet on the plan. It shows the villa's own **Cabinet Works** steps in the Asana order (Cable Tracing → … → UPS), then **Patch Panel Labelling** and **Cabinet Sticker**, then the engineer's **UDM PRO / Switches / IP PBX** configuration. Each tick completes that exact Asana step. Technicians tick the works and labelling; only the site engineer (or office) ticks the configuration. The cabinet shows as done on the plan when all its works are ticked. Without Asana the same list is used.
    - Unticking reopens the subtask.
    - The Asana stages show in the site app's **Progress** tab and stay mirrored every 2 minutes (see step 3b).
 8. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.

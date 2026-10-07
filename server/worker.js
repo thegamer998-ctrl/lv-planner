@@ -25,6 +25,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT, at INTEGER, by_name TEXT,
      action TEXT, point_id TEXT, detail TEXT)`,
   `CREATE TABLE IF NOT EXISTS floor_pdf (project_id TEXT, floor_id TEXT, part INTEGER, data BLOB, PRIMARY KEY (project_id, floor_id, part))`,
+  `CREATE TABLE IF NOT EXISTS checks (project_id TEXT, item TEXT, done INTEGER DEFAULT 0, by_name TEXT, at INTEGER, PRIMARY KEY (project_id, item))`,
   `CREATE TABLE IF NOT EXISTS staff (id TEXT PRIMARY KEY, name TEXT, role TEXT, key TEXT UNIQUE, active INTEGER DEFAULT 1, created_at INTEGER)`,
   `CREATE INDEX IF NOT EXISTS photos_pt ON photos (project_id, point_id)`,
   `CREATE INDEX IF NOT EXISTS notes_pt ON notes (project_id, point_id)`,
@@ -57,25 +58,59 @@ const STEPS = {
   aligned:    { label: "Aligned",    who: "team" },
   configured: { label: "Configured", who: "engineer" }
 };
-const CONFIG_CATS = ["ap", "cam", "phone", "icom", "rack"];
+const CONFIG_CATS = ["ap", "cam", "phone", "icom"];
 function stepsOf(cat) { return cat === "cam" ? ["installed", "aligned", "configured"] : CONFIG_CATS.includes(cat) ? ["installed", "configured"] : ["installed"]; }
 function canTick(role, step) { return STEPS[step].who === "engineer" ? ["office", "manager", "engineer"].includes(role) : role !== "customer"; }
 const ROLE_NAME = { office: "Office", manager: "Manager", engineer: "Site engineer", tech: "Technician", team: "Team", customer: "Customer" };
 
-// Point categories (the planner's VLAN groups) and the Asana subtask each completes when every point of it is installed
-// (per step: cameras have separate Asana steps for installation, alignment and configuration/naming)
-const CATS = {
-  ap:    { name: "Access points", asana: { installed: /access point.*install|install.*access point|ceiling access point/i,
-                                           configured: /(access point|wi-?fi)[^,]*\b(config|configuration|setup|ssids?)\b|\bssids?\b/i } },
-  cam:   { name: "Cameras",       asana: { installed: /camera.*install|install.*camera|cctv.*install/i,
-                                           aligned: /camera.*align|align.*camera|cctv.*align/i,
-                                           configured: /(camera|cctv)[^,]*\b(naming|adoption|adopt)\b|\bcameras? (config|configuration|setup)\b/i } },
-  data:  { name: "Data points",   asana: { installed: /data point|network point/i } },
-  phone: { name: "IP phones",     asana: { installed: /phone.*install|install.*phone/i, configured: /phone[^,]*\b(config|configuration|setup|extensions?)\b/i } },
-  icom:  { name: "Intercom",      asana: { installed: /intercom.*install|install.*intercom|door entry/i, configured: /intercom[^,]*\b(config|configuration|setup)\b/i } },
-  rack:  { name: "Cabinet",       asana: { configured: /(switch|gateway|udm|unvr|network)[^,]*\b(config|configuration|setup)\b|\b(config|configure|configuration)\b[^,]*(switch|gateway|udm|unvr)/i } },
-  other: { name: "Other",         asana: {} }
-};
+// Point categories (the planner's VLAN groups)
+const CATS = { ap: { name: "Access points" }, cam: { name: "Cameras" }, data: { name: "Data points" }, phone: { name: "IP phones" },
+  icom: { name: "Intercom" }, rack: { name: "Cabinet" }, other: { name: "Other" } };
+// Asana steps completed by the points: only when EVERY point of that kind has the step ticked (all cameras aligned →
+// "CCTV Alignment"); one point unticked reopens it. Matched on "Parent > Step" names of the villa template
+// (Peripheral Works / Hardware Configuration), older names still work.
+const isWallAp = p => p.cat === "ap" && p.type !== "wifi";   // custom wall APs and outdoor Wi-Fi
+const ASANA_RULES = [
+  { step: "installed", what: "ceiling access points", pts: p => p.cat === "ap" && !isWallAp(p), rx: /ceiling access points?.*install|^(?!.*wall)(?!.*configuration >).*access points?.*install/i },
+  { step: "installed", what: "wall access points", pts: isWallAp, rx: /wall access points?.*install/i },
+  { step: "installed", what: "cameras", pts: p => p.cat === "cam", rx: /(cctv|cameras?)[^>]*install|install[^>]*(cctv|camera)/i },
+  { step: "aligned", what: "cameras", pts: p => p.cat === "cam", rx: /(cctv|cameras?)[^>]*align|align[^>]*(cctv|camera)/i },
+  { step: "installed", what: "data points", pts: p => p.cat === "data" || p.cat === "phone", rx: /faceplates?|data points?|network points?/i },
+  { step: "installed", what: "intercom points", pts: p => p.cat === "icom", rx: /intercom[^>]*install|install[^>]*intercom|door entry/i },
+  { step: "configured", what: "access points", pts: p => p.cat === "ap", rx: /configuration > (wi-?fi|access points?)$|(access points?|wi-?fi)[^,>]*\b(config|configuration|setup|ssids?)\b/i },
+  { step: "configured", what: "cameras", pts: p => p.cat === "cam", rx: /configuration > (cctv|cameras?)$|(camera|cctv)[^,>]*\b(naming|adoption|adopt)\b|\bcameras? (config|configuration|setup)\b/i },
+  { step: "configured", what: "IP phones", pts: p => p.cat === "phone", rx: /configuration > (ip )?phones?$|phones?[^,>]*\b(config|configuration|setup|extensions?)\b/i },
+  { step: "configured", what: "intercom points", pts: p => p.cat === "icom", rx: /configuration > (ip )?intercom|intercom[^,>]*\b(config|configuration|setup)\b/i }
+];
+// The cabinet checklist (tap the cabinet on the plan): the villa's own Asana steps in their order when Asana is linked
+// ("Cabinet Works", then the cabinet labelling, then the cabinet configuration for the site engineer), else this list.
+const CABINET_DEFAULT = [
+  ["work", "Cable Tracing"], ["work", "Cabinet Delivery"], ["work", "Cabinet Installed"], ["work", "Patch Panels Punching"],
+  ["work", "UDM PRO / Firewall"], ["work", "Switches"], ["work", "Dac Cable"], ["work", "Patch Cords"], ["work", "NVR"], ["work", "IP PBX"], ["work", "UPS"],
+  ["label", "Patch Panel Labelling"], ["label", "Cabinet Sticker"],
+  ["config", "UDM PRO"], ["config", "Switches"], ["config", "IP PBX"]
+];
+const CAB_LABEL = /patch panels? label|cabinet sticker|cabinet label/i;
+const CAB_CONFIG = /udm|firewall|gateway|router|switch|pbx|nvr|unvr|ups|controller/i;
+function cabinetList(cache, rows) {
+  const by = {}; for (const r of rows || []) by[r.item] = r;
+  const items = [];
+  if (cache && cache.sections) {
+    const tasks = cache.sections.flatMap(s => s.tasks);
+    const works = tasks.find(t => /cabinet works?/i.test(t.name) && (t.subtasks || []).length) || tasks.find(t => /cabinet/i.test(t.name) && (t.subtasks || []).length);
+    if (works) {
+      for (const st of works.subtasks) items.push({ group: "work", st });
+      for (const t of tasks) for (const st of (t.subtasks || [])) if (t !== works && CAB_LABEL.test(st.name)) items.push({ group: "label", st });
+      const cfg = tasks.find(t => /hardware config|configuration/i.test(t.name) && (t.subtasks || []).length);
+      if (cfg) for (const st of cfg.subtasks) if (CAB_CONFIG.test(st.name)) items.push({ group: "config", st });
+      return items.map(({ group, st }) => { const r = by["a:" + st.gid] || {};
+        return { key: "a:" + st.gid, gid: st.gid, group, name: st.name, done: st.completed ? 1 : 0, by: st.completed ? (r.done ? r.by_name : null) : null,
+          at: st.completed ? (r.done && r.at) || st.completed_at || null : null, asana: true }; });
+    }
+  }
+  return CABINET_DEFAULT.map(([group, name], i) => { const key = "d:" + group + ":" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), r = by[key] || {};
+    return { key, group, name, done: r.done ? 1 : 0, by: r.done ? r.by_name : null, at: r.done ? r.at : null, asana: false }; });
+}
 // money / admin tasks: shown in the office view only
 const PRIVATE_STAGE = /payment|invoice|it flow|customer details|quotation|advance/i;
 const MAX_IMG = 1900 * 1024;   // D1 rows are limited to 2 MB (floor PDFs are stored in parts of this size)
@@ -256,7 +291,7 @@ export default {
             await log(stepAction(s, set[s]), ptid, lbl(pt));
           }
           await touch(db, pid);
-          if (asanaOn) ctx.waitUntil((async () => { for (const s of Object.keys(set)) await asanaPush(db, env, proj, pt.cat, s, by); })().catch(e => console.log("asana push", e)));
+          if (asanaOn) ctx.waitUntil((async () => { for (const s of Object.keys(set)) await asanaPush(db, env, proj, s, by); })().catch(e => console.log("asana push", e)));
           const np = await db.prepare("SELECT installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
           return json({ ok: true, ...np });
         }
@@ -273,6 +308,31 @@ export default {
         }
         if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, ptid, by, lbl(pt), byRole));
         if (mm[2] === "note") return json(await saveNote(db, req, pid, ptid, by, lbl(pt), byRole));
+      }
+      // cabinet checklist: body { key, done }. Technicians tick the cabinet works and labelling; the configuration is the site
+      // engineer's (and the office's). With Asana linked each tick completes that exact Asana step, with a comment.
+      if (rest === "cabinet" && req.method === "POST") {
+        if (!canEdit) return json({ error: "View only" }, 403);
+        const b = await req.json(), done = b.done ? 1 : 0, t = now();
+        const rows = (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results;
+        const list = cabinetList(asanaOn ? safeJson(proj.asana_cache) : null, rows), it = list.find(x => x.key === String(b.key || ""));
+        if (!it) return json({ error: "Not on the cabinet checklist" }, 404);
+        if (it.group === "config" && !canTick(role, "configured")) return json({ error: "Only the site engineer can tick the configuration" }, 403);
+        await db.prepare(`INSERT INTO checks (project_id, item, done, by_name, at) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (project_id, item) DO UPDATE SET done = excluded.done, by_name = excluded.by_name, at = excluded.at`).bind(pid, it.key, done, by, t).run();
+        if (it.gid) {
+          await asanaApi(env, `/tasks/${it.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: !!done } }) });
+          await asanaApi(env, `/tasks/${it.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${done ? "Done" : "Reopened"} — ticked by ${by} on the cabinet in the ExpressTech site app.` } }) });
+          await asanaRefresh(db, env, proj);
+        }
+        await log(done ? "cabinet-done" : "cabinet-undone", "", it.name);
+        // the cabinet point counts as done on the plan when all its works are ticked
+        const now2 = cabinetList(asanaOn ? safeJson(proj.asana_cache) : null, (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results);
+        const works = now2.filter(x => x.group !== "config"), allDone = works.length && works.every(x => x.done) ? 1 : 0;
+        await db.prepare("UPDATE points SET installed = ?, installed_by = ?, installed_at = ? WHERE project_id = ? AND cat = 'rack' AND active = 1 AND installed <> ?")
+          .bind(allDone, allDone ? by : null, allDone ? t : null, pid, allDone).run();
+        await touch(db, pid);
+        return json({ ok: true, cabinet: now2 });
       }
       // many points at once (the site engineer configures all access points, all cameras… together)
       if (rest === "bulk" && req.method === "POST") {
@@ -300,7 +360,7 @@ export default {
           const what = Object.keys(kinds).map(c => kinds[c] + " " + (NOUN[c] || NOUN.other)[kinds[c] === 1 ? 0 : 1]).join(", ");
           await log("bulk-" + stepAction(step, done), "", what);
           await touch(db, pid);
-          if (asanaOn) ctx.waitUntil((async () => { for (const c of Object.keys(cats)) for (const s of cats[c]) await asanaPush(db, env, proj, c, s, by); })().catch(e => console.log("asana push", e)));
+          if (asanaOn) ctx.waitUntil((async () => { const steps = new Set(); for (const c of Object.keys(cats)) for (const s of cats[c]) steps.add(s); for (const s of steps) await asanaPush(db, env, proj, s, by); })().catch(e => console.log("asana push", e)));
         }
         return json({ ok: true, changed: changed.length });
       }
@@ -538,12 +598,15 @@ async function projectView(db, proj, role) {
     db.prepare("SELECT at, by_name, by_role, action, point_id, detail FROM log WHERE project_id = ? ORDER BY at DESC LIMIT 80").bind(pid).all()
   ]);
   const byPt = {}, byIssue = {};
+  const hasRack = points.results.some(p => p.cat === "rack");
+  const checks = hasRack ? (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results : [];
   for (const p of points.results) byPt[p.point_id] = { ...p, steps: stepsOf(p.cat), photos: [], notes: [] };
   const out = {
     role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid,
       status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null },
     floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v, pdf: f.pdf_parts ? f.pdf_v : 0, pw: f.pw, ph: f.ph })),
-    points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: []
+    points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: [],
+    cabinet: hasRack ? cabinetList(proj.asana_gid ? safeJson(proj.asana_cache) : null, checks) : null
   };
   out.steps = STEPS;
   out.v = (proj.updated_at || 0) + ":" + (proj.asana_at || 0) + ":" + (proj.status || "");   // same as GET …/v
@@ -652,30 +715,33 @@ function findTask(m, gid) {
   }
   return null;
 }
-// After a point tick: when every point of that kind has that step ticked (e.g. all cameras aligned), complete the matching
-// Asana subtask (reopen it if one is unticked)
-async function asanaPush(db, env, proj, cat, step, by) {
-  const c = CATS[cat], rx = c && c.asana && c.asana[step]; if (!rx || !STEPS[step]) return;
-  const r = await db.prepare(`SELECT COUNT(*) AS n, SUM(${step}) AS done FROM points WHERE project_id = ? AND active = 1 AND cat = ?`).bind(proj.id, cat).first();
-  const n = r.n || 0, done = r.done || 0; if (!n) return;
+// After a point tick: for every rule of that step (e.g. all cameras aligned → "CCTV Alignment"), complete the Asana step
+// when every point of that kind has it ticked; reopen it when one is unticked. One comment each time it changes.
+async function asanaPush(db, env, proj, step, by) {
+  if (!STEPS[step]) return;
+  const rows = (await db.prepare(`SELECT cat, type, ${step} AS v FROM points WHERE project_id = ? AND active = 1`).bind(proj.id).all()).results;
   let m = safeJson(proj.asana_cache);
   if (!m.sections) m = await asanaRefresh(db, env, proj);
-  let target = null;
-  for (const s of m.sections) for (const t of s.tasks) {
-    for (const st of (t.subtasks || [])) if (!target && rx.test(st.name)) target = st;
-    if (!target && rx.test(t.name)) target = t;
-  }
-  if (!target) return;
-  const complete = done >= n;
-  if (complete !== target.completed) {
+  let changed = false;
+  for (const rule of ASANA_RULES.filter(r => r.step === step)) {
+    const mine = rows.filter(rule.pts), n = mine.length, done = mine.filter(p => p.v).length; if (!n) continue;
+    let target = null;
+    for (const s of m.sections) for (const t of s.tasks) {
+      for (const st of (t.subtasks || [])) if (!target && rule.rx.test(t.name + " > " + st.name)) target = st;
+      if (!target && !(t.subtasks || []).length && rule.rx.test(t.name)) target = t;
+    }
+    if (!target) continue;
+    const complete = done >= n;
+    if (complete === target.completed) continue;
     await asanaApi(env, `/tasks/${target.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: complete } }) });
     const verb = STEPS[step].label.toLowerCase();
     const text = complete
-      ? `All ${n} ${c.name.toLowerCase()} ${verb} and ticked in the ExpressTech site app (last by ${by}).`
-      : `Reopened: ${done} of ${n} ${c.name.toLowerCase()} ${verb} (unticked by ${by} in the ExpressTech site app).`;
+      ? `All ${n} ${rule.what} ${verb} and ticked in the ExpressTech site app (last by ${by}).`
+      : `Reopened: ${done} of ${n} ${rule.what} ${verb} (unticked by ${by} in the ExpressTech site app).`;
     await asanaApi(env, `/tasks/${target.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text } }) });
-    await asanaRefresh(db, env, proj);
+    target.completed = complete; changed = true;
   }
+  if (changed) await asanaRefresh(db, env, proj);
 }
 
 // ------------------------------------------------------------------ Zoho Books (Draft estimates from the planner's quote)

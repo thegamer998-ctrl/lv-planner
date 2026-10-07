@@ -131,6 +131,10 @@
   @media (prefers-color-scheme: dark){ .steprow.on.cfg{ background:#132744; } }
   .steprow .go{ height:36px; padding:0 14px; border-radius:10px; border:0; font-weight:700; font-size:13.5px; background:var(--ok); color:#fff; flex-shrink:0; }
   .steprow .go.undo{ background:var(--panel-2); color:var(--text); border:1px solid var(--line-2); font-weight:600; }
+  .cabhead{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:2px 0 8px; }
+  .cabhead b{ font-size:15px; } .cabhead span{ font-size:12px; color:var(--muted); font-weight:600; }
+  .cabbar{ height:6px; border-radius:6px; background:var(--panel-2); overflow:hidden; margin:0 0 12px; } .cabbar i{ display:block; height:100%; background:var(--ok); }
+  .lbl.cab{ display:flex; justify-content:space-between; } .lbl.cab span{ text-transform:none; letter-spacing:0; font-weight:600; }
   .steprow .go.cfg{ background:#2563eb; } .steprow .lock{ font-size:11.5px; color:var(--muted); flex-shrink:0; text-align:right; max-width:96px; }
   .sbars{ display:grid; grid-template-columns:auto 1fr auto; gap:5px 9px; align-items:center; font-size:12px; color:var(--muted); } .sbars .bar{ height:6px; }
   .bar.al i{ background:linear-gradient(90deg,#0d9488,#2dd4bf); } .bar.cf i{ background:linear-gradient(90deg,#2563eb,#60a5fa); }
@@ -562,7 +566,7 @@
   function pts(){ return st.data ? st.data.points : []; }
   function issues(){ return st.data && st.data.issues ? st.data.issues : []; }
   // the point's steps (cameras: installed → aligned → configured by the site engineer), with ticks still waiting for signal applied
-  var CONFIG_CATS = ["ap","cam","phone","icom","rack"];
+  var CONFIG_CATS = ["ap","cam","phone","icom"];
   function stepsOf(p){ return p.steps || (p.cat === "cam" ? ["installed","aligned","configured"] : CONFIG_CATS.indexOf(p.cat) >= 0 ? ["installed","configured"] : ["installed"]); }
   // technicians never see the engineer's "configured" step
   function visibleSteps(p){ return stepsOf(p).filter(function(x){ return x !== "configured" || canConfig(); }); }
@@ -982,7 +986,7 @@
     $("listChips").querySelectorAll("[data-mode]").forEach(function(b){ b.onclick = function(){ st.listMode = b.dataset.mode; st.cfgSel = {}; renderList(); }; });
   }
   // ---- configuration (site engineer): by device type for the whole villa — select all, then mark configured in one go
-  var CFG_ORDER = ["ap","cam","phone","icom","rack"];
+  var CFG_ORDER = ["ap","cam","phone","icom"];
   function renderConfigList(q, seg){
     var all = pts().filter(function(p){ return stepsOf(p).indexOf("configured") >= 0; });
     var done = all.filter(function(p){ return state(p).configured; }).length;
@@ -1096,7 +1100,7 @@
     "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
     "project-started":"started the project", "project-done":"marked the project complete", "project-reopened":"reopened the project",
-    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of" };
+    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cabinet-done":"ticked on the cabinet", "cabinet-undone":"reopened on the cabinet" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });
     var rows = (d.activity || []).map(function(a){ return { at:a.at, src:"site", a:a }; });
@@ -1158,7 +1162,9 @@
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = typeName(p); $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
     var h = labelHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
-    if (visibleSteps(p).length > 1){
+    if (catOf(p) === "rack" && st.data.cabinet){
+      h += cabinetHtml();
+    } else if (visibleSteps(p).length > 1){
       // installed (+ aligned for cameras) by the technician, configured by the site engineer — each ticked on its own, with who and when
       h += '<div class="steps">' + visibleSteps(p).map(function(x, i){
         var on = o[x], wait = stepWaiting(p, x), by = p[x + "_by"], at = p[x + "_at"];
@@ -1180,11 +1186,47 @@
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-step]").forEach(function(b){ b.onclick = function(){ setStep(p, b.dataset.step, b.dataset.v === "1"); }; });
-    bindLabel(p);
+    bindLabel(p); bindCabinet();
     if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
     bindPhotoTaps(function(){ return p.photos; }, p.label);
+  }
+  // ---- the cabinet: its whole checklist in the order of the villa's Asana steps (cable tracing → … → UPS, labelling),
+  // then the configuration (site engineer only). Each tick completes that Asana step.
+  var CAB_GROUPS = [["work","Cabinet works"],["label","Labelling"],["config","Configuration · site engineer"]];
+  var cabBusy = null;
+  function cabinetHtml(){
+    var list = st.data.cabinet || [], mine = list.filter(function(c){ return c.group !== "config" || canConfig(); });
+    var works = list.filter(function(c){ return c.group !== "config"; }), nd = works.filter(function(c){ return c.done; }).length;
+    var h = '<div class="cabhead"><b>Cabinet checklist</b><span>' + nd + " of " + works.length + " done" + (list.some(function(c){ return c.asana; }) ? " · same steps as Asana" : "") + "</span></div>" +
+      '<div class="cabbar"><i style="width:' + (works.length ? Math.round(nd / works.length * 100) : 0) + '%"></i></div>';
+    var num = 0;
+    CAB_GROUPS.forEach(function(g){
+      var rows = mine.filter(function(c){ return c.group === g[0]; }); if (!rows.length) return;
+      var gd = rows.filter(function(c){ return c.done; }).length;
+      h += '<div class="lbl cab">' + g[1] + "<span>" + gd + " / " + rows.length + "</span></div>" + '<div class="steps">' + rows.map(function(c){
+        num++;
+        var cfg = c.group === "config", can = cfg ? canConfig() : canEdit(), busy = cabBusy === c.key;
+        var sub = c.done ? (c.by ? "by " + esc(c.by) + (c.at ? " · " + when(c.at) : "") : "Done" + (c.at ? " · " + when(c.at) : "")) : cfg ? "Site engineer" : "To do";
+        var btn = !can ? "" : busy ? '<button type="button" class="go undo" disabled>Saving…</button>'
+          : c.done ? '<button type="button" class="go undo" data-cab="' + esc(c.key) + '" data-v="0">Undo</button>'
+          : '<button type="button" class="go' + (cfg ? " cfg" : "") + '" data-cab="' + esc(c.key) + '" data-v="1">Done</button>';
+        return '<div class="steprow' + (c.done ? " on" : "") + (cfg ? " cfg" : "") + '"><span class="n">' + (c.done ? CHECK.replace('stroke-width="3.2"', 'stroke-width="3.6" width="14" height="14"') : num) + '</span><span class="t"><b>' + esc(c.name) + "</b><small>" + sub + "</small></span>" + btn + "</div>";
+      }).join("") + "</div>";
+    });
+    return h;
+  }
+  function bindCabinet(){
+    $("shBody").querySelectorAll("[data-cab]").forEach(function(b){ b.onclick = function(){
+      var key = b.dataset.cab, v = b.dataset.v === "1", c = (st.data.cabinet || []).find(function(x){ return x.key === key; });
+      needName(function(){
+        cabBusy = key; renderSheet();
+        req("POST", "/cabinet", JSON.stringify({ key:key, done:v }), "application/json").then(function(r){
+          cabBusy = null; st.data.cabinet = r.cabinet; renderSheet(); toast((c ? c.name : "Step") + (v ? " — done" : " — reopened")); load(true);
+        }).catch(function(e){ cabBusy = null; renderSheet(); toast(e.status ? e.message : "No signal. Try again when you have signal."); });
+      });
+    }; });
   }
   // the label written on the device. Technicians, the site engineer and the office can change it on site
   // (e.g. GF-HALL-AP01 as the client wants it); the client only sees it. The planner picks the change up.
