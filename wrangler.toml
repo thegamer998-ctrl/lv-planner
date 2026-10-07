@@ -1,0 +1,19 @@
+# ExpressTech server: deployed to Cloudflare automatically by GitHub (.github/workflows/deploy-server.yml)
+# whenever server/worker.js changes on main. Secrets (ADMIN_KEY, ASANA_TOKEN, Zoho) stay in Cloudflare and are kept.
+name = "expresstech"
+main = "server/worker.js"
+account_id = "060f20228ea8711e50feefd07e88799c"
+compatibility_date = "2025-09-01"
+workers_dev = true
+keep_vars = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "expresstech"
+database_id = "6d474c68-a3c8-46b9-9d44-ff8a455f80ae"
+
+[triggers]
+crons = ["*/2 * * * *"]
+
+[observability]
+enabled = true

@@ -1,0 +1,27 @@
+name: Deploy ExpressTech server
+# Sends server/worker.js to Cloudflare when it changes on main. Needs the repository secret CLOUDFLARE_API_TOKEN
+# (Cloudflare → My Profile → API Tokens → "Edit Cloudflare Workers" template + D1 Edit). Without it the job is skipped.
+on:
+  push:
+    branches: [main]
+    paths: ["server/worker.js", "wrangler.toml"]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the Cloudflare key is set
+        id: key
+        env: { T: "${{ secrets.CLOUDFLARE_API_TOKEN }}" }
+        run: if [ -n "$T" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "No CLOUDFLARE_API_TOKEN secret yet, skipping."; fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == '1'
+      - name: Deploy to Cloudflare
+        if: steps.key.outputs.ok == '1'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 060f20228ea8711e50feefd07e88799c
+      - name: Check the server answers
+        if: steps.key.outputs.ok == '1'
+        run: sleep 5 && curl -fsS https://expresstech.hussaink-060.workers.dev/ | tee /dev/stderr | grep -q '"ok":true'
