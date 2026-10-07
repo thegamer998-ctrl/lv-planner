@@ -2,10 +2,10 @@
 // The app page itself: always fetched fresh when online (you get updates immediately);
 // the saved copy is only used when there's no internet.
 // Libraries and icons: served from the saved copy, refreshed in the background.
-var CACHE = "lvplanner-v14";
+var CACHE = "lvplanner-v15";
 var SHELL = [
   "./", "./index.html", "./site.html", "./manifest.webmanifest", "./site.webmanifest",
-  "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png",
+  "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png", "./brand-logo.png", "./brand-mark.png",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",

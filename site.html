@@ -284,14 +284,40 @@
   .loading .sp{ width:34px; height:34px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--accent); animation:sp 0.8s linear infinite; margin:0 auto 12px; }
   @keyframes sp{ to{ transform:rotate(360deg); } }
   .hidden{ display:none !important; }
+
+  /* ---- Express Tech brand (customer view): logo red #FF0D07 / #D21E1C, greys #808080 / #B2B2B3 */
+  .blogo, .bfoot{ display:none; }
+  body.brand{ --accent:#D21E1C; --accent-soft:#fdeceb; --bg:#f4f4f5; --panel:#ffffff; --panel-2:#efefef; --text:#2b2b2b; --muted:#7c7c7c; --line:#e7e7e7; --line-2:#d6d6d6; --ok:#2e9e5b; }
+  @media (prefers-color-scheme: dark){ body.brand{ --accent:#ff3b30; --accent-soft:#3a1715; --bg:#111111; --panel:#1b1b1b; --panel-2:#262626; --text:#efefef; --muted:#9d9d9d; --line:#2c2c2c; --line-2:#3a3a3a; } }
+  body.brand .top{ flex-wrap:wrap; row-gap:8px; position:relative; border-bottom:0; padding-bottom:13px; }
+  body.brand .top::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:linear-gradient(90deg,#FF0D07 0 64%,#808080 64% 86%,#B2B2B3 86%); }
+  body.brand .top .logo, body.brand .top .role{ display:none; }
+  body.brand .blogo{ display:block; height:34px; width:auto; }
+  body.brand .top .ttl{ flex-basis:100%; order:3; }
+  body.brand .top .ttl b{ font-size:17px; letter-spacing:-.01em; }
+  body.brand .top .ttl small{ text-transform:uppercase; letter-spacing:.16em; font-size:10.5px; font-weight:600; color:#808080; margin-top:2px; }
+  body.brand .prog .pct{ color:var(--accent); }
+  body.brand .bar{ background:var(--panel-2); border-color:transparent; }
+  body.brand .bar i{ background:linear-gradient(90deg,#D21E1C,#FF0D07); }
+  body.brand .chip.on{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  body.brand .sec{ text-transform:uppercase; letter-spacing:.14em; font-size:11.5px; color:#808080; justify-content:flex-start; gap:8px; margin-top:18px; }
+  body.brand .sec::before{ content:""; width:9px; height:9px; background:#FF0D07; flex-shrink:0; }
+  body.brand .card{ border-radius:10px; }
+  body.brand .loading .sp{ border-top-color:#FF0D07; }
+  .ovr{ padding:14px 12px 12px; } .ovr .h{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; font-weight:600; } .ovr .h small{ color:var(--muted); font-weight:500; }
+  .ovr .h b{ font-size:20px; color:var(--accent); margin-right:6px; } .ovr + .ovr{ border-top:1px solid var(--line); } .ovr .bar{ height:10px; } .ovr p{ margin:7px 0 0; font-size:12px; color:var(--muted); }
+  body.brand .bfoot{ display:flex; align-items:center; justify-content:center; gap:10px; margin:26px 12px 10px; color:#808080; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; }
+  .bfoot img{ width:26px; height:26px; }
+  .lmark{ width:46px; height:46px; display:block; margin:0 auto 14px; }
 </style>
 </head>
 <body>
-<div class="loading" id="loading"><div><div class="sp"></div><div id="loadMsg">Opening…</div></div></div>
+<div class="loading" id="loading"><div><img class="lmark" src="brand-mark.png" alt=""><div class="sp"></div><div id="loadMsg">Opening…</div></div></div>
 
 <header class="top">
   <button type="button" class="back hidden" id="backBtn" aria-label="All projects">‹</button>
   <div class="logo">ET</div>
+  <img class="blogo" src="brand-logo.png" alt="Express Tech — We help you grow">
   <div class="ttl"><b id="pName">ExpressTech</b><small id="pSub">Installation site</small></div>
   <span class="role" id="roleTag">Team</span>
 </header>
@@ -331,7 +357,7 @@
   <button type="button" data-v="vList"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Checklist</button>
   <button type="button" data-v="vProg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progress</button>
   <button type="button" data-v="vRep" id="tabRep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M12 7v4M12 13.5v.01"/></svg>Reports</button>
-  <button type="button" data-v="vAct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Activity</button>
+  <button type="button" data-v="vAct" id="tabAct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Activity</button>
 </nav>
 
 <div class="scrim" id="scrim"></div>
@@ -619,10 +645,14 @@
 
   function render(){
     var d = st.data;
-    document.title = d.project.name + " · ExpressTech Site";
+    var cust = d.role === "customer";
+    document.body.classList.toggle("brand", cust);
+    document.title = d.project.name + (cust ? " · Express Tech" : " · ExpressTech Site");
+    $("tabAct").classList.toggle("hidden", cust);
+    if (cust && st.view === "vAct") switchView("vPlan");
     $("pName").textContent = d.project.name;
     var me = name();
-    $("pSub").textContent = d.role === "customer" ? "Installation progress by ExpressTech" : d.role === "office" ? "Office view" + (d.project.paused ? " · paused" : "") : paused() ? "⏸ Paused by the office · view only" : (me && STAFF ? me + " · " : "") + "tap a point to update";
+    $("pSub").textContent = d.role === "customer" ? "Installation progress" : d.role === "office" ? "Office view" + (d.project.paused ? " · paused" : "") : paused() ? "⏸ Paused by the office · view only" : (me && STAFF ? me + " · " : "") + "tap a point to update";
     var rt = $("roleTag"); rt.textContent = ROLE_TAG[d.role] || "Team";
     rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" || d.role === "manager" ? " office" : "");
     var c = counts(pts());
@@ -1077,7 +1107,8 @@
   function canTickStage(t){ if (t.auto) return false; return t.who === "office" ? isOffice() : t.who === "engineer" ? canConfig() : canEdit(); }
   function workTasks(S2){ var out = []; (S2.sections || []).forEach(function(s){ s.tasks.forEach(function(t){ [t].concat(t.subtasks || []).forEach(function(x){ if (x.who !== "office") out.push(x); }); }); }); return out; }
   function renderProgress(){
-    var d = st.data, all = pts(), html = "", S2 = d.stages;
+    var d = st.data, all = pts(), html = "", S2 = d.stages, cust = role() === "customer";
+    if (cust){ $("progBody").innerHTML = custProgress(d, all); return; }
     if (S2 && S2.project && S2.project.status){
       var ps = S2.project.status;
       html += '<div class="status-card"><span class="pill ' + (ps.type === "on_track" || ps.type === "complete" ? "ok" : ps.type === "off_track" ? "late" : "open") + '">' + esc(ps.title || "Status") + "</span>" + (ps.text ? "<p>" + esc(ps.text) + "</p>" : "") + '<p style="font-size:11.5px">' + esc(ps.by || "") + (ps.at ? " · " + when(ps.at) : "") + "</p></div>";
@@ -1114,6 +1145,25 @@
     $("progBody").innerHTML = html + '<div style="height:16px"></div>';
     $("progBody").querySelectorAll("[data-stage]").forEach(function(b){ b.onclick = function(){ openStage(b.dataset.stage); }; });
     if ($("stRef")) $("stRef").onclick = function(){ toast("Checking Asana…"); req("POST", "/asana/refresh").then(function(r){ st.data.stages = r.stages; render(); toast("Stages up to date"); }).catch(function(e){ toast(e.message); }); };
+  }
+  // the customer's progress: one bar for the installation, one for the configuration, then by type and by floor
+  function custProgress(d, all){
+    var c = counts(all), cfg = all.filter(function(p){ return stepsOf(p).indexOf("configured") >= 0; }), cd = cfg.filter(function(p){ return state(p).configured; }).length;
+    var cp = cfg.length ? Math.round(cd / cfg.length * 100) : 0;
+    function bar(pc){ return '<div class="bar"><i style="width:' + pc + '%"></i></div>'; }
+    var html = '<div class="sec">Overall</div><div class="card">' +
+      '<div class="ovr"><div class="h"><span><b>' + c.pct + '%</b>Installation</span><small>' + c.d + " / " + c.n + " points</small></div>" + bar(c.pct) + "</div>" +
+      (cfg.length ? '<div class="ovr"><div class="h"><span><b>' + cp + '%</b>Configuration</span><small>' + cd + " / " + cfg.length + " devices</small></div>" + bar(cp) + "<p>Access points, cameras and other devices set up by our engineer.</p></div>" : "") + "</div>";
+    html += '<div class="sec">By type</div><div class="card">' + Object.keys(CATS).map(function(k){
+      var list = all.filter(function(p){ return catOf(p) === k; }); if (!list.length) return "";
+      var cc = counts(list), ic = miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"');
+      return '<div class="catc"><div class="h"><span>' + ic + CATS[k].name + "</span><small>" + cc.d + " / " + cc.n + "</small></div>" + bar(cc.pct) + "</div>";
+    }).join("") + "</div>";
+    html += '<div class="sec">By floor</div><div class="card">' + d.floors.map(function(f){
+      var cc = counts(all.filter(function(p){ return p.floor_id === f.id; })); if (!cc.n) return "";
+      return '<div class="catc"><div class="h"><span>' + esc(f.name) + "</span><small>" + cc.d + " / " + cc.n + "</small></div>" + bar(cc.pct) + "</div>";
+    }).join("") + "</div>";
+    return html + '<div class="bfoot"><img src="brand-mark.png" alt="">Express Tech · We help you grow</div><div style="height:12px"></div>';
   }
   function findStage(gid){
     var S2 = st.data.stages; if (!S2) return null;
