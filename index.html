@@ -808,7 +808,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.2</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.3</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1001,7 +1001,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.2</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.3</p>
     </section>
   </aside>
 
@@ -6691,7 +6691,8 @@
     }).then(function(){
       siteUi.busy = false; if (btn) btn.disabled = false;
       if (typeof autosaveTick === "function") autosaveTick();
-      showStatus(opts.start ? "Project started — it is now in the team’s site app" : "Site updated — save the project to keep the link with it");
+      updateDirtyDot();
+      showStatus(opts.start ? "Project started — press Save so this file keeps the link to it" : "Site updated");
       return (opts.asana ? linkAsana(opts.asana).catch(function(){}) : Promise.resolve()).then(function(){ return loadSite(true, opts.start); });
     }).catch(function(e){ siteUi.busy = false; if (btn) btn.disabled = false; msg.textContent = "Couldn't publish: " + e.message; });
   }
@@ -6757,12 +6758,24 @@
     if (!r.url){ body.innerHTML = '<p class="st-msg">Set up the ExpressTech server first (below). The setup guide is in the app folder: <b>server/README.md</b>.</p>'; return; }
     var staff = siteUi.staff;
     if (!project.site){
-      // ---- not started yet
+      // ---- not started yet. A villa already started from an older copy of this file (saved before Start) is found by
+      // its name, so it is reconnected instead of started twice.
+      if (siteUi.list === undefined){ siteUi.list = null; siteFetch("/site/list").then(function(j){ siteUi.list = j.projects || []; renderSiteDialog(note); }).catch(function(){ siteUi.list = []; }); }
+      var nm = String(project.name || "").trim().toLowerCase();
+      var twin = (siteUi.list || []).find(function(x){ return String(x.name || "").trim().toLowerCase() === nm; });
+      if (twin){
+        h += '<div class="st-step" style="border-color:#f59e0b;background:rgba(245,158,11,.10)"><b>This villa is already started on site</b><small>Started ' + new Date(twin.started_at || twin.updated_at).toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" }) +
+          ' · ' + twin.points + (twin.points === 1 ? ' point · ' : ' points · ') + twin.installed + ' done. This file was saved before Start, so it lost the link. Reconnect it, then press Save.</small></div>';
+        h += '<div class="qt-btns"><button type="button" class="tbtn primary" id="stReconnect" data-id="' + escapeHtml(twin.id) + '" style="flex:1;height:40px;font-size:14px;">↺ Reconnect to it</button></div>';
+        h += '<p class="st-msg" id="stMsg">' + escapeHtml(note || "") + '</p>';
+        h += '<details class="qt-set" style="margin-top:6px"><summary>Start it again as a separate new project</summary>';
+      }
       h += '<div class="st-step"><b>Customer approved the quotation?</b><small>Start the project: it appears in the team’s site app and you get the client’s link.</small></div>';
       h += '<div class="st-lbl">Team on this project <button type="button" class="st-mini" data-addpeople>+ Add people</button></div>' + (staff ? teamPicker(staff, null) : '<p class="st-msg">Loading the team…</p>');
       h += '<div class="st-lbl">Asana project (optional)</div><input type="text" class="select-input" id="stAsana" placeholder="Paste the Asana project link — or link it later">';
-      h += '<p class="st-msg" id="stMsg">' + escapeHtml(note || "") + '</p>';
-      h += '<div class="qt-btns"><button type="button" class="tbtn primary" id="stStart" style="flex:1;height:40px;font-size:14px;">▶ Start project</button></div>';
+      if (!twin) h += '<p class="st-msg" id="stMsg">' + escapeHtml(note || "") + '</p>';
+      h += '<div class="qt-btns"><button type="button" class="tbtn' + (twin ? "" : " primary") + '" id="stStart" style="flex:1;height:40px;font-size:14px;">▶ Start ' + (twin ? "a new project" : "project") + '</button></div>';
+      if (twin) h += '</details>';
     } else if (d && d.project.id === project.site.id){
       var done = d.project.status === "done";
       var n = d.points.length, inst = d.points.filter(function(p){ return p.installed && (p.cat !== "cam" || p.aligned); }).length, ph = d.points.reduce(function(a,p){ return a + p.photos.length; }, 0);
@@ -6796,6 +6809,13 @@
     }
     body.innerHTML = h;
     if (!staff) siteStaff().then(function(){ renderSiteDialog(note); }).catch(function(e){ siteUi.staff = []; var m = document.getElementById("stMsg"); if (m) m.textContent = "Couldn't load the team: " + e.message; });
+    var rc = document.getElementById("stReconnect");
+    if (rc) rc.onclick = function(){
+      project.site = { id: rc.dataset.id }; siteUi.data = null; siteUi.list = undefined;
+      if (typeof autosaveTick === "function") autosaveTick();
+      updateDirtyDot(); showStatus("Reconnected to the site project — press Save to keep the link in the file");
+      renderSiteDialog(""); loadSite();
+    };
     var bs = document.getElementById("stStart");
     if (bs) bs.onclick = function(){
       var v = (document.getElementById("stAsana").value || ""), am = v.match(/project\/(\d{6,})/) || v.match(/(\d{10,})/);
@@ -6846,7 +6866,7 @@
   setInterval(function(){ if (!document.hidden && project.site && zRelay().url && !siteUi.busy) loadSite(); }, 120000);
   (function(){
     var ov = document.getElementById("siteOverlay"); if (!ov) return;
-    document.getElementById("siteBtn").addEventListener("click", function(){ siteUi.staff = null; renderSiteDialog(""); ov.classList.add("visible"); loadSite(); });
+    document.getElementById("siteBtn").addEventListener("click", function(){ siteUi.staff = null; siteUi.list = undefined; renderSiteDialog(""); ov.classList.add("visible"); loadSite(); });
     document.getElementById("stClose").onclick = function(){ ov.classList.remove("visible"); };
     ov.addEventListener("click", function(e){ if (e.target === ov) ov.classList.remove("visible"); });
     document.getElementById("stSave").onclick = function(){ setServer(document.getElementById("stUrl").value, document.getElementById("stKey").value); showStatus("ExpressTech server saved on this device"); renderSiteDialog(""); loadSite(); };
@@ -8166,10 +8186,12 @@
   }
 
   /* ================= Autosave + restore ================= */
-  var AUTOSAVE = { lastSig:null, savedSig:null, pdfSaved:{} };
+  var AUTOSAVE = { lastSig:null, savedSig:null, savedSite:"", pdfSaved:{} };
   function hasContent(){ return project.floors.some(function(f){ return f.pdfBase64 || f.markers.length; }); }
-  function isDirty(){ return hasContent() && AUTOSAVE.savedSig !== stateSig(); }
-  function markSaved(sig){ AUTOSAVE.savedSig = sig || stateSig(); AUTOSAVE.lastSig = null; autosaveTick(); updateDirtyDot(); }
+  // the link to the live site project is part of the file: starting (or reconnecting) a project counts as an unsaved change
+  function siteSig(){ return (project.site && project.site.id) || ""; }
+  function isDirty(){ return hasContent() && (AUTOSAVE.savedSig !== stateSig() || AUTOSAVE.savedSite !== siteSig()); }
+  function markSaved(sig){ AUTOSAVE.savedSig = sig || stateSig(); AUTOSAVE.savedSite = siteSig(); AUTOSAVE.lastSig = null; autosaveTick(); updateDirtyDot(); }
   function updateDirtyDot(){ if (AUTOSAVE && el.saveProjectBtn) el.saveProjectBtn.classList.toggle("dirty", isDirty()); }
   function autosaveTick(){
     if (!hasContent()) return;
