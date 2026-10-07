@@ -81,7 +81,7 @@ Do this once on each office device. The **Quote** dialog uses the same server.
 ---
 
 ## Using it
-1. **Your team, once.** In the planner click **Start** (or **Site**), then **+ Add people** next to **Team**. The office view opens at the **Team** list (step 4). add each person with their role, and send them their own link (**Copy link** → WhatsApp). They open it once on their phone and add it to the home screen: it becomes their ExpressTech app, with every project they are on.
+1. **Your team, once.** In the planner click **Start** (or **Site**), then **+ Add people** next to **Team**. The office view opens at the **Team** list (step 4). Add each person with their role, and send them their own link (**Copy link** → WhatsApp). They open it once on their phone and add it to the home screen: it becomes their ExpressTech app, with every project they are on.
 
    | Role | Can do |
    |---|---|
