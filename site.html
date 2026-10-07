@@ -9,7 +9,12 @@
 <meta name="apple-mobile-web-app-title" content="ET Site">
 <meta name="robots" content="noindex">
 <title>ExpressTech Site</title>
-<link rel="manifest" href="site.webmanifest">
+<script>
+  // Android/Chrome needs the app manifest to install; iPhone must NOT get it (it would open the saved app without the link)
+  if (!(/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))){
+    var mf = document.createElement("link"); mf.rel = "manifest"; mf.href = "site.webmanifest"; document.head.appendChild(mf);
+  }
+</script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -1441,12 +1446,27 @@
   }
   document.querySelectorAll(".tabs button").forEach(function(b){ b.onclick = function(){ switchView(b.dataset.v); }; });
 
+  // a link that didn't come through (e.g. an app icon saved without it): paste the WhatsApp link once, the phone keeps it
+  function askLink(){
+    var box = $("loadMsg"); var sp = document.querySelector("#loading .sp"); if (sp) sp.style.display = "none";
+    box.innerHTML = '<div style="max-width:340px;margin:0 auto;text-align:center"><b style="font-size:16px;color:var(--text)">Open your project link</b>' +
+      '<p style="margin:8px 0 12px">Copy the link ExpressTech sent you on WhatsApp and paste it here. You only need to do this once on this phone.</p>' +
+      '<input id="lkIn" type="url" inputmode="url" autocomplete="off" placeholder="Paste the link here" style="width:100%;height:46px;border-radius:12px;border:1px solid var(--line-2);padding:0 12px;font-size:15px;background:var(--panel);color:var(--text)">' +
+      '<button type="button" class="btn pri" id="lkGo" style="width:100%;margin-top:10px;height:46px;justify-content:center">Open</button><div id="lkErr" style="color:var(--danger);margin-top:8px"></div></div>';
+    $("lkGo").onclick = function(){
+      var v = ($("lkIn").value || "").trim(), i = v.indexOf("#"), h = i >= 0 ? v.slice(i + 1) : "";
+      if (!/(^|&)s=/.test(h) || !/(^|&)(u|k|office)(=|&|$)/.test(h)){ $("lkErr").textContent = "That doesn't look like an ExpressTech project link. Copy the whole link from WhatsApp."; return; }
+      try { localStorage.setItem("et_last_link", h); } catch(e){}
+      location.replace(location.pathname + location.search + "#" + h); location.reload();
+    };
+  }
+
   // ---- start
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
-  if (!S){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
+  if (!S){ askLink(); return; }
   if (OFFICE){ if (P && okey()) openProject(P); else showHome(); }
   else if (STAFF){ homeFetch("/site/me").then(function(j){ st.me = j.person; }).catch(function(){}).then(function(){ if (P) openProject(P); else showHome(); }); }
-  else if (!P || !K){ $("loadMsg").textContent = "This link is incomplete. Ask ExpressTech to send the project link again."; return; }
+  else if (!P || !K){ askLink(); return; }
   else load().then(function(){ updateQueue(); flush(); });
   // every 20 s a tiny "anything new?" check; the whole project is reloaded only when something changed (keeps the server light)
   setInterval(function(){
