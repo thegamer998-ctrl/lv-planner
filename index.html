@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>ExpressTech Villa LV Planner</title>
+<title>Express Tech Villa LV Planner</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -14,10 +14,11 @@
 <style>
   /* Light theme (default) */
   :root{
-    --bg-deep:#eceff3; --bg-panel:#ffffff; --bg-panel-raised:#f5f7fa; --bg-hover:#eef2f7;
-    --hairline:#e2e7ee; --hairline-2:#d3dae3; --grid-dot:#d5dbe3;
-    --text-main:#18212d; --text-muted:#667283; --text-dim:#98a2b0;
-    --accent:#006fff; --accent-soft:#e7f0ff; --on-accent:#ffffff;
+    /* Express Tech brand: red #FF0D07 / #D21E1C, greys #808080 / #B2B2B3 */
+    --bg-deep:#eeeeef; --bg-panel:#ffffff; --bg-panel-raised:#f6f6f6; --bg-hover:#f0f0f0;
+    --hairline:#e5e5e6; --hairline-2:#d5d5d6; --grid-dot:#d6d6d7;
+    --text-main:#232323; --text-muted:#717171; --text-dim:#a2a2a3;
+    --accent:#D21E1C; --accent-soft:#fdeceb; --on-accent:#ffffff;
     --danger:#e5484d; --danger-soft:#fdecec;
     --cable:#eab308; --cable-soft:rgba(234,179,8,0.16);
     --shadow:0 1px 2px rgba(16,24,40,.06), 0 4px 14px rgba(16,24,40,.06);
@@ -31,10 +32,10 @@
   }
   /* Dark theme */
   :root[data-theme="dark"]{
-    --bg-deep:#0b0e13; --bg-panel:#151920; --bg-panel-raised:#1b2029; --bg-hover:#232a35;
-    --hairline:#262d38; --hairline-2:#343d4a; --grid-dot:#1d232c;
-    --text-main:#e7ebf1; --text-muted:#8e98a8; --text-dim:#5f6877;
-    --accent:#3b8bff; --accent-soft:rgba(59,139,255,.15); --on-accent:#ffffff;
+    --bg-deep:#0e0e0e; --bg-panel:#181818; --bg-panel-raised:#1f1f1f; --bg-hover:#272727;
+    --hairline:#2a2a2a; --hairline-2:#383838; --grid-dot:#202020;
+    --text-main:#ededed; --text-muted:#9a9a9a; --text-dim:#666666;
+    --accent:#ff3b30; --accent-soft:rgba(255,59,48,.15); --on-accent:#ffffff;
     --danger:#f87171; --danger-soft:rgba(248,113,113,0.14);
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
     --shadow-lg:0 12px 32px rgba(0,0,0,.55);
@@ -466,7 +467,10 @@
   #app.panel-collapsed .side-panel{ display:none; }
   body{ font-size:13px; -webkit-font-smoothing:antialiased; }
 
-  .appbar{ grid-column:1/-1; display:flex; align-items:center; gap:12px; padding:0 12px; background:var(--bg-panel); border-bottom:1px solid var(--hairline); min-width:0; }
+  .appbar{ grid-column:1/-1; display:flex; align-items:center; gap:12px; padding:0 12px 3px; background:var(--bg-panel); border-bottom:0; min-width:0; position:relative; }
+  .appbar::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:linear-gradient(90deg,#FF0D07 0 64%,#808080 64% 86%,#B2B2B3 86%); }
+  .appbar .bmark{ width:36px; height:36px; flex-shrink:0; display:block; }
+  .proj small b{ color:#FF0D07; font-weight:700; letter-spacing:.01em; }
   .logo{ width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#006fff,#00a3ff); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; flex-shrink:0; }
   .proj{ display:flex; flex-direction:column; min-width:0; flex-shrink:1; }
   .proj small{ color:var(--text-muted); font-size:11px; white-space:nowrap; }
@@ -811,9 +815,9 @@
 <div id="app">
 
   <header class="appbar">
-    <div class="logo">ET</div>
+    <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.6</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-08.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1011,7 +1015,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.6</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-08.1</p>
     </section>
   </aside>
 
@@ -1113,7 +1117,7 @@
     <div class="qt-top"><p class="choice-title">Project execution</p><button type="button" class="popover-close" id="stClose" title="Close">&times;</button></div>
     <p class="pane-note" style="margin:0;">After the customer approves: start the project. The team sees it in their site app, the customer follows it with their own link.</p>
     <div id="stBody"></div>
-    <details class="qt-set" id="stSetBox"><summary>ExpressTech server</summary>
+    <details class="qt-set" id="stSetBox"><summary>Express Tech server</summary>
       <p class="pane-note">The same server as direct Zoho quotes. Saved on this device only.</p>
       <input type="url" class="select-input" id="stUrl" placeholder="Server address (https://…workers.dev)">
       <input type="password" class="select-input" id="stKey" placeholder="Office key">
@@ -1133,8 +1137,8 @@
       <button type="button" class="tbtn" id="qtClaude">Open in Claude</button>
       <button type="button" class="tbtn primary" id="qtZoho">Create in Zoho now</button>
     </div>
-    <details class="qt-set"><summary>ExpressTech server (optional)</summary>
-      <p class="pane-note">With the ExpressTech server set up, “Create in Zoho now” makes the Draft directly. Saved on this device only.</p>
+    <details class="qt-set"><summary>Express Tech server (optional)</summary>
+      <p class="pane-note">With the Express Tech server set up, “Create in Zoho now” makes the Draft directly. Saved on this device only.</p>
       <input type="url" class="select-input" id="qtRelayUrl" placeholder="Server address (https://…workers.dev)">
       <input type="password" class="select-input" id="qtRelayKey" placeholder="Office key">
       <button type="button" class="tbtn" id="qtRelaySave">Save</button>
@@ -2993,7 +2997,7 @@
     if (pageNum > n) return Promise.reject(new Error("this PDF has " + n + " page" + (n === 1 ? "" : "s") + ", but the floor came from page " + pageNum + " of \u201c" + o.base + ".pdf\u201d"));
     return f.pdfDoc.getPage(1).then(function(op){ var v = op.getViewport({ scale:1 }); oldDims = { w:v.width, h:v.height }; })
     .then(function(){ return PDFLib.PDFDocument.create(); })
-    .then(function(nd){ return nd.copyPages(src, [pageNum - 1]).then(function(pages){ nd.addPage(pages[0]); nd.setProducer("ExpressTech Villa LV Planner"); return nd.save(); }); })
+    .then(function(nd){ return nd.copyPages(src, [pageNum - 1]).then(function(pages){ nd.addPage(pages[0]); nd.setProducer("Express Tech Villa LV Planner"); return nd.save(); }); })
     .then(function(bytes){
       var base64 = arrayBufferToBase64(bytes.slice().buffer);
       return workerReadyPromise.then(function(){ return pdfjsLib.getDocument({ data:bytes }).promise; }).then(function(doc){
@@ -3023,7 +3027,7 @@
       if (src.isEncrypted) throw new Error("encrypted PDF");
       return PDFLib.PDFDocument.create().then(function(nd){
         return nd.copyPages(src, [pageNum - 1]).then(function(pages){
-          nd.addPage(pages[0]); nd.setProducer("ExpressTech Villa LV Planner"); nd.setCreator("ExpressTech Villa LV Planner");
+          nd.addPage(pages[0]); nd.setProducer("Express Tech Villa LV Planner"); nd.setCreator("Express Tech Villa LV Planner");
           return nd.save();
         });
       });
@@ -5343,7 +5347,7 @@
     doc.addPage([W,H],"p");
     doc.setFillColor(10,18,32); doc.rect(0,0,W,H,"F");
     doc.setTextColor(231,237,245); doc.setFont("helvetica","bold"); doc.setFontSize(20);
-    doc.text("ExpressTech \u2014 Low Voltage Point Summary", 50, 60);
+    doc.text("Express Tech \u2014 Low Voltage Point Summary", 50, 60);
     doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(127,149,174);
     var floorNames = floors.map(function(f){ return f.name; }).join(" \u00b7 ");
     doc.text(project.name + "  \u00b7  " + floorNames + "  \u00b7  " + new Date().toLocaleDateString(), 50, 82);
@@ -5435,7 +5439,7 @@
 
 
   /* ================= Reports (PDF): full report or any single report ================= */
-  // White A4 report pages with an ExpressTech header and page numbers. Drawings stay at their native size.
+  // White A4 report pages with an Express Tech header and page numbers. Drawings stay at their native size.
   var REPORTS = [
     { key:"cover",     label:"Cover page",          sub:"Project, date, floors, contents",                 full:true,  single:true, icon:"◧", color:"#334155" },
     { key:"summary",   label:"Summary",             sub:"Totals, points per floor, points by cable, PoE",  full:true,  single:true, icon:"Σ", color:"#0f172a" },
@@ -5516,7 +5520,7 @@
     d.setTextColor(255,255,255); d.setFont("helvetica","bold"); d.setFontSize(11*k); d.text("ET", M + 15*k, top + 19.5*k, { align:"center" });
     d.setTextColor(15,23,42); d.setFontSize(16*k); d.text(title, M + 42*k, top + 13*k);
     d.setFont("helvetica","normal"); d.setFontSize(9.5*k); d.setTextColor(100,116,139); d.text((project.name || "Project") + (sub ? "  ·  " + sub : ""), M + 42*k, top + 27*k);
-    d.setFontSize(9*k); d.text("ExpressTech", R.W - M, top + 12*k, { align:"right" }); d.text(R.date, R.W - M, top + 25*k, { align:"right" });
+    d.setFontSize(9*k); d.text("Express Tech", R.W - M, top + 12*k, { align:"right" }); d.text(R.date, R.W - M, top + 25*k, { align:"right" });
     d.setDrawColor(15,23,42); d.setLineWidth(1.6*k); d.line(M, top + 38*k, R.W - M, top + 38*k);
     R.y = top + 62*k;
   }
@@ -5587,7 +5591,7 @@
       d.setPage(p);
       d.setDrawColor(226,232,240); d.setLineWidth(0.8*k); d.line(R.M, R.H - 38*k, R.W - R.M, R.H - 38*k);
       d.setFont("helvetica","normal"); d.setFontSize(8.3*k); d.setTextColor(148,163,184);
-      d.text("ExpressTech · Villa LV Planner · " + reportName, R.M, R.H - 25*k);
+      d.text("Express Tech · Villa LV Planner · " + reportName, R.M, R.H - 25*k);
       d.text("Page " + p + " of " + total, R.W - R.M, R.H - 25*k, { align:"right" });
     });
   }
@@ -5624,7 +5628,7 @@
     d.setFontSize(30*k); d.text("Low-voltage design", R.M, 160*k);
     d.setFont("helvetica","normal"); d.setFontSize(13*k); d.setTextColor(148,163,184); d.text((project.name || "Project") + "  ·  " + ctx.reportName, R.M, 188*k);
     var fl = project.floors.map(function(f){ return f.name; }).join(", ");
-    var meta = [["Project", project.name || "—"], ["Prepared by", "ExpressTech"], ["Date", R.date], ["Floors", fl || "—"]];
+    var meta = [["Project", project.name || "—"], ["Prepared by", "Express Tech"], ["Date", R.date], ["Floors", fl || "—"]];
     if (project.revisions && project.revisions.length){ var lr = project.revisions[project.revisions.length - 1]; meta.push(["Revision", "Rev " + lr.rev + " · " + lr.date]); }
     var y = 300*k;
     meta.forEach(function(p, i){
@@ -6540,7 +6544,7 @@
     showStatus(text + " — press Site → Update site to send it to the technicians");
   }
   function siteIssueStatus(i, status, reply){
-    return siteFetch("/site/p/" + project.site.id + "/issue/" + i.id + "/status", { method:"POST", headers:{ "Content-Type":"application/json", "X-By":"ExpressTech office" }, body:JSON.stringify({ status:status, reply:reply || "" }) })
+    return siteFetch("/site/p/" + project.site.id + "/issue/" + i.id + "/status", { method:"POST", headers:{ "Content-Type":"application/json", "X-By":"Express Tech office" }, body:JSON.stringify({ status:status, reply:reply || "" }) })
       .then(function(){ i.status = status; closeSitePop(); renderMarkers(); renderSiteDialog(""); showStatus(status === "rejected" ? "Report closed — the technician sees your reply" : "Saved"); })
       .catch(function(e){ showStatus("Couldn't update the report: " + e.message); });
   }
@@ -6725,7 +6729,7 @@
   function renderLiveProjects(){
     var box = document.getElementById("liveProjects"); if (!box) return;
     var r = zRelay();
-    if (!r.url){ box.innerHTML = '<p class="popover-hint" style="margin:0;">Connect the ExpressTech server first (toolbar <b>Start</b> → ExpressTech server).</p>'; return; }
+    if (!r.url){ box.innerHTML = '<p class="popover-hint" style="margin:0;">Connect the Express Tech server first (toolbar <b>Start</b> → Express Tech server).</p>'; return; }
     siteFetch("/site/list").then(function(j){
       var list = j.projects || [];
       if (!list.length){ box.innerHTML = '<p class="popover-hint" style="margin:0;">No projects on site yet.</p>'; return; }
@@ -6795,8 +6799,8 @@
     return ids.length === assignable.length ? [] : ids;   // everyone ticked = the whole team (also people added later)
   }
   function waText(kind, link, who){
-    if (kind === "customer") return "Dear " + project.name + ",\nThank you for choosing ExpressTech. You can follow the installation of your villa here, with photos of every point as we install it:\n" + link + "\n— ExpressTech";
-    return "Hi " + who + ", this is your ExpressTech site app. Open it once and add it to your home screen — every project you are on appears there:\n" + link;
+    if (kind === "customer") return "Dear " + project.name + ",\nThank you for choosing Express Tech. You can follow the installation of your villa here, with photos of every point as we install it:\n" + link + "\n— Express Tech";
+    return "Hi " + who + ", this is your Express Tech site app. Open it once and add it to your home screen — every project you are on appears there:\n" + link;
   }
   function linkRow(title, sub, link, kind, who){
     return '<div class="st-link"><div class="t"><b>' + escapeHtml(title) + '</b><small>' + escapeHtml(sub) + '</small></div>' +
@@ -6811,7 +6815,7 @@
     var r = zRelay(), d = siteUi.data, h = "";
     document.getElementById("stUrl").value = r.url; document.getElementById("stKey").value = r.key;
     document.getElementById("stSetBox").open = !r.url;
-    if (!r.url){ body.innerHTML = '<p class="st-msg">Set up the ExpressTech server first (below). The setup guide is in the app folder: <b>server/README.md</b>.</p>'; return; }
+    if (!r.url){ body.innerHTML = '<p class="st-msg">Set up the Express Tech server first (below). The setup guide is in the app folder: <b>server/README.md</b>.</p>'; return; }
     var staff = siteUi.staff;
     if (!project.site){
       // ---- not started yet. A villa already started from an older copy of this file (saved before Start) is found by
@@ -6828,7 +6832,7 @@
       }
       h += '<div class="st-step"><b>Customer approved the quotation?</b><small>Start the project: it appears in the team’s site app and you get the client’s link.</small></div>';
       h += '<div class="st-lbl">Team on this project <button type="button" class="st-mini" data-addpeople>+ Add people</button></div>' + (staff ? teamPicker(staff, null) : '<p class="st-msg">Loading the team…</p>');
-      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"> ExpressTech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
+      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"> Express Tech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
       h += '<div class="st-lbl">Asana project (optional)</div><input type="text" class="select-input" id="stAsana" placeholder="Paste the Asana project link — or link it later">';
       if (!twin) h += '<p class="st-msg" id="stMsg">' + escapeHtml(note || "") + '</p>';
       h += '<div class="qt-btns"><button type="button" class="tbtn' + (twin ? "" : " primary") + '" id="stStart" style="flex:1;height:40px;font-size:14px;">▶ Start ' + (twin ? "a new project" : "project") + '</button></div>';
@@ -6840,7 +6844,7 @@
       h += '<div class="st-state ' + (done ? "done" : "on") + '">' + (done ? "✓ Completed " + new Date(d.project.completed_at).toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" }) : "● In progress since " + since) + '</div>';
       h += '<div class="st-sum"><div><b>' + inst + ' / ' + n + '</b><small>done</small></div><div><b>' + ph + '</b><small>photos</small></div><div><b>' + (n ? Math.round(inst/n*100) : 0) + '%</b><small>complete</small></div></div>';
       h += '<label class="rk-cabtog" style="margin:2px 0;"><input type="checkbox" id="stShow"' + (siteUi.show ? " checked" : "") + '> Show installed ticks on the drawing</label>';
-      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"' + (d.project.cabling ? " checked" : "") + '> ExpressTech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
+      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"' + (d.project.cabling ? " checked" : "") + '> Express Tech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
       h += '<div class="st-lbl">Client</div>' + linkRow("Client link", "View only · progress and photos, until the end of the project", siteLink(d.links.view_key), "customer");
       var team = d.project.team || [];
       h += '<div class="st-lbl">Team <button type="button" class="st-mini" id="stEditTeam">' + (siteUi.editTeam ? "Done" : "Change") + '</button><button type="button" class="st-mini" data-addpeople>+ Add people</button></div>';
@@ -6935,7 +6939,7 @@
     document.getElementById("siteBtn").addEventListener("click", function(){ siteUi.staff = null; siteUi.list = undefined; renderSiteDialog(""); ov.classList.add("visible"); loadSite(); });
     document.getElementById("stClose").onclick = function(){ ov.classList.remove("visible"); };
     ov.addEventListener("click", function(e){ if (e.target === ov) ov.classList.remove("visible"); });
-    document.getElementById("stSave").onclick = function(){ setServer(document.getElementById("stUrl").value, document.getElementById("stKey").value); showStatus("ExpressTech server saved on this device"); renderSiteDialog(""); loadSite(); };
+    document.getElementById("stSave").onclick = function(){ setServer(document.getElementById("stUrl").value, document.getElementById("stKey").value); showStatus("Express Tech server saved on this device"); renderSiteDialog(""); loadSite(); };
   })();
 
   /* ---------- VLANs: each kind of point has its own network and Etherlighting colour (editable per project) ---------- */
@@ -7523,7 +7527,7 @@
     return out.join("\n");
   }
   var ZRELAY_KEY = "lvplanner_zoho_relay", ZRELAY_SECRET = "lvplanner_zoho_secret";
-  // One ExpressTech server (Cloudflare Worker) for direct Zoho quotes and the site app; saved on this device only
+  // One Express Tech server (Cloudflare Worker) for direct Zoho quotes and the site app; saved on this device only
   function zRelay(){ try { return { url:(localStorage.getItem(ZRELAY_KEY) || "").trim().replace(/\/+$/, "").replace(/\/zoho$/, ""), key:localStorage.getItem(ZRELAY_SECRET) || "" }; } catch(e){ return { url:"", key:"" }; } }
   function setServer(url, key){ try { localStorage.setItem(ZRELAY_KEY, (url || "").trim().replace(/\/+$/, "")); localStorage.setItem(ZRELAY_SECRET, key || ""); } catch(e){} }
   function kwd(n){ return (Math.round(n * 1000) / 1000).toLocaleString("en-US", { minimumFractionDigits:3, maximumFractionDigits:3 }); }
@@ -7581,7 +7585,7 @@
     document.getElementById("qtRelaySave").onclick = function(){
       setServer(document.getElementById("qtRelayUrl").value, document.getElementById("qtRelayKey").value);
       document.getElementById("qtZoho").style.display = zRelay().url ? "" : "none";
-      showStatus(zRelay().url ? "ExpressTech server saved on this device" : "ExpressTech server removed");
+      showStatus(zRelay().url ? "Express Tech server saved on this device" : "Express Tech server removed");
     };
   })();
 
