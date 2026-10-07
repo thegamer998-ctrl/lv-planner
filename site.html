@@ -177,6 +177,7 @@
   .tip button{ position:absolute; right:8px; top:8px; width:28px; height:28px; border-radius:50%; border:0; background:rgba(0,0,0,.06); font-size:16px; color:var(--muted); }
   .donegrp{ margin:14px 0 0; } .donegrp summary{ margin:0 12px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; padding:6px 0; }
   .donegrp .pcard{ opacity:.85; }
+  .pcard.paused{ opacity:.5; filter:grayscale(1); } .pill.paused{ background:var(--panel-2); color:var(--muted); font-weight:700; }
   .mini-btn{ height:30px; padding:0 10px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); font-size:12.5px; font-weight:600; flex-shrink:0; }
   .sec{ margin:14px 12px 6px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
   .sec button{ border:0; background:none; color:var(--accent); font-weight:600; font-size:12.5px; padding:0; }
@@ -395,9 +396,11 @@
   function imgKey(){ return OFFICE ? (st.data && st.data.links ? st.data.links.team_key : "") : K; }
   function imgUrl(kind, id){ return api("/" + kind + "/" + encodeURIComponent(id)) + "?k=" + encodeURIComponent(imgKey()) + (kind === "floor" ? "&v=" + ((st.data.floors.find(function(f){ return f.id === id; }) || {}).v || 0) : ""); }
   function role(){ return st.data ? st.data.role : ""; }
-  function canEdit(){ var r = role(); return !!r && r !== "customer"; }
+  // a project paused by the office is view-only for technicians and engineers
+  function paused(){ return !!(st.data && st.data.project && st.data.project.paused) && !isOffice(); }
+  function canEdit(){ var r = role(); return !!r && r !== "customer" && !paused(); }
   function isOffice(){ return role() === "office" || role() === "manager"; }
-  function canConfig(){ return isOffice() || role() === "engineer"; }
+  function canConfig(){ return isOffice() || (role() === "engineer" && !paused()); }
   function canStep(step){ return step === "configured" ? canConfig() : canEdit(); }
   function homeHash(){ return STAFF ? "#u=" + encodeURIComponent(U) + "&s=" + encodeURIComponent(S) : "#office&s=" + encodeURIComponent(S); }
   function req(method, path, body, type){
@@ -434,7 +437,7 @@
     if (flushing) return Promise.resolve(); flushing = true;
     return qAll().then(function(items){
       var chain = Promise.resolve(), sent = 0;
-      items.forEach(function(it){ chain = chain.then(function(){ return send(it).then(function(){ sent++; return qDel(it.id); }, function(e){ if (e.status && e.status < 500) return qDel(it.id); throw e; }); }); });
+      items.forEach(function(it){ chain = chain.then(function(){ return send(it).then(function(){ sent++; return qDel(it.id); }, function(e){ if (e.status && e.status < 500 && e.status !== 423) return qDel(it.id); throw e; }); }); });
       return chain.then(function(){ return sent; });
     }).then(function(sent){ flushing = false; updateQueue(); if (sent) load(true); }, function(){ flushing = false; updateQueue(); });
   }
@@ -499,7 +502,7 @@
         '<div style="height:20px"></div>';
       function card(p){
           var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
-          return '<button type="button" class="pcard" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (manage && p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
+          return '<button type="button" class="pcard' + (p.paused ? " paused" : "") + '" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (p.paused ? '<span class="pill paused">⏸ Paused</span>' : "") + (manage && p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
             '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
             '<div class="ft"><span class="pill">' + p.installed + " / " + p.points + " done</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
             (p.asana ? '<span class="pill">Stages ' + p.stages_done + " / " + p.stages_all + "</span>" + (p.next_stage ? '<span class="pill approved">Next: ' + esc(p.next_stage) + "</span>" : "") : manage ? '<span class="pill">Asana not linked</span>' : "") +
@@ -597,7 +600,7 @@
     document.title = d.project.name + " · ExpressTech Site";
     $("pName").textContent = d.project.name;
     var me = name();
-    $("pSub").textContent = d.role === "customer" ? "Installation progress by ExpressTech" : d.role === "office" ? "Office view" : (me && STAFF ? me + " · " : "") + "tap a point to update";
+    $("pSub").textContent = d.role === "customer" ? "Installation progress by ExpressTech" : d.role === "office" ? "Office view" + (d.project.paused ? " · paused" : "") : paused() ? "⏸ Paused by the office · view only" : (me && STAFF ? me + " · " : "") + "tap a point to update";
     var rt = $("roleTag"); rt.textContent = ROLE_TAG[d.role] || "Team";
     rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" || d.role === "manager" ? " office" : "");
     var c = counts(pts());

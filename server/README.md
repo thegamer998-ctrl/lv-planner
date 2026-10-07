@@ -98,7 +98,11 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    The drawing and points go up, the project appears in each team member's app by itself, and you get the **client link** to send (Copy or WhatsApp). The window also shows each team member's own link, if someone doesn't have it yet.
    - The site app draws each floor's original vector drawing: sharp at every zoom, points exactly where they are in the planner, and it works with no signal once opened.
    - After that the toolbar button reads **Site**: send drawing changes with **Update site**, change the team with **Change**.
-3. **Finish.** **Mark project complete** moves it to **Completed** in the team's app. The client link keeps working (read-only). **Reopen project** brings it back.
+3. **Live projects (planner → Settings).** Every project on site with its progress:
+   - **Open** opens it in the office view.
+   - **Disable** greys it out in the technicians' and engineers' apps: they can look but can't tick, photograph, note or report (the server refuses too). **Enable** brings it back; anything they did offline waits and goes up then.
+   - **Delete** removes it from every app for good (ticks, photos, notes, reports, the client link). Type the project name to confirm. Your planner file is not touched; it can be started again.
+4. **Finish.** **Mark project complete** moves it to **Completed** in the team's app. The client link keeps working (read-only). **Reopen project** brings it back.
 4. **Office view (all projects).** In the planner, open **Site → Office view** (then **‹** for all projects), or **+ Add people**, or bookmark `https://thegamer998-ctrl.github.io/lv-planner/site.html#office&s=<server address>`.
    - Enter the office key once on each device.
    - It lists every project with progress, open site reports, Asana stages, the next stage and the status.

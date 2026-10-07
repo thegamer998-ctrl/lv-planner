@@ -38,7 +38,7 @@ const COLUMNS = [
   "points ADD COLUMN configured INTEGER DEFAULT 0", "points ADD COLUMN configured_by TEXT", "points ADD COLUMN configured_at INTEGER",
   "floors ADD COLUMN pdf_parts INTEGER DEFAULT 0", "floors ADD COLUMN pdf_v INTEGER DEFAULT 0", "floors ADD COLUMN pw REAL", "floors ADD COLUMN ph REAL",
   "log ADD COLUMN by_role TEXT",
-  "points ADD COLUMN cabled INTEGER DEFAULT 0", "points ADD COLUMN cabled_by TEXT", "points ADD COLUMN cabled_at INTEGER", "projects ADD COLUMN cabling INTEGER DEFAULT 0",
+  "points ADD COLUMN cabled INTEGER DEFAULT 0", "points ADD COLUMN cabled_by TEXT", "points ADD COLUMN cabled_at INTEGER", "projects ADD COLUMN cabling INTEGER DEFAULT 0", "projects ADD COLUMN paused INTEGER DEFAULT 0",
   "points ADD COLUMN site_label TEXT", "points ADD COLUMN site_label_by TEXT", "points ADD COLUMN site_label_at INTEGER",
   "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT"
 ];
@@ -237,8 +237,10 @@ export default {
       const role = adminOk() ? "office" : person ? person.role : key && key === proj.team_key ? "team" : key && key === proj.view_key ? "customer" : null;
       if (!role) return json({ error: "This link is not valid any more — ask ExpressTech for a new one" }, 403);
       if (person && !onTeam(proj, person)) return json({ error: "You are not on this project's team — ask the ExpressTech office" }, 403);
-      const canEdit = role !== "customer";
       const officeLike = role === "office" || role === "manager";
+      // a project the office paused (planner → Settings → Live projects) is view-only for everyone but the office and managers
+      if (proj.paused && !officeLike && req.method !== "GET") return json({ error: "This project is paused by the ExpressTech office — nothing can be changed for now" }, 423);
+      const canEdit = role !== "customer";
       // a staff member's name comes from their own link; the shared team link and the office type theirs once per device
       const by = person ? person.name : (req.headers.get("X-By") || url.searchParams.get("by") || (role === "office" ? "ExpressTech office" : "Technician")).slice(0, 40);
       const byRole = ROLE_NAME[role] || "";
@@ -480,6 +482,24 @@ export default {
         await log(st === "done" ? "project-done" : "project-reopened", "", "");
         return json({ ok: true, status: st });
       }
+      // pause / resume (office and managers): the team sees it greyed out and can't change anything
+      if (rest === "pause" && req.method === "POST") {
+        if (!officeLike) return json({ error: "Office only" }, 403);
+        const b = await req.json(), pz = b.paused ? 1 : 0;
+        await db.prepare("UPDATE projects SET paused = ? WHERE id = ?").bind(pz, pid).run();
+        await log(pz ? "project-paused" : "project-resumed", "", "");
+        await touch(db, pid);
+        return json({ ok: true, paused: !!pz });
+      }
+      // delete for good (office key only): the project, its drawings, points, ticks, photos, notes, reports and history.
+      // It disappears from every app and the client link stops working. The planner file is not touched.
+      if (rest === "" && req.method === "DELETE") {
+        if (role !== "office") return json({ error: "Only the office key can delete a project" }, 403);
+        for (const t of ["points", "floors", "floor_pdf", "photos", "notes", "issues", "log", "checks"])
+          await db.prepare(`DELETE FROM ${t} WHERE project_id = ?`).bind(pid).run();
+        await db.prepare("DELETE FROM projects WHERE id = ?").bind(pid).run();
+        return json({ ok: true, deleted: pid });
+      }
       // project options: { cabling: true } = ExpressTech pulls the cables, every cabled point gets a "Cabling" step first
       if (rest === "opts" && req.method === "POST") {
         if (!officeLike) return json({ error: "Office only" }, 403);
@@ -648,7 +668,7 @@ async function projectView(db, proj, role) {
   for (const p of points.results) byPt[p.point_id] = { ...p, steps: stepsOf(p.cat, proj.cabling), photos: [], notes: [] };
   const out = {
     role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid,
-      status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null, cabling: proj.cabling ? 1 : 0 },
+      status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null, cabling: proj.cabling ? 1 : 0, paused: proj.paused ? 1 : 0 },
     floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v, pdf: f.pdf_parts ? f.pdf_v : 0, pw: f.pw, ph: f.ph })),
     points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: [],
     cabinet: hasRack ? cabinetList(proj.asana_gid ? safeJson(proj.asana_cache) : null, checks) : null
@@ -669,7 +689,7 @@ async function projectView(db, proj, role) {
 }
 
 async function projectList(db, withKeys, person) {
-  const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team FROM projects ORDER BY updated_at DESC").all();
+  const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team, paused, cabling FROM projects ORDER BY updated_at DESC").all();
   const ps = { results: all.results.filter(p => !person || onTeam(p, person)) };
   // done = every installation step ticked (cameras: installed and aligned)
   const cnt = await db.prepare(`SELECT pt.project_id, COUNT(*) AS n, SUM(CASE WHEN pt.installed = 1 AND (pt.cat <> 'cam' OR pt.aligned = 1)
@@ -686,7 +706,8 @@ async function projectList(db, withKeys, person) {
     return { id: p.id, name: p.name, team_key: withKeys ? p.team_key : undefined, view_key: withKeys ? p.view_key : undefined, updated_at: p.updated_at, points: (C[p.id] || {}).n || 0, installed: (C[p.id] || {}).done || 0,
       open_reports: (I[p.id] || {}).n || 0, photos: (H[p.id] || {}).n || 0, asana: !!p.asana_gid, asana_at: p.asana_at, stages_done: tDone, stages_all: tAll, next_stage: next,
       status: c.project && c.project.status ? c.project.status : null,
-      state: p.status || "active", started_at: p.started_at || p.created_at, completed_at: p.completed_at || null, team: withKeys ? safeJsonArr(p.team) : undefined };
+      state: p.status || "active", started_at: p.started_at || p.created_at, completed_at: p.completed_at || null, team: withKeys ? safeJsonArr(p.team) : undefined,
+      paused: p.paused ? 1 : 0, cabling: p.cabling ? 1 : 0, asana_gid: withKeys ? p.asana_gid : undefined };
   });
 }
 

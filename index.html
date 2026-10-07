@@ -738,6 +738,11 @@
 
   .toggle-row .toggle-label{ font-size:13px; }
   .layer-row{ display:flex; align-items:center; justify-content:space-between; padding:11px 12px; border:1px solid var(--hairline); border-radius:11px; margin-bottom:8px; }
+  .lp-row{ padding:10px 11px; border:1px solid var(--hairline); border-radius:11px; margin-bottom:8px; }
+  .lp-row.off b, .lp-row.off small{ opacity:.55; } .lp-row.off{ border-style:dashed; } .lp-row b{ display:block; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lp-row small{ display:block; color:var(--text-muted); font-size:11.5px; margin-top:2px; }
+  .lp-row .lp-btns{ display:flex; gap:6px; margin-top:8px; } .lp-row .lp-btns .tbtn{ height:28px; padding:0 9px; font-size:12px; flex:1; }
+  .lp-row .lp-btns .lp-del{ color:#dc2626; } .lp-chip{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:6px; background:var(--accent-soft); color:var(--accent); margin-left:4px; vertical-align:1px; }
   .layer-row .lbl{ display:flex; flex-direction:column; }
   .layer-row .lbl b{ font-size:13px; font-weight:600; }
   .layer-row .lbl small{ color:var(--text-muted); font-size:11.5px; }
@@ -808,7 +813,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.4</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.5</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -970,6 +975,11 @@
     <section class="pane" data-pane="settings">
       <h2>Settings</h2>
       <div class="section">
+        <p class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Live projects on site <button type="button" class="st-mini" id="lpRefresh">Refresh</button></p>
+        <div id="liveProjects"><p class="popover-hint" style="margin:0;">Loading…</p></div>
+        <p class="popover-hint" style="margin:6px 0 0;font-size:11.5px;"><b>Disable</b>: greyed out in the team's app, nothing can be changed until you enable it. <b>Delete</b>: gone from every app for good.</p>
+      </div>
+      <div class="section">
         <p class="section-label">Products</p>
         <div class="layer-row"><span class="lbl"><b>Ubiquiti mode</b><small>Model picker, model tags and UniFi hardware. Off = generic points, no brand names.</small></span>
           <button type="button" class="toggle-switch" id="ubntToggle" role="switch" aria-checked="true"><span class="toggle-knob"></span></button></div>
@@ -1001,7 +1011,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.4</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.5</p>
     </section>
   </aside>
 
@@ -3665,6 +3675,7 @@
     el.rail.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.dataset.pane === railName); });
     el.sidePanel.querySelectorAll(".pane").forEach(function(p){ p.classList.toggle("on", p.dataset.pane === name); });
     if (name === "racks" && typeof renderRacks === "function") renderRacks();
+    if (name === "settings" && typeof renderLiveProjects === "function") renderLiveProjects();
     var rackOn = name === "racks";
     app.classList.toggle("rack-on", rackOn);
     if (el.rackView){ el.rackView.classList.toggle("on", rackOn); if (rackOn) renderRackView(); }
@@ -6705,8 +6716,52 @@
       if (syncSiteLabels(d.points) && typeof autosaveTick === "function") autosaveTick();
       renderSiteDialog(started ? "Started. Send the client link, and their own link to anyone who doesn't have it yet." : afterPublish ? "Site updated." : "");
       if (typeof renderMarkers === "function") renderMarkers();
-    }).catch(function(e){ renderSiteDialog("Couldn't reach the site: " + e.message); });
+    }).catch(function(e){
+      // deleted on site (Settings → Live projects): this file is no longer linked
+      if (/project not found/i.test(e.message)){ project.site = null; siteUi.data = null; updateDirtyDot(); renderSiteDialog("This project was deleted on site. Start it again if it's needed."); return; }
+      renderSiteDialog("Couldn't reach the site: " + e.message); });
   }
+  // ---- Settings → Live projects: every project on site, with Open / Disable (paused, view-only for the team) / Delete for good
+  function renderLiveProjects(){
+    var box = document.getElementById("liveProjects"); if (!box) return;
+    var r = zRelay();
+    if (!r.url){ box.innerHTML = '<p class="popover-hint" style="margin:0;">Connect the ExpressTech server first (toolbar <b>Start</b> → ExpressTech server).</p>'; return; }
+    siteFetch("/site/list").then(function(j){
+      var list = j.projects || [];
+      if (!list.length){ box.innerHTML = '<p class="popover-hint" style="margin:0;">No projects on site yet.</p>'; return; }
+      var mine = project.site && project.site.id;
+      box.innerHTML = list.map(function(p){
+        var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
+        return '<div class="lp-row' + (p.paused ? " off" : "") + '"><b>' + escapeHtml(p.name) + (p.id === mine ? '<span class="lp-chip">open here</span>' : "") + '</b>' +
+          '<small>' + p.installed + ' / ' + p.points + ' done · ' + pct + '% · ' + (p.paused ? "⏸ Disabled" : p.state === "done" ? "Completed" : "In progress") + (p.asana ? " · Asana" : "") + '</small>' +
+          '<div class="lp-btns"><button type="button" class="tbtn" data-lp-open="' + escapeHtml(p.id) + '">Open</button>' +
+          '<button type="button" class="tbtn" data-lp-pause="' + escapeHtml(p.id) + '" data-v="' + (p.paused ? "0" : "1") + '">' + (p.paused ? "Enable" : "Disable") + '</button>' +
+          '<button type="button" class="tbtn lp-del" data-lp-del="' + escapeHtml(p.id) + '" data-name="' + escapeHtml(p.name) + '">Delete</button></div></div>';
+      }).join("");
+      box.querySelectorAll("[data-lp-open]").forEach(function(b){ b.onclick = function(){ window.open(SITE_PAGE + "#office&s=" + encodeURIComponent(r.url) + "&p=" + b.dataset.lpOpen, "_blank"); }; });
+      box.querySelectorAll("[data-lp-pause]").forEach(function(b){ b.onclick = function(){
+        var on = b.dataset.v === "1"; b.disabled = true;
+        siteFetch("/site/p/" + b.dataset.lpPause + "/pause", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ paused:on }) })
+          .then(function(){ showStatus(on ? "Disabled — the team sees it greyed out and can't change anything" : "Enabled again — the team can work on it"); renderLiveProjects(); })
+          .catch(function(e){ b.disabled = false; showStatus("Couldn't change it: " + e.message); });
+      }; });
+      box.querySelectorAll("[data-lp-del]").forEach(function(b){ b.onclick = function(){
+        var id = b.dataset.lpDel, nm = b.dataset.name;
+        askChoice({ title:"Delete \u201c" + nm + "\u201d on site?", message:"It disappears from every technician's and engineer's app and the client link stops working. Its ticks, photos, notes and reports are erased for good. Your planner file is not touched. Type the project name to confirm.",
+          input:{ value:"", placeholder:nm },
+          buttons:[{ label:"Delete for good", value:"del", kind:"danger", needsInput:true }, { label:"Cancel", value:null }] },
+          function(v, typed){
+            if (v !== "del") return;
+            if (String(typed || "").trim().toLowerCase() !== nm.trim().toLowerCase()){ showStatus("The name didn't match — nothing was deleted"); return; }
+            siteFetch("/site/p/" + id, { method:"DELETE" }).then(function(){
+              if (project.site && project.site.id === id){ project.site = null; siteUi.data = null; updateSiteBtn(); updateDirtyDot(); }
+              showStatus("\u201c" + nm + "\u201d deleted on site"); renderLiveProjects();
+            }).catch(function(e){ showStatus("Couldn't delete: " + e.message); });
+          });
+      }; });
+    }).catch(function(e){ box.innerHTML = '<p class="popover-hint" style="margin:0;">Couldn\'t reach the server: ' + escapeHtml(e.message) + '</p>'; });
+  }
+  document.getElementById("lpRefresh").addEventListener("click", function(){ renderLiveProjects(); });
   // labels changed on site (technician / engineer: e.g. GF-HALL-AP01) come back into the drawing, the schedule and the next Update site.
   // A name typed here afterwards replaces it again (m.siteLabelAt remembers the last site change already seen).
   function syncSiteLabels(points){
