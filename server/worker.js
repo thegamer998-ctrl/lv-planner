@@ -357,6 +357,7 @@ export default {
           await asanaApi(env, `/tasks/${it.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: !!done } }) });
           await asanaApi(env, `/tasks/${it.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${done ? "Done" : "Reopened"} — ticked by ${by} on the cabinet in the ExpressTech site app.` } }) });
           await asanaRefresh(db, env, proj);
+          if (await syncParents(env, proj)) await asanaRefresh(db, env, proj);
         }
         await log(done ? "cabinet-done" : "cabinet-undone", "", it.name);
         // the cabinet point counts as done on the plan when all its works are ticked
@@ -446,12 +447,12 @@ export default {
         await db.prepare("UPDATE projects SET asana_gid = ?, asana_cache = NULL, asana_at = 0 WHERE id = ?").bind(gid, pid).run();
         let stages = null;
         if (gid && env.ASANA_TOKEN) stages = await asanaRefresh(db, env, { ...proj, asana_gid: gid, asana_cache: null });
-        return json({ ok: true, gid, stages: stages ? stagesFor(stages, role) : null });
+        return json({ ok: true, gid, stages: stages ? stagesFor(stages, role, await autoMapFor(db, { ...proj, asana_cache: JSON.stringify(stages) })) : null });
       }
       if (rest === "asana/refresh" && req.method === "POST") {
         if (!asanaOn) return json({ error: "Asana is not linked" }, 400);
         const stages = await asanaRefresh(db, env, proj);
-        return json({ ok: true, stages: stagesFor(stages, role) });
+        return json({ ok: true, stages: stagesFor(stages, role, await autoMapFor(db, proj)) });
       }
       if ((mm = rest.match(/^stage\/(\d+)(\/comment)?$/)) && req.method === "POST") {
         if (!canEdit) return json({ error: "View only" }, 403);
@@ -466,13 +467,20 @@ export default {
           await asanaApi(env, `/tasks/${gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${by} (ExpressTech Site): ${text}` } }) });
           await log("stage-comment", "stage:" + gid, found.task.name + ": " + text.slice(0, 60));
         } else {
-          const done = !!b.completed;
+          const done = !!b.completed, am = await autoMapFor(db, proj), au = am[gid];
+          if (au) return json({ error: au.kind === "cabinet" ? "This one is ticked on the cabinet (tap the cabinet on the plan)" : au.kind === "parent" ? "This one completes by itself when all its steps are done" : "This one ticks by itself when all " + au.what + " are " + ({ cabled: "cabled", installed: "installed", aligned: "aligned", configured: "configured" }[au.step]) + " in the app (" + au.done + " / " + au.n + ")" }, 409);
+          let sec = null, parent = null;
+          for (const s of cache.sections) for (const t of s.tasks) { if (t.gid === gid) sec = s; for (const x of (t.subtasks || [])) if (x.gid === gid) { sec = s; parent = t; } }
+          const who = stageWho(sec ? sec.name : "", parent, found.task);
+          if (who === "office" && !officeLike) return json({ error: "This one is for the office" }, 403);
+          if (who === "engineer" && !canTick(role, "configured")) return json({ error: "Only the site engineer can tick this one" }, 403);
           await asanaApi(env, `/tasks/${gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: done } }) });
           await asanaApi(env, `/tasks/${gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${done ? "Completed" : "Reopened"} by ${by} in the ExpressTech site app.` } }) });
           await log(done ? "stage-done" : "stage-reopened", "stage:" + gid, found.task.name);
         }
-        const stages = await asanaRefresh(db, env, proj);
-        return json({ ok: true, stages: stagesFor(stages, role) });
+        let stages = await asanaRefresh(db, env, proj);
+        if (!mm[2] && await syncParents(env, proj)) stages = await asanaRefresh(db, env, proj);
+        return json({ ok: true, stages: stagesFor(stages, role, await autoMapFor(db, proj)) });
       }
       // project status: in progress → completed (the client link keeps working, read-only) → reopened
       if (rest === "state" && req.method === "POST") {
@@ -670,7 +678,7 @@ async function projectView(db, proj, role) {
     role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid,
       status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null, cabling: proj.cabling ? 1 : 0, paused: proj.paused ? 1 : 0 },
     floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v, pdf: f.pdf_parts ? f.pdf_v : 0, pw: f.pw, ph: f.ph })),
-    points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: [],
+    points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role, autoMap(safeJson(proj.asana_cache), points.results, proj.cabling, checks)) : null, activity: [],
     cabinet: hasRack ? cabinetList(proj.asana_gid ? safeJson(proj.asana_cache) : null, checks) : null
   };
   out.steps = STEPS;
@@ -747,7 +755,7 @@ async function asanaRefresh(db, env, proj) {
   for (const t of tasks) {
     const mem = (t.memberships || []).find(x => x.project && x.project.gid === proj.asana_gid) || (t.memberships || [])[0];
     const sname = (mem && mem.section ? mem.section.name : "") || "Tasks";
-    if (/untitled/i.test(sname) && t === tasks[0] && !t.num_subtasks && /^(mr|mrs|ms|dr|sheikh)\b/i.test(t.name)) continue;   // the customer-name card at the top
+    if (/untitled/i.test(sname) && t === tasks[0] && !t.num_subtasks) continue;   // the customer-name card at the top
     let sec = sections.find(s => s.name === sname);
     if (!sec) { sec = { name: /untitled/i.test(sname) ? "General" : sname, tasks: [] }; sections.push(sec); }
     const task = taskOut(t, oldBy[t.gid], changed(t) ? await storiesOf(env, t.gid) : null);
@@ -768,13 +776,64 @@ async function asanaRefresh(db, env, proj) {
   return mirror;
 }
 // What each role sees: office and manager everything; team, technician, engineer no money tasks; customer no money tasks, no comments, no notes
-function stagesFor(m, role) {
+// Every Asana task is either ticked by the app itself ("auto": from the points, the cabinet checklist, or a parent whose
+// steps are all done) or ticked by hand in the Progress tab by the right person: Engineers / configuration → site engineer;
+// Operations / office tasks and money → office. So when everything is done in the app, everything is done in Asana.
+const ENG_SEC = /engineer|config/i, OFFICE_SEC = /operation|office|admin|sales|account|finance/i;
+function stageWho(secName, parent, t) {
+  if (t.private || OFFICE_SEC.test(secName) || CAB_OFFICE.test(t.name)) return "office";   // money, operations, delivery to site
+  if (ENG_SEC.test(secName) || (parent && ENG_SEC.test(parent.name))) return "engineer";
+  return "team";
+}
+function stagesFor(m, role, auto) {
   const full = role === "office" || role === "manager";
   if (!m || !m.sections) return null;
+  auto = auto || {};
   const strip = (t) => role === "customer" ? { ...t, stories: [], notes: "" } : t;
+  const ann = (t, sec, parent) => ({ ...strip(t), auto: auto[t.gid] || null, who: stageWho(sec.name, parent, t) });
   return { at: m.at, project: role === "customer" ? { ...m.project, status: m.project && m.project.status ? { title: m.project.status.title, at: m.project.status.at, type: m.project.status.type } : null } : m.project,
-    sections: m.sections.map(s => ({ name: s.name, tasks: s.tasks.filter(t => full || !t.private).map(t => ({ ...strip(t), subtasks: (t.subtasks || []).map(strip) })) }))
+    sections: m.sections.map(s => ({ name: s.name, tasks: s.tasks.filter(t => full || !t.private).map(t => ({ ...ann(t, s, null), subtasks: (t.subtasks || []).map(x => ann(x, s, t)) })) }))
       .filter(s => s.tasks.length) };
+}
+// which Asana tasks the app ticks by itself, with how far along they are
+function autoMap(cache, rows, cabling, checks) {
+  const map = {};
+  if (!cache || !cache.sections) return map;
+  for (const rule of ASANA_RULES) {
+    const mine = rows.filter(p => rule.pts(p) && stepsOf(p.cat, cabling).includes(rule.step)); if (!mine.length) continue;
+    const done = mine.filter(p => p[rule.step]).length;
+    for (const t of ruleTargets(cache, rule)) map[t.gid] = { kind: "points", step: rule.step, what: rule.what, done, n: mine.length };
+  }
+  if (rows.some(p => p.cat === "rack")) for (const c of cabinetList(cache, checks)) if (c.gid && !map[c.gid]) map[c.gid] = { kind: "cabinet", group: c.group };
+  for (const s of cache.sections) for (const t of s.tasks) if ((t.subtasks || []).length && !map[t.gid])
+    map[t.gid] = { kind: "parent", done: t.subtasks.filter(x => x.completed).length, n: t.subtasks.length };
+  return map;
+}
+function ruleTargets(m, rule) {
+  const out = [];
+  for (const s of m.sections) for (const t of s.tasks) {
+    for (const st of (t.subtasks || [])) if (rule.rx.test(t.name + " > " + st.name)) out.push(st);
+    if (!(t.subtasks || []).length && rule.rx.test(t.name)) out.push(t);
+  }
+  return out;
+}
+async function autoMapFor(db, proj) {
+  const rows = (await db.prepare("SELECT cat, type, cabled, installed, aligned, configured FROM points WHERE project_id = ? AND active = 1").bind(proj.id).all()).results;
+  const checks = (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(proj.id).all()).results;
+  return autoMap(safeJson(proj.asana_cache), rows, proj.cabling, checks);
+}
+// a parent task (e.g. "Cabinet Works") is completed when all its steps are, and reopened when one is reopened
+async function syncParents(env, proj) {
+  const m = safeJson(proj.asana_cache); let changed = false;
+  for (const s of (m.sections || [])) for (const t of s.tasks) {
+    if (!(t.subtasks || []).length) continue;
+    const all = t.subtasks.every(x => x.completed);
+    if (all === !!t.completed) continue;
+    await asanaApi(env, `/tasks/${t.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: all } }) });
+    await asanaApi(env, `/tasks/${t.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: all ? "All steps done in the ExpressTech site app." : "Reopened: a step was reopened in the ExpressTech site app." } }) });
+    changed = true;
+  }
+  return changed;
 }
 function findTask(m, gid) {
   for (const s of (m.sections || [])) for (const t of s.tasks) {
@@ -792,13 +851,9 @@ async function asanaPush(db, env, proj, step, by) {
   if (!m.sections) m = await asanaRefresh(db, env, proj);
   let changed = false;
   for (const rule of ASANA_RULES.filter(r => r.step === step)) {
-    const mine = rows.filter(rule.pts), n = mine.length, done = mine.filter(p => p.v).length; if (!n) continue;
+    const mine = rows.filter(p => rule.pts(p) && stepsOf(p.cat, proj.cabling).includes(step)), n = mine.length, done = mine.filter(p => p.v).length; if (!n) continue;
     // every Asana step that matches (e.g. cameras configured → "Camera Adoption" and "Camera Naming")
-    const targets = [];
-    for (const s of m.sections) for (const t of s.tasks) {
-      for (const st of (t.subtasks || [])) if (rule.rx.test(t.name + " > " + st.name)) targets.push(st);
-      if (!(t.subtasks || []).length && rule.rx.test(t.name)) targets.push(t);
-    }
+    const targets = ruleTargets(m, rule);
     const complete = done >= n;
     for (const target of targets) {
     if (complete === target.completed) continue;
@@ -811,7 +866,7 @@ async function asanaPush(db, env, proj, step, by) {
     target.completed = complete; changed = true;
     }
   }
-  if (changed) await asanaRefresh(db, env, proj);
+  if (changed) { await asanaRefresh(db, env, proj); if (await syncParents(env, proj)) await asanaRefresh(db, env, proj); }
 }
 
 // ------------------------------------------------------------------ Zoho Books (Draft estimates from the planner's quote)

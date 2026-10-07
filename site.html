@@ -1039,6 +1039,16 @@
     if (nc) bits.push("💬 " + nc);
     return bits.join(" · ");
   }
+  // Asana tasks: "auto" ones are ticked by the app itself (points, cabinet, parents); the rest by hand, by the right person
+  var STEP_PAST = { cabled:"cabled", installed:"installed", aligned:"aligned", configured:"configured" };
+  function stageAutoTxt(t){
+    var a = t.auto; if (!a) return "";
+    if (a.kind === "cabinet") return "Ticked on the cabinet";
+    if (a.kind === "parent") return "Auto · " + a.done + " / " + a.n + " steps";
+    return "Auto · " + a.done + " / " + a.n + " " + a.what + " " + STEP_PAST[a.step];
+  }
+  function canTickStage(t){ if (t.auto) return false; return t.who === "office" ? isOffice() : t.who === "engineer" ? canConfig() : canEdit(); }
+  function workTasks(S2){ var out = []; (S2.sections || []).forEach(function(s){ s.tasks.forEach(function(t){ [t].concat(t.subtasks || []).forEach(function(x){ if (x.who !== "office") out.push(x); }); }); }); return out; }
   function renderProgress(){
     var d = st.data, all = pts(), html = "", S2 = d.stages;
     if (S2 && S2.project && S2.project.status){
@@ -1046,12 +1056,13 @@
       html += '<div class="status-card"><span class="pill ' + (ps.type === "on_track" || ps.type === "complete" ? "ok" : ps.type === "off_track" ? "late" : "open") + '">' + esc(ps.title || "Status") + "</span>" + (ps.text ? "<p>" + esc(ps.text) + "</p>" : "") + '<p style="font-size:11.5px">' + esc(ps.by || "") + (ps.at ? " · " + when(ps.at) : "") + "</p></div>";
     }
     if (S2 && S2.sections && S2.sections.length){
-      html += '<div class="sec"><span>Project stages</span>' + (canEdit() ? '<button type="button" id="stRef">Refresh</button>' : "") + "</div>";
+      var wt = workTasks(S2), wd = wt.filter(function(x){ return x.completed; }).length;
+      html += '<div class="sec"><span>Project stages' + (wt.length && role() !== "customer" ? ' · <span style="color:' + (wd === wt.length ? "var(--ok)" : "var(--muted)") + '">Asana ' + wd + " / " + wt.length + " work tasks done</span>" : "") + '</span>' + (canEdit() ? '<button type="button" id="stRef">Refresh</button>' : "") + "</div>";
       S2.sections.forEach(function(s){
         html += '<div class="grp" style="margin-top:4px"><span>' + esc(s.name) + '</span></div><div class="card">';
         s.tasks.forEach(function(t){
           var sd = (t.subtasks || []).filter(function(x){ return x.completed; }).length;
-          html += '<button type="button" class="stg" data-stage="' + esc(t.gid) + '"><span class="tick' + (t.completed ? " on" : "") + '">' + CHECK + '</span><span class="s1"><b>' + esc(t.name) + (t.private ? ' <span class="pill">office only</span>' : "") + "</b><small>" + stageMeta(t) + (t.subtasks && t.subtasks.length ? (stageMeta(t) ? " · " : "") + sd + "/" + t.subtasks.length + " steps" : "") + "</small>" +
+          html += '<button type="button" class="stg" data-stage="' + esc(t.gid) + '"><span class="tick' + (t.completed ? " on" : "") + '">' + CHECK + '</span><span class="s1"><b>' + esc(t.name) + (t.private || t.who === "office" ? ' <span class="pill">office</span>' : t.who === "engineer" && !t.auto ? ' <span class="pill">site engineer</span>' : "") + (t.auto && role() !== "customer" ? ' <span class="pill' + (t.completed ? " ok" : "") + '">' + esc(stageAutoTxt(t)) + "</span>" : "") + "</b><small>" + stageMeta(t) + (t.subtasks && t.subtasks.length ? (stageMeta(t) ? " · " : "") + sd + "/" + t.subtasks.length + " steps" : "") + "</small>" +
             (t.subtasks && t.subtasks.length ? '<span class="subs">' + t.subtasks.map(function(x){ return '<div><span class="tick sm' + (x.completed ? " on" : "") + '">' + CHECK + "</span>" + esc(x.name) + "</div>"; }).join("") + "</span>" : "") + "</span></button>";
         });
         html += "</div>";
@@ -1309,12 +1320,19 @@
     var h = '<div class="meta">' + (t.assignee ? '<span class="pill">👤 ' + esc(t.assignee) + "</span>" : '<span class="pill">Unassigned</span>') +
       (t.due_on ? '<span class="pill' + (overdue(t.due_on, t.completed) ? " late" : "") + '">' + (overdue(t.due_on, t.completed) ? "Overdue · " : "Due ") + day(t.due_on) + "</span>" : "") +
       (t.completed ? '<span class="pill ok">Done' + (t.completed_at ? " · " + when(t.completed_at) : "") + "</span>" : '<span class="pill open">To do</span>') + "</div>";
-    if (canEdit()) h += t.completed ? '<button type="button" class="big undo" id="sgUndo">Mark as not done</button><div style="height:12px"></div>' : '<button type="button" class="big ok" id="sgDone">' + CHECK20 + 'Mark stage done</button><div style="height:12px"></div>';
+    if (t.auto && role() !== "customer"){
+      var a = t.auto;
+      h += '<div class="status' + (t.completed ? " done" : "") + '"><span class="tick' + (t.completed ? " on" : "") + '">' + CHECK + "</span><div>" + (t.completed ? "Done in the app" : "Ticks itself") + "<small>" +
+        (a.kind === "cabinet" ? "Tick it on the cabinet: tap the cabinet on the plan." : a.kind === "parent" ? "Completes when all its steps below are done (" + a.done + " / " + a.n + ")."
+          : "When all " + a.what + " are " + STEP_PAST[a.step] + " in the app: " + a.done + " / " + a.n + " so far.") + "</small></div></div>";
+      if (a.kind === "cabinet"){ var rk = pts().find(function(p){ return catOf(p) === "rack"; }); if (rk) h += '<button type="button" class="big" id="sgCab">Open the cabinet</button><div style="height:12px"></div>'; }
+    } else if (canTickStage(t)) h += t.completed ? '<button type="button" class="big undo" id="sgUndo">Mark as not done</button><div style="height:12px"></div>' : '<button type="button" class="big ok" id="sgDone">' + CHECK20 + 'Mark stage done</button><div style="height:12px"></div>';
+    else if (canEdit() && !t.completed) h += '<p class="muted" style="margin:0 0 12px">' + (t.who === "engineer" ? "The site engineer ticks this one." : "The office ticks this one.") + "</p>";
     if (t.notes) h += '<div class="desc">' + esc(t.notes) + "</div>";
     if (t.subtasks && t.subtasks.length){
       h += '<div class="lbl">Steps</div><div class="card" style="margin:0 0 14px;padding:0 12px">' + t.subtasks.map(function(x){
-        return '<div class="subrow">' + (canEdit() ? '<button type="button" class="tick' + (x.completed ? " on" : "") + '" data-sub="' + esc(x.gid) + '">' + CHECK + "</button>" : '<span class="tick' + (x.completed ? " on" : "") + '">' + CHECK + "</span>") +
-          '<span class="t" data-stage-open="' + esc(x.gid) + '">' + esc(x.name) + "<small>" + stageMeta(x) + "</small></span></div>"; }).join("") + "</div>";
+        return '<div class="subrow">' + (canTickStage(x) ? '<button type="button" class="tick' + (x.completed ? " on" : "") + '" data-sub="' + esc(x.gid) + '">' + CHECK + "</button>" : '<span class="tick' + (x.completed ? " on" : "") + '">' + CHECK + "</span>") +
+          '<span class="t" data-stage-open="' + esc(x.gid) + '">' + esc(x.name) + "<small>" + (x.auto && role() !== "customer" ? esc(stageAutoTxt(x)) + " · " : "") + stageMeta(x) + "</small></span></div>"; }).join("") + "</div>";
     }
     var comments = (t.stories || []).slice().reverse();
     if (role() !== "customer"){
@@ -1326,6 +1344,7 @@
     $("shBody").innerHTML = h;
     function act(path, body, msg){ needName(function(){ toast("Updating Asana…"); req("POST", path, JSON.stringify(body), "application/json").then(function(r){ st.data.stages = r.stages; render(); toast(msg); }).catch(function(e){ toast(e.message); }); }); }
     if ($("sgDone")) $("sgDone").onclick = function(){ act("/stage/" + t.gid, { completed:true }, "Stage marked done"); };
+    if ($("sgCab")) $("sgCab").onclick = function(){ var rk = pts().find(function(p){ return catOf(p) === "rack"; }); if (rk){ closeSheet(); switchView("vPlan"); openPoint(rk.point_id); } };
     if ($("sgUndo")) $("sgUndo").onclick = function(){ act("/stage/" + t.gid, { completed:false }, "Stage reopened"); };
     $("shBody").querySelectorAll("[data-sub]").forEach(function(b){ b.onclick = function(){ var x = findStage(b.dataset.sub).task; act("/stage/" + x.gid, { completed:!x.completed }, x.completed ? "Step reopened" : "Step done"); }; });
     $("shBody").querySelectorAll("[data-stage-open]").forEach(function(b){ b.onclick = function(){ openStage(b.dataset.stageOpen); }; });

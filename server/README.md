@@ -134,7 +134,11 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - **The cabinet:** tap the cabinet on the plan. It shows the villa's own **Cabinet Works** steps in the Asana order (Cable Tracing → … → UPS; **Cabinet Delivery** stays in Asana only, for the office admin), then **Patch Panel Labelling** and **Cabinet Sticker**, then the engineer's **UDM PRO / Switches / IP PBX** configuration. Each tick completes that exact Asana step. Technicians tick the works and labelling; only the site engineer (or office) ticks the configuration. The cabinet shows as done on the plan when all its works are ticked. Without Asana the same list is used.
    - Unticking reopens the subtask.
    - The Asana stages show in the site app's **Progress** tab and stay mirrored every 2 minutes (see step 3b).
-8. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.
+8. **Done in the app = done in Asana.** The **Progress** tab lists every Asana task of the project:
+   - **Auto** tasks are ticked by the app itself: from the points (e.g. "Auto · 7 / 18 cable runs cabled"), from the cabinet checklist, or a parent task when all its steps are done. They can't be ticked by hand, so the app and Asana never disagree.
+   - Every other work task is ticked by hand right there: Technicians tasks by the technician, Engineers / configuration tasks by the site engineer only, Operations, delivery and money tasks by the office.
+   - The line **Asana X / Y work tasks done** at the top: when the team has finished everything in the app, it reads Y / Y and Asana is complete.
+9. **Asana from the app.** In **Progress**, tap a stage to tick it or its steps, read the comments and history, and write a comment. Everything goes to Asana under the technician's name.
    - Technicians see the work stages.
    - Customers see the stages without comments.
    - Payment and invoice tasks are office only.
