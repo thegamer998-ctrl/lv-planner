@@ -107,6 +107,8 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - Set the name in the planner: click the point, open **More**, and type it under **Label on site & name in UniFi**.
    - The technician writes the label on the device and cable. The site engineer uses the same name in UniFi (the **Copy** button).
    - A label is fixed the first time you publish. Adding, moving or deleting points never renumbers the others, and a deleted number is never reused.
+   - **Changing a label on site.** If the client wants a different name (e.g. **GF-HALL-AP01**), the technician, the site engineer or the manager taps the point, then **Edit** next to the label, types the new label and taps **Save label**. Everyone sees it at once, and the customer sees it but can't change it. The app shows who changed it, and **use it again** brings back the drawing's label.
+   - The planner picks site changes up when you open **Site**, so your schedule PDF and the next **Update site** use the new label. To replace it from the office, change the point's name in the planner (click the point, open **More**); the point shows the label from site there.
 6. **Who ticks what.** Nobody ticks for anyone else.
    - **Technician:** **Installed** on every point, plus **Aligned** on cameras. A camera counts as done only when it is installed **and** aligned. Ticking Aligned also ticks Installed, and unticking Installed clears Aligned, since both are his own.
    - **Site engineer:** **Configured** on access points, cameras, IP phones, intercom and the network cabinet. He does it in bulk: **Checklist → Configuration**, **Select all** on a device type, then **Mark configured**. His ticks never change the technician's, and the technician's never change his.

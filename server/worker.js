@@ -37,6 +37,7 @@ const COLUMNS = [
   "points ADD COLUMN configured INTEGER DEFAULT 0", "points ADD COLUMN configured_by TEXT", "points ADD COLUMN configured_at INTEGER",
   "floors ADD COLUMN pdf_parts INTEGER DEFAULT 0", "floors ADD COLUMN pdf_v INTEGER DEFAULT 0", "floors ADD COLUMN pw REAL", "floors ADD COLUMN ph REAL",
   "log ADD COLUMN by_role TEXT",
+  "points ADD COLUMN site_label TEXT", "points ADD COLUMN site_label_by TEXT", "points ADD COLUMN site_label_at INTEGER",
   "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT"
 ];
 let schemaReady = false;
@@ -86,6 +87,8 @@ function rid(n = 20) {
   return Array.from(b, x => a[x % a.length]).join("");
 }
 const now = () => Date.now();
+// the label written on the device: the one changed on site wins over the planner's
+const lbl = pt => pt.site_label || pt.label;
 
 export default {
   async fetch(req, env, ctx) {
@@ -235,7 +238,7 @@ export default {
         return new Response(toBytes(ph.img), { headers: { ...cors, "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=31536000, immutable" } });
       }
       // point actions: installed tick, photo, note
-      if ((mm = rest.match(/^pt\/([^/]+)\/(status|photo|note)$/)) && req.method === "POST") {
+      if ((mm = rest.match(/^pt\/([^/]+)\/(status|photo|note|label)$/)) && req.method === "POST") {
         if (!canEdit) return json({ error: "View only — use the team link to make changes" }, 403);
         const ptid = decodeURIComponent(mm[1]);
         const pt = await db.prepare("SELECT * FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
@@ -250,15 +253,26 @@ export default {
           for (const s of Object.keys(set)) {
             await db.prepare(`UPDATE points SET ${s} = ?, ${s}_by = ?, ${s}_at = ? WHERE project_id = ? AND point_id = ?`)
               .bind(set[s], set[s] ? by : null, set[s] ? t : null, pid, ptid).run();
-            await log(stepAction(s, set[s]), ptid, pt.label);
+            await log(stepAction(s, set[s]), ptid, lbl(pt));
           }
           await touch(db, pid);
           if (asanaOn) ctx.waitUntil((async () => { for (const s of Object.keys(set)) await asanaPush(db, env, proj, pt.cat, s, by); })().catch(e => console.log("asana push", e)));
           const np = await db.prepare("SELECT installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
           return json({ ok: true, ...np });
         }
-        if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, ptid, by, pt.label, byRole));
-        if (mm[2] === "note") return json(await saveNote(db, req, pid, ptid, by, pt.label, byRole));
+        if (mm[2] === "label") {
+          // body: { label: "GF-HALL-AP01" }   (empty = back to the planner's label). Technicians, engineers and the office; never the customer.
+          const b = await req.json(), t = now();
+          const nl = String(b.label || "").replace(/\s+/g, " ").trim().slice(0, 40);
+          const val = nl && nl !== pt.label ? nl : null;
+          await db.prepare("UPDATE points SET site_label = ?, site_label_by = ?, site_label_at = ? WHERE project_id = ? AND point_id = ?")
+            .bind(val, val ? by : null, val ? t : null, pid, ptid).run();
+          await log("label", ptid, lbl(pt) + " → " + (val || pt.label));
+          await touch(db, pid);
+          return json({ ok: true, label: val || pt.label, label_plan: pt.label, label_edited: val ? 1 : 0, site_label_by: val ? by : null, site_label_at: val ? t : null });
+        }
+        if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, ptid, by, lbl(pt), byRole));
+        if (mm[2] === "note") return json(await saveNote(db, req, pid, ptid, by, lbl(pt), byRole));
       }
       // many points at once (the site engineer configures all access points, all cameras… together)
       if (rest === "bulk" && req.method === "POST") {
@@ -276,7 +290,7 @@ export default {
             if (!!pt[s] === !!set[s]) continue;
             await db.prepare(`UPDATE points SET ${s} = ?, ${s}_by = ?, ${s}_at = ? WHERE project_id = ? AND point_id = ?`)
               .bind(set[s], set[s] ? by : null, set[s] ? t : null, pid, id).run();
-            (cats[pt.cat] = cats[pt.cat] || new Set()).add(s); if (s === step) { changed.push(pt.label); kinds[pt.cat] = (kinds[pt.cat] || 0) + 1; }
+            (cats[pt.cat] = cats[pt.cat] || new Set()).add(s); if (s === step) { changed.push(lbl(pt)); kinds[pt.cat] = (kinds[pt.cat] || 0) + 1; }
           }
         }
         if (changed.length) {
@@ -489,10 +503,14 @@ async function publish(db, b) {
   for (const r of oldF.results) if (!floorIds.includes(r.floor_id)) await db.prepare("DELETE FROM floors WHERE project_id = ? AND floor_id = ?").bind(proj.id, r.floor_id).run();
   await db.prepare("UPDATE points SET active = 0 WHERE project_id = ?").bind(proj.id).run();
   for (const [i, p] of b.points.entries()) {
+    // a label changed on site stays until the planner has seen it (the planner then sends it back as its own label, or replaces it)
+    const seen = +p.labelSeen || 0;
     await db.prepare(`INSERT INTO points (project_id, point_id, floor_id, type, cat, label, model, color, x, y, ord, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         ON CONFLICT (project_id, point_id) DO UPDATE SET floor_id = excluded.floor_id, type = excluded.type, cat = excluded.cat, label = excluded.label,
-          model = excluded.model, color = excluded.color, x = excluded.x, y = excluded.y, ord = excluded.ord, active = 1`)
-      .bind(proj.id, String(p.id), String(p.floorId), p.type || "", p.cat || "data", p.label || "", p.model || "", p.color || "#3b82f6", +p.x || 0, +p.y || 0, i).run();
+          model = excluded.model, color = excluded.color, x = excluded.x, y = excluded.y, ord = excluded.ord, active = 1,
+          site_label = CASE WHEN site_label_at > ? THEN site_label END, site_label_by = CASE WHEN site_label_at > ? THEN site_label_by END,
+          site_label_at = CASE WHEN site_label_at > ? THEN site_label_at END`)
+      .bind(proj.id, String(p.id), String(p.floorId), p.type || "", p.cat || "data", p.label || "", p.model || "", p.color || "#3b82f6", +p.x || 0, +p.y || 0, i, seen, seen, seen).run();
   }
   // reports the office resolved in the planner (point added / removed)
   for (const r of (b.resolved || [])) {
@@ -513,7 +531,7 @@ async function projectView(db, proj, role) {
   const pid = proj.id;
   const [floors, points, photos, notes, issues, log] = await Promise.all([
     db.prepare("SELECT floor_id, ord, name, w, h, v, pdf_parts, pdf_v, pw, ph FROM floors WHERE project_id = ? ORDER BY ord").bind(pid).all(),
-    db.prepare("SELECT point_id, floor_id, type, cat, label, model, color, x, y, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
+    db.prepare("SELECT point_id, floor_id, type, cat, COALESCE(site_label, label) AS label, label AS label_plan, CASE WHEN site_label IS NULL THEN 0 ELSE 1 END AS label_edited, site_label_by, site_label_at, model, color, x, y, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
     db.prepare("SELECT id, point_id, w, h, by_name, at, caption FROM photos WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT id, point_id, text, by_name, at FROM notes WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT * FROM issues WHERE project_id = ? ORDER BY at DESC").bind(pid).all(),

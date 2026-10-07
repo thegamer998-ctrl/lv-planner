@@ -158,6 +158,14 @@
   .labelcard b{ display:block; font:800 20px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.02em; word-break:break-word; }
   .labelcard button{ display:flex; align-items:center; gap:5px; height:38px; padding:0 12px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:13.5px; flex-shrink:0; }
   .labelcard svg, .cpy svg{ width:16px; height:16px; }
+  .labelcard .lbtns{ display:flex; gap:6px; flex:0 0 auto; }
+  .labelcard em{ display:block; font-style:normal; font-size:12px; color:var(--muted); margin-top:3px; }
+  .labeledit{ padding:10px 12px; border-radius:12px; border:1.5px solid var(--accent); margin-bottom:12px; }
+  .labeledit small{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .labeledit input{ width:100%; box-sizing:border-box; height:46px; padding:0 12px; border-radius:10px; border:1px solid var(--line-2); background:var(--bg); color:var(--ink); font:800 19px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.02em; }
+  .labeledit .lrow{ display:flex; gap:8px; margin-top:8px; } .labeledit .lrow button{ flex:1; height:42px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:14px; }
+  .labeledit .lrow button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .labeledit p{ margin:8px 0 0; font-size:12.5px; color:var(--muted); }
   .lbl-code{ font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.01em; }
   .cpy{ width:34px; height:34px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel); display:grid; place-items:center; flex-shrink:0; color:var(--muted); padding:0; }
   .tip{ position:relative; margin:14px 12px 0; padding:12px 40px 12px 12px; border-radius:var(--radius); background:var(--accent-soft); color:var(--text); font-size:13px; }
@@ -593,7 +601,7 @@
     var n = openReports(); $("tabRep").querySelectorAll(".badge").forEach(function(b){ b.remove(); });
     if (n && canEdit()) $("tabRep").insertAdjacentHTML("beforeend", '<span class="badge">' + n + "</span>");
     renderFloors(); renderPlanMarks(); renderList(); renderProgress(); renderReports(); renderActivity();
-    if (st.sel) renderSheet();
+    if (st.sel && !(labelEdit && $("lbIn"))) renderSheet();   // never wipe a label being typed
   }
 
   // ---- plan
@@ -771,6 +779,7 @@
   function typeName(p){ var T = (st.data.project.meta || {}).types || {}; return T[p.type] || CATS[catOf(p)].name; }
   function kindTxt(p){ return typeName(p) + (p.model && p.model !== typeName(p) ? " · " + p.model : ""); }
   function copyLabel(p){ copyText(p.label, "Copied “" + p.label + "”"); }
+  var EDIT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   var COPY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>';
   function miniIcon(p){ var s = iconSvg(p); return s ? '<span class="mini">' + s + '</span>' : '<span class="dot" style="background:' + esc(p.color) + '"></span>'; }
   function issueColor(i){ return i.status === "open" ? "#ea580c" : i.status === "approved" ? "#2563eb" : i.status === "done" ? "#12a150" : "#94a3b8"; }
@@ -1085,7 +1094,7 @@
     "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
     "project-started":"started the project", "project-done":"marked the project complete", "project-reopened":"reopened the project",
-    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing" };
+    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });
     var rows = (d.activity || []).map(function(a){ return { at:a.at, src:"site", a:a }; });
@@ -1106,7 +1115,7 @@
       var who = a.by_name || "Someone", target = p ? p.label : isIssue || isStage ? "" : a.detail;
       var attr = p ? ' data-open="' + esc(p.point_id) + '"' : isIssue ? ' data-issue="' + esc(a.point_id.slice(6)) + '"' : isStage ? ' data-stage="' + esc(a.point_id.slice(6)) + '"' : "";
       return '<div class="act"' + attr + '><span class="av">' + esc(who.slice(0, 1).toUpperCase()) + '</span><div class="tx"><b>' + esc(who) + "</b>" + (a.by_role && role() !== "customer" ? ' <span class="who">' + esc(a.by_role) + "</span>" : "") + " " + (ACT[a.action] || a.action) + (target ? " <b>" + esc(target) + "</b>" : "") +
-        ((a.action === "note" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
+        ((a.action === "note" || a.action === "label" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
         (ph ? '<img loading="lazy" src="' + imgUrl("photo", ph.id) + '" alt="">' : "") + "</div>";
     }).join("");
     $("actBody").innerHTML = html ? '<div class="sec">Latest updates</div><div class="card">' + html + '</div><div style="height:16px"></div>' : '<div class="empty">No updates yet. Ticks, photos, notes and Asana changes appear here.</div>';
@@ -1117,10 +1126,10 @@
 
   // ---- sheet (point / report / stage)
   function openSheet(){ $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
-  function openPoint(id){ st.sel = id; renderSheet(); openSheet(); }
+  function openPoint(id){ st.sel = id; labelEdit = null; renderSheet(); openSheet(); }
   function openIssue(id){ st.sel = "issue:" + id; renderSheet(); openSheet(); }
   function openStage(gid){ st.sel = "stage:" + gid; renderSheet(); openSheet(); }
-  function closeSheet(){ st.sel = null; draft = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
+  function closeSheet(){ st.sel = null; draft = null; labelEdit = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
   $("shClose").onclick = closeSheet; $("scrim").onclick = closeSheet;
   function renderSheet(){
     if (!st.sel || !st.data) return;
@@ -1146,7 +1155,7 @@
     var bsvg = iconSvg(p); $("shBadge").className = "badge" + (bsvg ? " icon" : "");
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = typeName(p); $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
-    var h = '<div class="labelcard"><div><small>' + (canConfig() ? "Label on site · name in UniFi" : "Write this on the label") + '</small><b>' + esc(p.label) + '</b></div><button type="button" id="shCopy">' + COPY_SVG + "Copy</button></div>", pendStatus = pend.some(function(i){ return i.kind === "status"; });
+    var h = labelHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
     if (visibleSteps(p).length > 1){
       // installed (+ aligned for cameras) by the technician, configured by the site engineer — each ticked on its own, with who and when
       h += '<div class="steps">' + visibleSteps(p).map(function(x, i){
@@ -1169,11 +1178,45 @@
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-step]").forEach(function(b){ b.onclick = function(){ setStep(p, b.dataset.step, b.dataset.v === "1"); }; });
-    $("shCopy").onclick = function(){ copyLabel(p); };
+    bindLabel(p);
     if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
     bindPhotoTaps(function(){ return p.photos; }, p.label);
+  }
+  // the label written on the device. Technicians, the site engineer and the office can change it on site
+  // (e.g. GF-HALL-AP01 as the client wants it); the client only sees it. The planner picks the change up.
+  var labelEdit = null;
+  function labelHtml(p){
+    if (labelEdit === p.point_id && canEdit()){
+      return '<div class="labeledit"><small>Label on site · name in UniFi</small><input type="text" id="lbIn" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" value="' + esc(p.label) + '">' +
+        '<div class="lrow"><button type="button" id="lbCancel">Cancel</button><button type="button" class="pri" id="lbSave">Save label</button></div>' +
+        (p.label_edited ? '<p>Drawing label: <b>' + esc(p.label_plan) + '</b> · <a href="#" id="lbReset">use it again</a></p>' : '<p>Everyone sees the new label at once, the office too.</p>') + "</div>";
+    }
+    return '<div class="labelcard"><div><small>' + (canConfig() ? "Label on site · name in UniFi" : canEdit() ? "Write this on the label" : "Label") + '</small><b>' + esc(p.label) + '</b>' +
+      (p.label_edited && role() !== "customer" ? "<em>Changed " + whoTxt(p.site_label_by, p.site_label_at) + "</em>" : "") + '</div><span class="lbtns">' +
+      (canEdit() ? '<button type="button" id="shEditLbl" aria-label="Edit label">' + EDIT_SVG + "Edit</button>" : "") +
+      '<button type="button" id="shCopy">' + COPY_SVG + "Copy</button></span></div>";
+  }
+  function bindLabel(p){
+    if ($("shCopy")) $("shCopy").onclick = function(){ copyLabel(p); };
+    if ($("shEditLbl")) $("shEditLbl").onclick = function(){ labelEdit = p.point_id; renderSheet(); var i = $("lbIn"); if (i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } };
+    if (!$("lbIn")) return;
+    $("lbCancel").onclick = function(){ labelEdit = null; renderSheet(); };
+    $("lbIn").onkeydown = function(e){ if (e.key === "Enter") $("lbSave").click(); if (e.key === "Escape") $("lbCancel").click(); };
+    function save(v){
+      v = String(v || "").replace(/\s+/g, " ").trim();
+      if (v === p.label){ labelEdit = null; renderSheet(); return; }
+      needName(function(){
+        $("lbSave").disabled = true; $("lbSave").textContent = "Saving…";
+        req("POST", "/pt/" + encodeURIComponent(p.point_id) + "/label", JSON.stringify({ label:v }), "application/json").then(function(r){
+          p.label = r.label; p.label_plan = r.label_plan; p.label_edited = r.label_edited; p.site_label_by = r.site_label_by; p.site_label_at = r.site_label_at;
+          labelEdit = null; render(); toast("Label is now " + r.label); load(true);
+        }).catch(function(e){ if ($("lbSave")){ $("lbSave").disabled = false; $("lbSave").textContent = "Save label"; } toast(e.status ? e.message : "No signal. Try again when you have signal."); });
+      });
+    }
+    $("lbSave").onclick = function(){ save($("lbIn").value); };
+    if ($("lbReset")) $("lbReset").onclick = function(e){ e.preventDefault(); save(""); };
   }
   function renderIssue(id){
     var i = issues().find(function(x){ return x.id === id; }); if (!i){ closeSheet(); return; }

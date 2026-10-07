@@ -807,7 +807,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-06.3</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1000,7 +1000,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-06.3</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.1</p>
     </section>
   </aside>
 
@@ -4119,6 +4119,7 @@
         '<label class="popover-hint" style="display:block;margin-bottom:5px;">Label on site &amp; name in UniFi</label>'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;"><b style="font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:6px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent);white-space:nowrap;">'+escapeHtml(m.ptId || pointIds()[m.id] || "")+'</b>'+
         '<input type="text" id="popNameInput" maxlength="30" value="'+escapeHtml(m.ptName||"")+'" placeholder="Name, e.g. Corridor" style="flex:1;margin-bottom:0;"></div>'+
+        (m.siteLabel ? '<p class="popover-hint" style="margin:-4px 0 10px;">On site: <b style="font-family:ui-monospace,Menlo,monospace;color:var(--text-main);">'+escapeHtml(m.siteLabel)+'</b>'+(m.siteLabelBy ? ' (changed by '+escapeHtml(m.siteLabelBy)+')' : '')+'. Change the name here to replace it.</p>' : '')+
         '<textarea id="popNoteInput" placeholder="Optional note (e.g. ceiling mount, ref wall)">'+escapeHtml(m.note||"")+'</textarea>'+
         '<div class="popover-actions"><button class="btn-delete" id="popDeleteBtn">Delete</button><button class="btn-save" id="popDuplicateBtn" style="background:var(--accent-soft);color:var(--accent);">Copy</button><button class="btn-save" id="popSaveBtn">Save</button></div>'+
         '<p class="popover-hint" style="margin-top:8px;">Drag the icon on the drawing to reposition it.</p>';
@@ -4417,7 +4418,7 @@
       var m = f.markers.find(function(x){ return x.id===id; });
       var val = document.getElementById("popNoteInput").value.trim();
       var nm = document.getElementById("popNameInput"), nmv = nm ? nm.value.trim().replace(/\s+/g, " ").slice(0, 30) : "";
-      if (m){ m.note = val; if (nmv) m.ptName = nmv; else delete m.ptName; renderMarkers(); }
+      if (m){ m.note = val; if (m.siteLabel && nmv !== (m.ptName || "")){ delete m.siteLabel; delete m.siteLabelBy; } if (nmv) m.ptName = nmv; else delete m.ptName; renderMarkers(); }
     } else if (kind === "measurement"){
       var ms = f.measurements.find(function(x){ return x.id===id; });
       var raw = parseFloat(document.getElementById("popLengthInput").value);
@@ -4924,7 +4925,7 @@
     function newId(prefix){ return prefix+Date.now()+Math.random().toString(16).slice(2)+(count++); }
 
     src.markers.filter(function(m){ return m.page===srcPage; }).forEach(function(m){
-      var copy = Object.assign({}, m, { id:newId("pt"), page:targetPage }); delete copy.ptId;
+      var copy = Object.assign({}, m, { id:newId("pt"), page:targetPage }); delete copy.ptId; delete copy.siteLabel; delete copy.siteLabelAt; delete copy.siteLabelBy;
       f.markers.push(copy);
     });
     src.walls.filter(function(w){ return w.page===srcPage; }).forEach(function(w){
@@ -5479,7 +5480,7 @@
     return changed;
   }
   // the label written on the device and used as its name in UniFi: "GF-CAM03" or, with a name, "GF-CAM03 Corridor"
-  function pointLabel(m, ids){ var id = m.ptId || (ids || pointIds())[m.id] || ""; return id + (m.ptName ? " " + m.ptName : ""); }
+  function pointLabel(m, ids){ if (m.siteLabel) return m.siteLabel; var id = m.ptId || (ids || pointIds())[m.id] || ""; return id + (m.ptName ? " " + m.ptName : ""); }
   var TYPE_SORT = ["wifi","outdoorwifi","cctv","cctvoutdoor","ipphone","network","dtv","intercom","intercomscreen","smartlock","tv","speaker","uplink","rack","drawbox"];
   function typeRank(t){ var i = TYPE_SORT.indexOf(t); return i < 0 ? 99 : i; }
 
@@ -6578,8 +6579,8 @@
         var t = getTypeDef(m.type); if (!t || m.type === "uplink") return;
         var sheet = f.id + (f.numPages > 1 ? "-p" + m.page : "");
         var v = markerVariant(m), cat = m.type === "rack" ? "rack" : CABLED_TYPES[m.type] ? vlanKeyOf(m) : "other";
-        var label = pointLabel(m, ids) + (m.type === "rack" && v && !m.ptName ? " " + v.name : "");
-        out.push({ id:m.id, floorId:sheet, type:m.type, cat:cat, label:label, model: v && !v.rackTag ? v.name : "", color: cat === "rack" ? "#475569" : cat === "other" ? t.color : vlanColorOf(m), x:+m.xRatio.toFixed(5), y:+m.yRatio.toFixed(5) });
+        var label = m.siteLabel || pointLabel(m, ids) + (m.type === "rack" && v && !m.ptName ? " " + v.name : "");
+        out.push({ id:m.id, floorId:sheet, type:m.type, cat:cat, label:label, labelSeen: m.siteLabelAt || 0, model: v && !v.rackTag ? v.name : "", color: cat === "rack" ? "#475569" : cat === "other" ? t.color : vlanColorOf(m), x:+m.xRatio.toFixed(5), y:+m.yRatio.toFixed(5) });
       });
     });
     return out;
@@ -6696,9 +6697,24 @@
     return siteFetch("/site/p/" + project.site.id).then(function(d){
       siteUi.data = d; siteUi.status = {};
       d.points.forEach(function(p){ siteUi.status[p.point_id] = { installed: !!p.installed, aligned: !!p.aligned, configured: !!p.configured, cam: p.cat === "cam", photos: p.photos.length, by: p.installed_by }; });
+      if (syncSiteLabels(d.points) && typeof autosaveTick === "function") autosaveTick();
       renderSiteDialog(started ? "Started. Send the client link, and their own link to anyone who doesn't have it yet." : afterPublish ? "Site updated." : "");
       if (typeof renderMarkers === "function") renderMarkers();
     }).catch(function(e){ renderSiteDialog("Couldn't reach the site: " + e.message); });
+  }
+  // labels changed on site (technician / engineer: e.g. GF-HALL-AP01) come back into the drawing, the schedule and the next Update site.
+  // A name typed here afterwards replaces it again (m.siteLabelAt remembers the last site change already seen).
+  function syncSiteLabels(points){
+    var byId = {}, changed = false;
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){ byId[m.id] = m; }); });
+    points.forEach(function(p){
+      var m = byId[p.point_id]; if (!m) return;
+      if (p.label_edited){
+        if ((p.site_label_at || 0) > (m.siteLabelAt || 0)){ m.siteLabel = p.label; m.siteLabelAt = p.site_label_at; m.siteLabelBy = p.site_label_by || ""; changed = true; }
+      } else if (m.siteLabel && p.label !== m.siteLabel){ delete m.siteLabel; delete m.siteLabelBy; changed = true; }   // set back to the drawing label on site
+    });
+    if (changed && typeof renderMarkers === "function") renderMarkers();
+    return changed;
   }
   // ---- Project execution: Start project (after the customer approves) → client link + the team's own links → Mark complete
   function siteStaff(){
