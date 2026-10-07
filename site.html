@@ -894,7 +894,7 @@
       if (!ptrs[e.pointerId]) return; ptrs[e.pointerId] = { x:e.clientX, y:e.clientY };
       var ids = Object.keys(ptrs), r = plan.getBoundingClientRect();
       if (ids.length === 1 && start && start.mode === 1){
-        var dx = e.clientX - start.px, dy = e.clientY - start.py; if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+        var dx = e.clientX - start.px, dy = e.clientY - start.py; if (Math.hypot(dx, dy) > (e.pointerType === "touch" ? 10 : 5)) moved = true;
         if (moved){ begin(); view.x = start.x + dx; view.y = start.y + dy; applyView(); }
       } else if (ids.length >= 2){
         if (!start || start.mode !== 2) start = snapshot();
@@ -912,11 +912,16 @@
       var r = plan.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
       if (st.placing){ placeReport((sx - view.x) / view.s / view.w, (sy - view.y) / view.s / view.h); return; }
       var el = document.elementFromPoint(e.clientX, e.clientY);
-      var pin = el && el.closest && el.closest(".pin[data-issue]"); if (pin){ openIssue(pin.dataset.issue); return; }
-      var hit = pointAt(sx, sy); if (hit){ openPoint(hit.point_id); return; }
+      var pin = el && el.closest && el.closest(".pin[data-issue]"); if (pin){ eatClick = true; openIssue(pin.dataset.issue); return; }
+      var hit = pointAt(sx, sy); if (hit){ eatClick = true; openPoint(hit.point_id); return; }
       var t = Date.now(); if (t - lastTap < 300) zoomAt(sx, sy, 2); lastTap = t;
     });
     plan.addEventListener("pointercancel", function(e){ delete ptrs[e.pointerId]; start = null; end(); });
+    // Android: a finger tap is followed by a "click" on whatever is now under the finger (the sheet that just opened);
+    // cancelling the touch's end stops that extra click, so it can't tick a button in the sheet by itself
+    var eatClick = false;
+    plan.addEventListener("touchend", function(e){ if (eatClick){ eatClick = false; if (e.cancelable) e.preventDefault(); } }, { passive:false });
+    plan.addEventListener("pointerdown", function(){ eatClick = false; }, true);
     var wheelT = null;
     plan.addEventListener("wheel", function(e){ e.preventDefault(); begin(); var r = plan.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.15 : 1/1.15); clearTimeout(wheelT); wheelT = setTimeout(end, 120); }, { passive:false });
     $("zIn").onclick = function(){ var r = plan.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1.5); };
@@ -1164,12 +1169,16 @@
   }
 
   // ---- sheet (point / report / stage)
-  function openSheet(){ $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
+  function openSheet(){ scrimDown = false; $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
   function openPoint(id){ st.sel = id; labelEdit = null; renderSheet(); openSheet(); }
   function openIssue(id){ st.sel = "issue:" + id; renderSheet(); openSheet(); }
   function openStage(gid){ st.sel = "stage:" + gid; renderSheet(); openSheet(); }
   function closeSheet(){ st.sel = null; draft = null; labelEdit = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
-  $("shClose").onclick = closeSheet; $("scrim").onclick = closeSheet;
+  // the backdrop closes the sheet only for a tap that started on it: Android Chrome sends the tap that opened
+  // the sheet a second time as a "click" (now landing on the fresh backdrop), which used to close it at once
+  var scrimDown = false;
+  $("scrim").addEventListener("pointerdown", function(){ scrimDown = true; });
+  $("shClose").onclick = closeSheet; $("scrim").onclick = function(){ if (!scrimDown) return; scrimDown = false; closeSheet(); };
   function renderSheet(){
     if (!st.sel || !st.data) return;
     if (st.sel === "draft"){ if (draft) renderDraft(); return; }
