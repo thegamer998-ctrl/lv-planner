@@ -81,7 +81,7 @@ Do this once on each office device. The **Quote** dialog uses the same server.
 ---
 
 ## Using it
-1. **Your team, once.** In the office view (step 4), scroll to **Team**, add each person with their role, and send them their own link (**Copy link** → WhatsApp). They open it once on their phone and add it to the home screen: it becomes their ExpressTech app, with every project they are on.
+1. **Your team, once.** In the planner click **Start** (or **Site**), then **+ Add people** next to **Team**. The office view opens at the **Team** list (step 4). add each person with their role, and send them their own link (**Copy link** → WhatsApp). They open it once on their phone and add it to the home screen: it becomes their ExpressTech app, with every project they are on.
 
    | Role | Can do |
    |---|---|
@@ -99,7 +99,7 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    - The site app draws each floor's original vector drawing: sharp at every zoom, points exactly where they are in the planner, and it works with no signal once opened.
    - After that the toolbar button reads **Site**: send drawing changes with **Update site**, change the team with **Change**.
 3. **Finish.** **Mark project complete** moves it to **Completed** in the team's app. The client link keeps working (read-only). **Reopen project** brings it back.
-4. **Office view (all projects).** In the planner, open **Site → Open office view**, or bookmark `https://thegamer998-ctrl.github.io/lv-planner/site.html#office&s=<server address>`.
+4. **Office view (all projects).** In the planner, open **Site → Office view** (then **‹** for all projects), or **+ Add people**, or bookmark `https://thegamer998-ctrl.github.io/lv-planner/site.html#office&s=<server address>`.
    - Enter the office key once on each device.
    - It lists every project with progress, open site reports, Asana stages, the next stage and the status.
    - Open a project to see everything, including office-only tasks such as payments.

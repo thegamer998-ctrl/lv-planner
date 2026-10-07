@@ -369,6 +369,7 @@
     else if (!S && !OFFICE && !P){ var me0 = JSON.parse(localStorage.getItem("et_me") || "null"); if (me0 && me0.u && me0.s){ U = me0.u; S = me0.s; history.replaceState(null, "", "#u=" + encodeURIComponent(U) + "&s=" + encodeURIComponent(S)); } }
   } catch(e){}
   var STAFF = !!U && !OFFICE; if (STAFF) K = U;
+  var TEAMJUMP = hp.has("team");   // opened from the planner's "+ Add people": go straight to the Team list
   var ROLE_TAG = { office:"Office", manager:"Manager", engineer:"Site engineer", tech:"Technician", team:"Team", customer:"Customer view" };
   var STEP_L = { installed:"Installed", aligned:"Aligned", configured:"Configured" };
   var STEP_DO = { installed:"Mark installed", aligned:"Mark aligned", configured:"Mark configured" };
@@ -532,6 +533,7 @@
       $("spAdd").onclick = function(){ var n = $("spName").value.trim(); if (!n){ $("spName").focus(); return; }
         homeFetch("/site/staff", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ name:n, role:$("spRole").value }) })
           .then(function(r){ renderStaff(); copyText(personLink(r.person.key), r.person.name + " added — link copied"); }).catch(function(e){ toast(e.message); }); };
+      if (TEAMJUMP){ TEAMJUMP = false; card.scrollIntoView({ block:"center" }); $("spName").focus(); }
     }).catch(function(e){ var card = $("staffCard"); if (card) card.innerHTML = '<div class="rowi"><span class="t"><small>' + esc(e.message) + "</small></span></div>"; });
   }
   function openProject(id){
