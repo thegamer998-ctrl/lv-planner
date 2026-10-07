@@ -124,6 +124,9 @@ Do this once on each office device. The **Quote** dialog uses the same server.
    | cameras are installed / aligned | **Peripheral Works › CCTV Installation / CCTV Alignment** |
    | access points / cameras / IP phones / intercom are configured | **Hardware Configuration › Access Points / CCTV / IP Phones / IP Intercom and Screens** |
 
+   - **Cabling step:** in the planner's **Site** window, tick **ExpressTech pulls the cables** when your team pulls the cables on that job. Every cabled point then gets **Cabling → Installed (→ Aligned for cameras)**, and a point is done only when all are ticked. Asana: a task named like **Cabling for 15 Cameras and 1 Viewport** is completed when every cable run is ticked.
+   - **Viewport** (UniFi Protect ViewPort, in the planner under Cameras): Cabling → Installed, then **Configured** by the site engineer. Asana: **Viewport Installation**, **Configuration of Viewport**.
+   - Projects with a flat Asana list (Technicians / Engineers sections, no "Cabinet Works" parent) work too: the cabinet takes the tasks about the cabinet, crimping, UNVR, switch, HDD, UPS, labelling and their configuration, in the Asana order. Cameras configured complete **Camera Adoption** and **Camera Naming**.
    - **The cabinet:** tap the cabinet on the plan. It shows the villa's own **Cabinet Works** steps in the Asana order (Cable Tracing → … → UPS; **Cabinet Delivery** stays in Asana only, for the office admin), then **Patch Panel Labelling** and **Cabinet Sticker**, then the engineer's **UDM PRO / Switches / IP PBX** configuration. Each tick completes that exact Asana step. Technicians tick the works and labelling; only the site engineer (or office) ticks the configuration. The cabinet shows as done on the plan when all its works are ticked. Without Asana the same list is used.
    - Unticking reopens the subtask.
    - The Asana stages show in the site app's **Progress** tab and stay mirrored every 2 minutes (see step 3b).

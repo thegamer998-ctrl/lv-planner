@@ -38,6 +38,7 @@ const COLUMNS = [
   "points ADD COLUMN configured INTEGER DEFAULT 0", "points ADD COLUMN configured_by TEXT", "points ADD COLUMN configured_at INTEGER",
   "floors ADD COLUMN pdf_parts INTEGER DEFAULT 0", "floors ADD COLUMN pdf_v INTEGER DEFAULT 0", "floors ADD COLUMN pw REAL", "floors ADD COLUMN ph REAL",
   "log ADD COLUMN by_role TEXT",
+  "points ADD COLUMN cabled INTEGER DEFAULT 0", "points ADD COLUMN cabled_by TEXT", "points ADD COLUMN cabled_at INTEGER", "projects ADD COLUMN cabling INTEGER DEFAULT 0",
   "points ADD COLUMN site_label TEXT", "points ADD COLUMN site_label_by TEXT", "points ADD COLUMN site_label_at INTEGER",
   "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT"
 ];
@@ -54,17 +55,23 @@ async function ensureSchema(db) {
 // Nobody ticks for anyone: technicians can't tick "configured"; the engineer and the manager can change everything.
 // A point counts as done for the installation when all its technician steps are ticked.
 const STEPS = {
+  cabled:     { label: "Cabling",    who: "team" },
   installed:  { label: "Installed",  who: "team" },
   aligned:    { label: "Aligned",    who: "team" },
   configured: { label: "Configured", who: "engineer" }
 };
-const CONFIG_CATS = ["ap", "cam", "phone", "icom"];
-function stepsOf(cat) { return cat === "cam" ? ["installed", "aligned", "configured"] : CONFIG_CATS.includes(cat) ? ["installed", "configured"] : ["installed"]; }
+const CONFIG_CATS = ["ap", "cam", "phone", "icom", "vp"];
+// points with a cable run get a "Cabling" step first when ExpressTech pulls the cables on that project (projects.cabling)
+const CABLE_CATS = ["ap", "cam", "data", "phone", "icom", "vp"];
+function stepsOf(cat, cabling) {
+  const s = cat === "cam" ? ["installed", "aligned", "configured"] : CONFIG_CATS.includes(cat) ? ["installed", "configured"] : ["installed"];
+  return cabling && CABLE_CATS.includes(cat) ? ["cabled", ...s] : s;
+}
 function canTick(role, step) { return STEPS[step].who === "engineer" ? ["office", "manager", "engineer"].includes(role) : role !== "customer"; }
 const ROLE_NAME = { office: "Office", manager: "Manager", engineer: "Site engineer", tech: "Technician", team: "Team", customer: "Customer" };
 
 // Point categories (the planner's VLAN groups)
-const CATS = { ap: { name: "Access points" }, cam: { name: "Cameras" }, data: { name: "Data points" }, phone: { name: "IP phones" },
+const CATS = { ap: { name: "Access points" }, cam: { name: "Cameras" }, vp: { name: "Viewports" }, data: { name: "Data points" }, phone: { name: "IP phones" },
   icom: { name: "Intercom" }, rack: { name: "Cabinet" }, other: { name: "Other" } };
 // Asana steps completed by the points: only when EVERY point of that kind has the step ticked (all cameras aligned →
 // "CCTV Alignment"); one point unticked reopens it. Matched on "Parent > Step" names of the villa template
@@ -80,7 +87,10 @@ const ASANA_RULES = [
   { step: "configured", what: "access points", pts: p => p.cat === "ap", rx: /configuration > (wi-?fi|access points?)$|(access points?|wi-?fi)[^,>]*\b(config|configuration|setup|ssids?)\b/i },
   { step: "configured", what: "cameras", pts: p => p.cat === "cam", rx: /configuration > (cctv|cameras?)$|(camera|cctv)[^,>]*\b(naming|adoption|adopt)\b|\bcameras? (config|configuration|setup)\b/i },
   { step: "configured", what: "IP phones", pts: p => p.cat === "phone", rx: /configuration > (ip )?phones?$|phones?[^,>]*\b(config|configuration|setup|extensions?)\b/i },
-  { step: "configured", what: "intercom points", pts: p => p.cat === "icom", rx: /configuration > (ip )?intercom|intercom[^,>]*\b(config|configuration|setup)\b/i }
+  { step: "configured", what: "intercom points", pts: p => p.cat === "icom", rx: /configuration > (ip )?intercom|intercom[^,>]*\b(config|configuration|setup)\b/i },
+  { step: "cabled", what: "cable runs", pts: p => CABLE_CATS.includes(p.cat), rx: /^(?!.*\bready\b)(?!.*arrangement).*\bcabling\b|cable pulling|pulling (the )?cables?/i },
+  { step: "installed", what: "viewports", pts: p => p.cat === "vp", rx: /view ?port[^>]*install|install[^>]*view ?port/i },
+  { step: "configured", what: "viewports", pts: p => p.cat === "vp", rx: /view ?port[^>]*config|config[^>]*view ?port/i }
 ];
 // The cabinet checklist (tap the cabinet on the plan): the villa's own Asana steps in their order when Asana is linked
 // ("Cabinet Works", then the cabinet labelling, then the cabinet configuration for the site engineer), else this list.
@@ -94,6 +104,9 @@ const CAB_LABEL = /patch panels? label|cabinet sticker|cabinet label/i;
 // delivery of the cabinet / hardware to site is the office admin's job: it stays in Asana only, not on the cabinet
 const CAB_OFFICE = /deliver/i;
 const CAB_CONFIG = /udm|firewall|gateway|router|switch|pbx|nvr|unvr|ups|controller/i;
+// flat Asana lists: what belongs to the cabinet (installed by the technician / set up by the engineer)
+const CAB_WORK = /cabinet|\brack\b|patch panel|punching|crimp|tracing|\bu?nvr\b|\budm\b|switch|\bups\b|\bhdd\b|hard ?dis[kc]|\bdac\b|patch cords?|\bpbx\b|firewall|gateway|router/i;
+const CAB_DEVICE = /\bu?nvr\b|\budm\b|switch|\bups\b|\bpbx\b|firewall|gateway|router|recording|controller/i;
 function cabinetList(cache, rows) {
   const by = {}; for (const r of rows || []) by[r.item] = r;
   const items = [];
@@ -109,6 +122,21 @@ function cabinetList(cache, rows) {
         return { key: "a:" + st.gid, gid: st.gid, group, name: st.name, done: st.completed ? 1 : 0, by: st.completed ? (r.done ? r.by_name : null) : null,
           at: st.completed ? (r.done && r.at) || st.completed_at || null : null, asana: true }; });
     }
+  }
+  if (cache && cache.sections) {
+    // a project without a "Cabinet Works" parent (flat list, e.g. Technicians / Engineers): pick the cabinet's own tasks in order
+    const flat = [];
+    for (const sec of cache.sections) for (const t of sec.tasks) for (const st of [t, ...(t.subtasks || [])]) {
+      if ((t.subtasks || []).length && st === t) continue;
+      if (CAB_OFFICE.test(st.name) || PRIVATE_STAGE.test(st.name)) continue;
+      const eng = /engineer|config/i.test(sec.name) || /\b(config|configuration|adoption|recording)\b/i.test(st.name);
+      if (/label|sticker/i.test(st.name) && !eng) flat.push({ group: "label", st });
+      else if (eng && CAB_DEVICE.test(st.name)) flat.push({ group: "config", st });
+      else if (!eng && CAB_WORK.test(st.name)) flat.push({ group: "work", st });
+    }
+    if (flat.some(x => x.group === "work")) return flat.map(({ group, st }) => { const r = by["a:" + st.gid] || {};
+      return { key: "a:" + st.gid, gid: st.gid, group, name: st.name.trim(), done: st.completed ? 1 : 0, by: st.completed ? (r.done ? r.by_name : null) : null,
+        at: st.completed ? (r.done && r.at) || st.completed_at || null : null, asana: true }; });
   }
   return CABINET_DEFAULT.map(([group, name], i) => { const key = "d:" + group + ":" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), r = by[key] || {};
     return { key, group, name, done: r.done ? 1 : 0, by: r.done ? r.by_name : null, at: r.done ? r.at : null, asana: false }; });
@@ -284,9 +312,10 @@ export default {
           // body: { step: "installed" | "aligned" | "configured", done: true/false }   (old form { installed: true/false } still works)
           const b = await req.json();
           const step = b.step || "installed", done = (b.done != null ? b.done : b.installed) ? 1 : 0, t = now();
-          if (!stepsOf(pt.cat).includes(step)) return json({ error: "This point has no " + step + " step" }, 400);
+          const steps = stepsOf(pt.cat, proj.cabling);
+          if (!steps.includes(step)) return json({ error: "This point has no " + step + " step" }, 400);
           if (!canTick(role, step)) return json({ error: "Only the site engineer can tick " + STEPS[step].label }, 403);
-          const set = stepSet(pt, step, done);
+          const set = stepSet(pt, step, done, steps);
           for (const s of Object.keys(set)) {
             await db.prepare(`UPDATE points SET ${s} = ?, ${s}_by = ?, ${s}_at = ? WHERE project_id = ? AND point_id = ?`)
               .bind(set[s], set[s] ? by : null, set[s] ? t : null, pid, ptid).run();
@@ -294,7 +323,7 @@ export default {
           }
           await touch(db, pid);
           if (asanaOn) ctx.waitUntil((async () => { for (const s of Object.keys(set)) await asanaPush(db, env, proj, s, by); })().catch(e => console.log("asana push", e)));
-          const np = await db.prepare("SELECT installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
+          const np = await db.prepare("SELECT cabled, cabled_by, cabled_at, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
           return json({ ok: true, ...np });
         }
         if (mm[2] === "label") {
@@ -346,8 +375,9 @@ export default {
         const cats = {}, changed = [], kinds = {};
         for (const id of ids) {
           const pt = await db.prepare("SELECT * FROM points WHERE project_id = ? AND point_id = ? AND active = 1").bind(pid, id).first();
-          if (!pt || !stepsOf(pt.cat).includes(step)) continue;
-          const set = stepSet(pt, step, done);
+          const steps = pt ? stepsOf(pt.cat, proj.cabling) : [];
+          if (!pt || !steps.includes(step)) continue;
+          const set = stepSet(pt, step, done, steps);
           for (const s of Object.keys(set)) {
             if (!!pt[s] === !!set[s]) continue;
             await db.prepare(`UPDATE points SET ${s} = ?, ${s}_by = ?, ${s}_at = ? WHERE project_id = ? AND point_id = ?`)
@@ -358,7 +388,7 @@ export default {
         if (changed.length) {
           // e.g. "14 access points, 8 cameras"
           const NOUN = { ap: ["access point", "access points"], cam: ["camera", "cameras"], phone: ["IP phone", "IP phones"], icom: ["intercom", "intercoms"],
-            rack: ["network cabinet", "network cabinets"], data: ["data point", "data points"], other: ["point", "points"] };
+            rack: ["network cabinet", "network cabinets"], vp: ["viewport", "viewports"], data: ["data point", "data points"], other: ["point", "points"] };
           const what = Object.keys(kinds).map(c => kinds[c] + " " + (NOUN[c] || NOUN.other)[kinds[c] === 1 ? 0 : 1]).join(", ");
           await log("bulk-" + stepAction(step, done), "", what);
           await touch(db, pid);
@@ -450,6 +480,14 @@ export default {
         await log(st === "done" ? "project-done" : "project-reopened", "", "");
         return json({ ok: true, status: st });
       }
+      // project options: { cabling: true } = ExpressTech pulls the cables, every cabled point gets a "Cabling" step first
+      if (rest === "opts" && req.method === "POST") {
+        if (!officeLike) return json({ error: "Office only" }, 403);
+        const b = await req.json();
+        if (typeof b.cabling === "boolean") await db.prepare("UPDATE projects SET cabling = ? WHERE id = ?").bind(b.cabling ? 1 : 0, pid).run();
+        await touch(db, pid);
+        return json({ ok: true, cabling: !!b.cabling });
+      }
       // who works on it: a list of staff ids (empty or missing = everyone)
       if (rest === "team" && req.method === "POST") {
         if (!officeLike) return json({ error: "Office only" }, 403);
@@ -508,10 +546,14 @@ function safeJson(s) { try { return JSON.parse(s || "{}") || {}; } catch (e) { r
 async function touch(db, pid) { await db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").bind(now(), pid).run(); }
 // what one tick changes: aligned also means installed (both the technician's own work); un-ticking installed also clears
 // aligned. "Configured" is the engineer's and is never set or cleared by a technician's tick.
-function stepSet(pt, step, done) {
-  if (done && step === "aligned" && !pt.installed) return { installed: 1, aligned: 1 };   // logged in the order the work happens
-  const set = { [step]: done };
-  if (!done && step === "installed" && pt.aligned) set.aligned = 0;
+// The technician's steps follow the work order (cabling → installed → aligned): ticking a later one also ticks the earlier
+// ones; un-ticking one clears the later ones. "Configured" is the engineer's and is never touched by these.
+function stepSet(pt, step, done, steps) {
+  const order = (steps || ["installed", "aligned"]).filter(s => s !== "configured"), i = order.indexOf(step);
+  const set = {};
+  if (i < 0) { set[step] = done; return set; }
+  if (done) { for (let j = 0; j < i; j++) if (!pt[order[j]]) set[order[j]] = 1; set[step] = 1; }   // logged in the order the work happens
+  else { set[step] = 0; for (let j = i + 1; j < order.length; j++) if (pt[order[j]]) set[order[j]] = 0; }
   return set;
 }
 function stepAction(step, done) { return step === "installed" ? (done ? "installed" : "uninstalled") : (done ? step : "un" + step); }
@@ -555,6 +597,7 @@ async function publish(db, b) {
     await db.prepare("UPDATE projects SET name = ?, meta = ?, updated_at = ? WHERE id = ?").bind(b.name, JSON.stringify(b.meta || {}), t, proj.id).run();
     if (team !== undefined) await db.prepare("UPDATE projects SET team = ? WHERE id = ?").bind(team, proj.id).run();
   }
+  if (typeof b.cabling === "boolean") await db.prepare("UPDATE projects SET cabling = ? WHERE id = ?").bind(b.cabling ? 1 : 0, proj.id).run();
   const floorIds = (b.floors || []).map(f => String(f.id));
   for (const [i, f] of (b.floors || []).entries()) {
     await db.prepare(`INSERT INTO floors (project_id, floor_id, ord, name, w, h, v) VALUES (?, ?, ?, ?, ?, ?, 0)
@@ -593,7 +636,7 @@ async function projectView(db, proj, role) {
   const pid = proj.id;
   const [floors, points, photos, notes, issues, log] = await Promise.all([
     db.prepare("SELECT floor_id, ord, name, w, h, v, pdf_parts, pdf_v, pw, ph FROM floors WHERE project_id = ? ORDER BY ord").bind(pid).all(),
-    db.prepare("SELECT point_id, floor_id, type, cat, COALESCE(site_label, label) AS label, label AS label_plan, CASE WHEN site_label IS NULL THEN 0 ELSE 1 END AS label_edited, site_label_by, site_label_at, model, color, x, y, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
+    db.prepare("SELECT point_id, floor_id, type, cat, COALESCE(site_label, label) AS label, label AS label_plan, CASE WHEN site_label IS NULL THEN 0 ELSE 1 END AS label_edited, site_label_by, site_label_at, model, color, x, y, cabled, cabled_by, cabled_at, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
     db.prepare("SELECT id, point_id, w, h, by_name, at, caption FROM photos WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT id, point_id, text, by_name, at FROM notes WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT * FROM issues WHERE project_id = ? ORDER BY at DESC").bind(pid).all(),
@@ -602,10 +645,10 @@ async function projectView(db, proj, role) {
   const byPt = {}, byIssue = {};
   const hasRack = points.results.some(p => p.cat === "rack");
   const checks = hasRack ? (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results : [];
-  for (const p of points.results) byPt[p.point_id] = { ...p, steps: stepsOf(p.cat), photos: [], notes: [] };
+  for (const p of points.results) byPt[p.point_id] = { ...p, steps: stepsOf(p.cat, proj.cabling), photos: [], notes: [] };
   const out = {
     role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid,
-      status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null },
+      status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null, cabling: proj.cabling ? 1 : 0 },
     floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v, pdf: f.pdf_parts ? f.pdf_v : 0, pw: f.pw, ph: f.ph })),
     points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role) : null, activity: [],
     cabinet: hasRack ? cabinetList(proj.asana_gid ? safeJson(proj.asana_cache) : null, checks) : null
@@ -629,7 +672,9 @@ async function projectList(db, withKeys, person) {
   const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team FROM projects ORDER BY updated_at DESC").all();
   const ps = { results: all.results.filter(p => !person || onTeam(p, person)) };
   // done = every installation step ticked (cameras: installed and aligned)
-  const cnt = await db.prepare("SELECT project_id, COUNT(*) AS n, SUM(CASE WHEN installed = 1 AND (cat <> 'cam' OR aligned = 1) THEN 1 ELSE 0 END) AS done FROM points WHERE active = 1 GROUP BY project_id").all();
+  const cnt = await db.prepare(`SELECT pt.project_id, COUNT(*) AS n, SUM(CASE WHEN pt.installed = 1 AND (pt.cat <> 'cam' OR pt.aligned = 1)
+      AND (COALESCE(pr.cabling, 0) = 0 OR pt.cabled = 1 OR pt.cat NOT IN ('ap','cam','data','phone','icom','vp')) THEN 1 ELSE 0 END) AS done
+      FROM points pt LEFT JOIN projects pr ON pr.id = pt.project_id WHERE pt.active = 1 GROUP BY pt.project_id`).all();
   const iss = await db.prepare("SELECT project_id, COUNT(*) AS n FROM issues WHERE status = 'open' GROUP BY project_id").all();
   const ph = await db.prepare("SELECT project_id, COUNT(*) AS n FROM photos GROUP BY project_id").all();
   const by = (rows) => Object.fromEntries(rows.results.map(r => [r.project_id, r]));
@@ -727,21 +772,23 @@ async function asanaPush(db, env, proj, step, by) {
   let changed = false;
   for (const rule of ASANA_RULES.filter(r => r.step === step)) {
     const mine = rows.filter(rule.pts), n = mine.length, done = mine.filter(p => p.v).length; if (!n) continue;
-    let target = null;
+    // every Asana step that matches (e.g. cameras configured → "Camera Adoption" and "Camera Naming")
+    const targets = [];
     for (const s of m.sections) for (const t of s.tasks) {
-      for (const st of (t.subtasks || [])) if (!target && rule.rx.test(t.name + " > " + st.name)) target = st;
-      if (!target && !(t.subtasks || []).length && rule.rx.test(t.name)) target = t;
+      for (const st of (t.subtasks || [])) if (rule.rx.test(t.name + " > " + st.name)) targets.push(st);
+      if (!(t.subtasks || []).length && rule.rx.test(t.name)) targets.push(t);
     }
-    if (!target) continue;
     const complete = done >= n;
+    for (const target of targets) {
     if (complete === target.completed) continue;
     await asanaApi(env, `/tasks/${target.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: complete } }) });
-    const verb = STEPS[step].label.toLowerCase();
+    const verb = { cabled: "cabled", installed: "installed", aligned: "aligned", configured: "configured" }[step] || step;
     const text = complete
       ? `All ${n} ${rule.what} ${verb} and ticked in the ExpressTech site app (last by ${by}).`
       : `Reopened: ${done} of ${n} ${rule.what} ${verb} (unticked by ${by} in the ExpressTech site app).`;
     await asanaApi(env, `/tasks/${target.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text } }) });
     target.completed = complete; changed = true;
+    }
   }
   if (changed) await asanaRefresh(db, env, proj);
 }

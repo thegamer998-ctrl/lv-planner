@@ -808,7 +808,7 @@
   <header class="appbar">
     <div class="logo">ET</div>
     <div class="proj">
-      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.3</span></small>
+      <small>ExpressTech &middot; Villa LV Planner <span class="ver">v2026-10-07.4</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1001,7 +1001,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.3</p>
+      <p class="pane-note">ExpressTech Villa LV Planner &middot; v2026-10-07.4</p>
     </section>
   </aside>
 
@@ -1530,12 +1530,13 @@
   var PALETTE = ["#3b82f6","#ef4444","#22c55e","#a855f7","#f97316","#06b6d4","#ec4899","#64748b",
     "#eab308","#14b8a6","#f43f5e","#8b5cf6","#84cc16","#0ea5e9","#d946ef","#f59e0b","#10b981","#6366f1","#fb7185","#71717a"];
 
-  var BUILTIN_ORDER = ["wifi","outdoorwifi","cctv","cctvoutdoor","network","ipphone","tv","dtv","uplink","speaker","rack","drawbox","intercom","intercomscreen","smartlock"];
+  var BUILTIN_ORDER = ["wifi","outdoorwifi","cctv","cctvoutdoor","viewport","network","ipphone","tv","dtv","uplink","speaker","rack","drawbox","intercom","intercomscreen","smartlock"];
   var BUILTIN_TYPES = {
     wifi:           { label:"Wi-Fi Point",         shape:"circle",  text:"WiFi", color:"#3b82f6" },
     outdoorwifi:    { label:"Outdoor Wi-Fi Point", custom:"outdoorwifi", color:"#0ea5e9" },
     cctv:           { label:"CCTV (Dome)",         custom:"domecam",   color:"#ef4444" },
     cctvoutdoor:    { label:"CCTV Outdoor",        custom:"bulletcam", color:"#f97316" },
+    viewport:       { label:"Viewport",            shape:"recth",   text:"VP",   color:"#0891b2" },
     network:        { label:"Network / Data",      shape:"triangle",text:"D",    color:"#22c55e" },
     ipphone:        { label:"IP Phone Point",      shape:"triangle",text:"T",    color:"#a855f7" },
     tv:             { label:"TV Point",            shape:"triangle",text:"TV",   color:"#eab308" },
@@ -1780,7 +1781,7 @@
     (lib.custom || []).forEach(function(c){ if (c && c.key && !CABLE_LIB.custom.some(function(x){ return x.key === c.key; })) CABLE_LIB.custom.push(c); });
     saveCableLib(); rebuildCableCats();
   }
-  var CABLED_TYPES = { wifi:1, outdoorwifi:1, cctv:1, cctvoutdoor:1, network:1, ipphone:1, dtv:1, uplink:1, intercom:1, intercomscreen:1 };
+  var CABLED_TYPES = { wifi:1, outdoorwifi:1, cctv:1, cctvoutdoor:1, viewport:1, network:1, ipphone:1, dtv:1, uplink:1, intercom:1, intercomscreen:1 };
   var CABLE_DEFAULTS = {};
   try {
     var cbt0 = JSON.parse(localStorage.getItem("lvplanner_cablebytype") || "{}");
@@ -2092,7 +2093,7 @@
     }
   });
 
-  var TYPE_GROUPS = [["Wi-Fi",["wifi","outdoorwifi"]],["Cameras",["cctv","cctvoutdoor"]],["Network / data",["network","dtv","ipphone","uplink"]],
+  var TYPE_GROUPS = [["Wi-Fi",["wifi","outdoorwifi"]],["Cameras",["cctv","cctvoutdoor","viewport"]],["Network / data",["network","dtv","ipphone","uplink"]],
     ["TV & audio",["tv","speaker"]],["Infrastructure",["rack","drawbox"]],["Access & intercom",["intercom","intercomscreen","smartlock"]]];
   function rebuildTypeList(){
     el.typeList.innerHTML = "";
@@ -5441,7 +5442,7 @@
   function saveRptPrefs(){ try { localStorage.setItem("lvplanner_reportprefs", JSON.stringify({ mode:rptPrefs.mode, single:rptPrefs.single, off:rptPrefs.off, paper:rptPrefs.paper })); } catch(e){} }
 
   // ---------- point IDs: GF-AP01, FF-CAM03, GF-D12 ----------
-  var ID_CODES = { wifi:"AP", outdoorwifi:"OAP", cctv:"CAM", cctvoutdoor:"CAM", network:"D", ipphone:"T", dtv:"DTV", tv:"TV", uplink:"UP",
+  var ID_CODES = { wifi:"AP", outdoorwifi:"OAP", cctv:"CAM", cctvoutdoor:"CAM", viewport:"VP", network:"D", ipphone:"T", dtv:"DTV", tv:"TV", uplink:"UP",
     speaker:"SP", intercom:"IC", intercomscreen:"ICS", smartlock:"SL", rack:"IT", drawbox:"DB" };
   // usual site codes for one-word floor names (Roof → RF, Basement → BF…); "Ground Floor" → GF from its initials
   var FLOOR_CODES = { roof:"RF", basement:"BF", mezzanine:"MF", ground:"GF", first:"FF", second:"SF", third:"TF", fourth:"4F", penthouse:"PH", annex:"AX", outdoor:"OD", outside:"OD", garden:"GD" };
@@ -5482,7 +5483,7 @@
   }
   // the label written on the device and used as its name in UniFi: "GF-CAM03" or, with a name, "GF-CAM03 Corridor"
   function pointLabel(m, ids){ if (m.siteLabel) return m.siteLabel; var id = m.ptId || (ids || pointIds())[m.id] || ""; return id + (m.ptName ? " " + m.ptName : ""); }
-  var TYPE_SORT = ["wifi","outdoorwifi","cctv","cctvoutdoor","ipphone","network","dtv","intercom","intercomscreen","smartlock","tv","speaker","uplink","rack","drawbox"];
+  var TYPE_SORT = ["wifi","outdoorwifi","cctv","cctvoutdoor","viewport","ipphone","network","dtv","intercom","intercomscreen","smartlock","tv","speaker","uplink","rack","drawbox"];
   function typeRank(t){ var i = TYPE_SORT.indexOf(t); return i < 0 ? 99 : i; }
 
   // ---------- page drawing helpers ----------
@@ -6185,7 +6186,7 @@
       var pw = devicePower(m); if (!pw.port) return;
       c.realW += pw.w;
       if (isWifiType(m.type)) c.ap++;
-      else if (isCameraType(m.type)) c.cam++;
+      else if (isCameraType(m.type) || m.type === "viewport") c.cam++;
       else if (m.type === "ipphone") c.phone++;
       else if (m.type === "intercom" || m.type === "intercomscreen" || m.type === "smartlock") c.icom++;
       else if (m.type === "network" || m.type === "dtv" || m.type === "uplink") c.data++;
@@ -6581,7 +6582,7 @@
       f.markers.slice().sort(function(a, b){ return typeRank(a.type) - typeRank(b.type) || String(ids[a.id]).localeCompare(String(ids[b.id]), undefined, { numeric:true }); }).forEach(function(m){
         var t = getTypeDef(m.type); if (!t || m.type === "uplink") return;
         var sheet = f.id + (f.numPages > 1 ? "-p" + m.page : "");
-        var v = markerVariant(m), cat = m.type === "rack" ? "rack" : CABLED_TYPES[m.type] ? vlanKeyOf(m) : isApLike(t) ? "ap" : "other";
+        var v = markerVariant(m), cat = m.type === "rack" ? "rack" : m.type === "viewport" ? "vp" : CABLED_TYPES[m.type] ? vlanKeyOf(m) : isApLike(t) ? "ap" : "other";
         var label = m.siteLabel || pointLabel(m, ids) + (m.type === "rack" && v && !m.ptName ? " " + v.name : "");
         out.push({ id:m.id, floorId:sheet, type:m.type, cat:cat, label:label, labelSeen: m.siteLabelAt || 0, model: v && !v.rackTag ? v.name : "", color: cat === "rack" ? "#475569" : cat === "other" ? t.color : vlanColorOf(m), x:+m.xRatio.toFixed(5), y:+m.yRatio.toFixed(5) });
       });
@@ -6665,7 +6666,7 @@
     Promise.all(sheets.map(function(sh){ return sheetDims(sh).then(function(d){ dims[sh.id] = d; }); })).then(function(){
       var meta = Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "", sheets: dims }, siteIcons());
       var body = { id: project.site && project.site.id, name: project.name, meta: meta, floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
-      if (opts.start) body.team = opts.team || [];
+      if (opts.start){ body.team = opts.team || []; body.cabling = !!opts.cabling; }
       return siteFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) });
     }).then(function(r){
       var isNew = !project.site || project.site.id !== r.id;
@@ -6772,6 +6773,7 @@
       }
       h += '<div class="st-step"><b>Customer approved the quotation?</b><small>Start the project: it appears in the team’s site app and you get the client’s link.</small></div>';
       h += '<div class="st-lbl">Team on this project <button type="button" class="st-mini" data-addpeople>+ Add people</button></div>' + (staff ? teamPicker(staff, null) : '<p class="st-msg">Loading the team…</p>');
+      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"> ExpressTech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
       h += '<div class="st-lbl">Asana project (optional)</div><input type="text" class="select-input" id="stAsana" placeholder="Paste the Asana project link — or link it later">';
       if (!twin) h += '<p class="st-msg" id="stMsg">' + escapeHtml(note || "") + '</p>';
       h += '<div class="qt-btns"><button type="button" class="tbtn' + (twin ? "" : " primary") + '" id="stStart" style="flex:1;height:40px;font-size:14px;">▶ Start ' + (twin ? "a new project" : "project") + '</button></div>';
@@ -6783,6 +6785,7 @@
       h += '<div class="st-state ' + (done ? "done" : "on") + '">' + (done ? "✓ Completed " + new Date(d.project.completed_at).toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" }) : "● In progress since " + since) + '</div>';
       h += '<div class="st-sum"><div><b>' + inst + ' / ' + n + '</b><small>done</small></div><div><b>' + ph + '</b><small>photos</small></div><div><b>' + (n ? Math.round(inst/n*100) : 0) + '%</b><small>complete</small></div></div>';
       h += '<label class="rk-cabtog" style="margin:2px 0;"><input type="checkbox" id="stShow"' + (siteUi.show ? " checked" : "") + '> Show installed ticks on the drawing</label>';
+      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"' + (d.project.cabling ? " checked" : "") + '> ExpressTech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
       h += '<div class="st-lbl">Client</div>' + linkRow("Client link", "View only · progress and photos, until the end of the project", siteLink(d.links.view_key), "customer");
       var team = d.project.team || [];
       h += '<div class="st-lbl">Team <button type="button" class="st-mini" id="stEditTeam">' + (siteUi.editTeam ? "Done" : "Change") + '</button><button type="button" class="st-mini" data-addpeople>+ Add people</button></div>';
@@ -6820,10 +6823,18 @@
     if (bs) bs.onclick = function(){
       var v = (document.getElementById("stAsana").value || ""), am = v.match(/project\/(\d{6,})/) || v.match(/(\d{10,})/);
       if (v.trim() && !am){ document.getElementById("stMsg").textContent = "That doesn't look like an Asana project link — paste it again or leave it empty."; return; }
-      publishSite({ start:true, team: staff ? pickedTeam(staff) : [], asana: am ? am[1] : null });
+      publishSite({ start:true, team: staff ? pickedTeam(staff) : [], asana: am ? am[1] : null, cabling: !!(document.getElementById("stCabling") || {}).checked });
     };
     var bp = document.getElementById("stPub"); if (bp) bp.onclick = function(){ publishSite({}); };
     var sh = document.getElementById("stShow"); if (sh) sh.onchange = function(){ siteUi.show = this.checked; renderMarkers(); };
+    // switch the Cabling step on / off for a project that is already on site (the ticks already made are kept)
+    var cbx = document.getElementById("stCabling");
+    if (cbx && project.site) cbx.onchange = function(){
+      var on = this.checked; cbx.disabled = true;
+      siteFetch("/site/p/" + project.site.id + "/opts", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ cabling:on }) })
+        .then(function(){ showStatus(on ? "Cabling step added — the team sees Cabling → Installed on every cabled point" : "Cabling step removed"); return loadSite(); })
+        .catch(function(e){ cbx.checked = !on; cbx.disabled = false; showStatus("Couldn't change it: " + e.message); });
+    };
     body.querySelectorAll("[data-copy]").forEach(function(b){ b.onclick = function(){ copyText(b.dataset.copy).then(function(){ showStatus("Link copied"); }); }; });
     body.querySelectorAll("[data-open]").forEach(function(b){ b.onclick = function(){ window.open(b.dataset.open, "_blank"); }; });
     body.querySelectorAll("[data-wa]").forEach(function(b){ b.onclick = function(){ window.open("https://wa.me/?text=" + encodeURIComponent(waText(b.dataset.kind, b.dataset.wa, b.dataset.who)), "_blank"); }; });
@@ -6888,7 +6899,7 @@
   function vlanKeyOf(m){
     if (!m) return "data";
     if (isWifiType(m.type)) return "ap";
-    if (isCameraType(m.type)) return "cam";
+    if (isCameraType(m.type) || m.type === "viewport") return "cam";
     if (m.type === "ipphone") return "phone";
     if (m.type === "intercom" || m.type === "intercomscreen" || m.type === "smartlock") return "icom";
     return "data";
@@ -7535,7 +7546,7 @@
     "UVC-G6-Entry":[16,"PoE+","1G"],"UA-Intercom":[13,"PoE","1G"],"UA-G3-Pro":[6,"PoE","1G"],"UA-G3":[5,"PoE","1G"],"UA-G3-Flex":[5,"PoE","1G"],"UA-G3-Fingerprint":[5,"PoE","1G"],"UA-Intercom-Viewer":[5,"PoE","1G"]
   };
   // Generic estimates when no model is known
-  var TYPE_POWER = { wifi:[21,"PoE+","2.5G"], outdoorwifi:[19,"PoE+","2.5G"], cctv:[10,"PoE","1G"], cctvoutdoor:[10,"PoE","1G"], ipphone:[6,"PoE","1G"],
+  var TYPE_POWER = { wifi:[21,"PoE+","2.5G"], outdoorwifi:[19,"PoE+","2.5G"], cctv:[10,"PoE","1G"], cctvoutdoor:[10,"PoE","1G"], viewport:[6,"PoE","1G"], ipphone:[6,"PoE","1G"],
     intercom:[13,"PoE","1G"], intercomscreen:[5,"PoE","1G"], network:[0,"","1G"], dtv:[0,"","1G"] };
   var POE_RANK = { "":0, "PoE":1, "PoE+":2, "PoE++":3 };
   var SPEED_RANK = { "100M":1, "1G":1, "2.5G":2, "10G":3, "25G":4 };
