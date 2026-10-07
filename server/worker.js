@@ -85,12 +85,14 @@ const ASANA_RULES = [
 // The cabinet checklist (tap the cabinet on the plan): the villa's own Asana steps in their order when Asana is linked
 // ("Cabinet Works", then the cabinet labelling, then the cabinet configuration for the site engineer), else this list.
 const CABINET_DEFAULT = [
-  ["work", "Cable Tracing"], ["work", "Cabinet Delivery"], ["work", "Cabinet Installed"], ["work", "Patch Panels Punching"],
+  ["work", "Cable Tracing"], ["work", "Cabinet Installed"], ["work", "Patch Panels Punching"],
   ["work", "UDM PRO / Firewall"], ["work", "Switches"], ["work", "Dac Cable"], ["work", "Patch Cords"], ["work", "NVR"], ["work", "IP PBX"], ["work", "UPS"],
   ["label", "Patch Panel Labelling"], ["label", "Cabinet Sticker"],
   ["config", "UDM PRO"], ["config", "Switches"], ["config", "IP PBX"]
 ];
 const CAB_LABEL = /patch panels? label|cabinet sticker|cabinet label/i;
+// delivery of the cabinet / hardware to site is the office admin's job: it stays in Asana only, not on the cabinet
+const CAB_OFFICE = /deliver/i;
 const CAB_CONFIG = /udm|firewall|gateway|router|switch|pbx|nvr|unvr|ups|controller/i;
 function cabinetList(cache, rows) {
   const by = {}; for (const r of rows || []) by[r.item] = r;
@@ -99,7 +101,7 @@ function cabinetList(cache, rows) {
     const tasks = cache.sections.flatMap(s => s.tasks);
     const works = tasks.find(t => /cabinet works?/i.test(t.name) && (t.subtasks || []).length) || tasks.find(t => /cabinet/i.test(t.name) && (t.subtasks || []).length);
     if (works) {
-      for (const st of works.subtasks) items.push({ group: "work", st });
+      for (const st of works.subtasks) if (!CAB_OFFICE.test(st.name)) items.push({ group: "work", st });
       for (const t of tasks) for (const st of (t.subtasks || [])) if (t !== works && CAB_LABEL.test(st.name)) items.push({ group: "label", st });
       const cfg = tasks.find(t => /hardware config|configuration/i.test(t.name) && (t.subtasks || []).length);
       if (cfg) for (const st of cfg.subtasks) if (CAB_CONFIG.test(st.name)) items.push({ group: "config", st });
