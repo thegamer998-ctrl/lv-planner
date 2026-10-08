@@ -1175,8 +1175,8 @@
     var c = work(all, "install"), g = work(all, "config"), cd = g.d, cp = g.pct, cfg = { length: g.n };
     function bar(pc){ return '<div class="bar"><i style="width:' + pc + '%"></i></div>'; }
     var html = '<div class="sec">Overall</div><div class="card">' +
-      '<div class="ovr"><div class="h"><span><b>' + c.pct + '%</b>Installation</span><small>' + c.d + " / " + c.n + " tasks</small></div>" + bar(c.pct) + "</div>" +
-      (cfg.length ? '<div class="ovr"><div class="h"><span><b>' + cp + '%</b>Configuration</span><small>' + cd + " / " + cfg.length + " tasks</small></div>" + bar(cp) + "<p>Access points, cameras, the network cabinet and other devices set up by our engineer.</p></div>" : "") + "</div>";
+      '<div class="ovr"><div class="h"><span><b>' + c.pct + '%</b>Installation</span></div>' + bar(c.pct) + "</div>" +
+      (cfg.length ? '<div class="ovr"><div class="h"><span><b>' + cp + '%</b>Configuration</span></div>' + bar(cp) + "<p>Access points, cameras, the network cabinet and other devices set up by our engineer.</p></div>" : "") + "</div>";
     html += '<div class="sec">By type</div><div class="card">' + Object.keys(CATS).map(function(k){
       var list = all.filter(function(p){ return catOf(p) === k; }); if (!list.length) return "";
       var cc = work(list), ic = miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"');
