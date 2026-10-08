@@ -704,19 +704,26 @@ async function projectList(db, withKeys, person) {
   const cnt = await db.prepare(`SELECT pt.project_id, COUNT(*) AS n, SUM(CASE WHEN pt.installed = 1 AND (pt.cat <> 'cam' OR pt.aligned = 1)
       AND (COALESCE(pr.cabling, 0) = 0 OR pt.cabled = 1 OR pt.cat NOT IN ('ap','cam','data','phone','icom','vp')) THEN 1 ELSE 0 END) AS done
       FROM points pt LEFT JOIN projects pr ON pr.id = pt.project_id WHERE pt.active = 1 GROUP BY pt.project_id`).all();
+  // progress = tasks: every step of every point plus every cabinet checklist item (same as the site app's bar)
+  const stp = await db.prepare("SELECT project_id, cat, cabled, installed, aligned, configured FROM points WHERE active = 1").all();
+  const chk = await db.prepare("SELECT project_id, item, done, by_name, at FROM checks").all();
+  const grp = (rows) => { const o = {}; for (const r of rows.results) (o[r.project_id] = o[r.project_id] || []).push(r); return o; };
+  const PT = grp(stp), CK = grp(chk);
   const iss = await db.prepare("SELECT project_id, COUNT(*) AS n FROM issues WHERE status = 'open' GROUP BY project_id").all();
   const ph = await db.prepare("SELECT project_id, COUNT(*) AS n FROM photos GROUP BY project_id").all();
   const by = (rows) => Object.fromEntries(rows.results.map(r => [r.project_id, r]));
   const C = by(cnt), I = by(iss), H = by(ph);
   return ps.results.map(p => {
     const c = safeJson(p.asana_cache);
-    let tDone = 0, tAll = 0, next = null;
+    let tDone = 0, tAll = 0, next = null, wAll = 0, wDone = 0;
+    for (const pt of PT[p.id] || []) for (const s of stepsOf(pt.cat, p.cabling)) { wAll++; if (pt[s]) wDone++; }
+    if ((PT[p.id] || []).some(pt => pt.cat === "rack")) for (const it of cabinetList(p.asana_gid ? c : null, CK[p.id] || [])) { wAll++; if (it.done) wDone++; }
     for (const s of (c.sections || [])) for (const t of s.tasks) { if (!withKeys && t.private) continue; tAll++; if (t.completed) tDone++; else if (!next && !PRIVATE_STAGE.test(t.name)) next = t.name; }
     return { id: p.id, name: p.name, team_key: withKeys ? p.team_key : undefined, view_key: withKeys ? p.view_key : undefined, updated_at: p.updated_at, points: (C[p.id] || {}).n || 0, installed: (C[p.id] || {}).done || 0,
       open_reports: (I[p.id] || {}).n || 0, photos: (H[p.id] || {}).n || 0, asana: !!p.asana_gid, asana_at: p.asana_at, stages_done: tDone, stages_all: tAll, next_stage: next,
       status: c.project && c.project.status ? c.project.status : null,
       state: p.status || "active", started_at: p.started_at || p.created_at, completed_at: p.completed_at || null, team: withKeys ? safeJsonArr(p.team) : undefined,
-      paused: p.paused ? 1 : 0, cabling: p.cabling ? 1 : 0, asana_gid: withKeys ? p.asana_gid : undefined };
+      paused: p.paused ? 1 : 0, cabling: p.cabling ? 1 : 0, asana_gid: withKeys ? p.asana_gid : undefined, tasks_all: wAll, tasks_done: wDone };
   });
 }
 

@@ -817,7 +817,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-08.1</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-08.2</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1015,7 +1015,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-08.1</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-08.2</p>
     </section>
   </aside>
 
@@ -6735,9 +6735,9 @@
       if (!list.length){ box.innerHTML = '<p class="popover-hint" style="margin:0;">No projects on site yet.</p>'; return; }
       var mine = project.site && project.site.id;
       box.innerHTML = list.map(function(p){
-        var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
+        var pct = p.tasks_all ? Math.round(p.tasks_done / p.tasks_all * 100) : p.points ? Math.round(p.installed / p.points * 100) : 0;
         return '<div class="lp-row' + (p.paused ? " off" : "") + '"><b>' + escapeHtml(p.name) + (p.id === mine ? '<span class="lp-chip">open here</span>' : "") + '</b>' +
-          '<small>' + p.installed + ' / ' + p.points + ' done · ' + pct + '% · ' + (p.paused ? "⏸ Disabled" : p.state === "done" ? "Completed" : "In progress") + (p.asana ? " · Asana" : "") + '</small>' +
+          '<small>' + (p.tasks_all ? p.tasks_done + ' / ' + p.tasks_all + ' tasks' : p.installed + ' / ' + p.points + ' done') + ' · ' + pct + '% · ' + (p.paused ? "⏸ Disabled" : p.state === "done" ? "Completed" : "In progress") + (p.asana ? " · Asana" : "") + '</small>' +
           '<div class="lp-btns"><button type="button" class="tbtn" data-lp-open="' + escapeHtml(p.id) + '">Open</button>' +
           '<button type="button" class="tbtn" data-lp-pause="' + escapeHtml(p.id) + '" data-v="' + (p.paused ? "0" : "1") + '">' + (p.paused ? "Enable" : "Disable") + '</button>' +
           '<button type="button" class="tbtn lp-del" data-lp-del="' + escapeHtml(p.id) + '" data-name="' + escapeHtml(p.name) + '">Delete</button></div></div>';
@@ -6839,10 +6839,13 @@
       if (twin) h += '</details>';
     } else if (d && d.project.id === project.site.id){
       var done = d.project.status === "done";
-      var n = d.points.length, inst = d.points.filter(function(p){ return p.installed && (p.cat !== "cam" || p.aligned); }).length, ph = d.points.reduce(function(a,p){ return a + p.photos.length; }, 0);
+      var n = 0, inst = 0, ph = d.points.reduce(function(a,p){ return a + p.photos.length; }, 0);
+      // progress = tasks: each step of each point + each cabinet checklist item (same as the site app)
+      d.points.forEach(function(p){ (p.steps || ["installed"]).forEach(function(s){ n++; if (p[s]) inst++; }); });
+      (d.cabinet || []).forEach(function(c){ n++; if (c.done) inst++; });
       var since = new Date(d.project.started_at || Date.now()).toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" });
       h += '<div class="st-state ' + (done ? "done" : "on") + '">' + (done ? "✓ Completed " + new Date(d.project.completed_at).toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" }) : "● In progress since " + since) + '</div>';
-      h += '<div class="st-sum"><div><b>' + inst + ' / ' + n + '</b><small>done</small></div><div><b>' + ph + '</b><small>photos</small></div><div><b>' + (n ? Math.round(inst/n*100) : 0) + '%</b><small>complete</small></div></div>';
+      h += '<div class="st-sum"><div><b>' + inst + ' / ' + n + '</b><small>tasks done</small></div><div><b>' + ph + '</b><small>photos</small></div><div><b>' + (n ? Math.round(inst/n*100) : 0) + '%</b><small>complete</small></div></div>';
       h += '<label class="rk-cabtog" style="margin:2px 0;"><input type="checkbox" id="stShow"' + (siteUi.show ? " checked" : "") + '> Show installed ticks on the drawing</label>';
       h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"' + (d.project.cabling ? " checked" : "") + '> Express Tech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
       h += '<div class="st-lbl">Client</div>' + linkRow("Client link", "View only · progress and photos, until the end of the project", siteLink(d.links.view_key), "customer");

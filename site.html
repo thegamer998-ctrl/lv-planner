@@ -555,10 +555,10 @@
           '<p class="note">Each person gets their own link. Their name and role go on every tick, photo and note. Technicians install and align; the site engineer configures; managers see everything, approve reports and manage the team.</p>' : "") +
         '<div style="height:20px"></div>';
       function card(p){
-          var pct = p.points ? Math.round(p.installed / p.points * 100) : 0;
+          var pct = p.tasks_all ? Math.round(p.tasks_done / p.tasks_all * 100) : p.points ? Math.round(p.installed / p.points * 100) : 0;
           return '<button type="button" class="pcard' + (p.paused ? " paused" : "") + '" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (p.paused ? '<span class="pill paused">⏸ Paused</span>' : "") + (manage && p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
             '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
-            '<div class="ft"><span class="pill">' + p.installed + " / " + p.points + " done</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
+            '<div class="ft"><span class="pill">' + (p.tasks_all ? p.tasks_done + " / " + p.tasks_all + " tasks" : p.installed + " / " + p.points + " done") + "</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
             (p.asana ? '<span class="pill">Stages ' + p.stages_done + " / " + p.stages_all + "</span>" + (p.next_stage ? '<span class="pill approved">Next: ' + esc(p.next_stage) + "</span>" : "") : manage ? '<span class="pill">Asana not linked</span>' : "") +
             "<small>" + (p.state === "done" && p.completed_at ? "completed " + day(new Date(p.completed_at).toISOString().slice(0,10)) : "started " + day(new Date(p.started_at || p.updated_at).toISOString().slice(0,10))) + "</small></div>" + (p.status ? '<div class="muted" style="margin-top:6px">' + esc(p.status.title) + "</div>" : "") + "</button>";
       }
@@ -654,6 +654,16 @@
   function whoTxt(by, at){ return by ? "by " + esc(by) + (at ? " · " + when(at) : "") : ""; }
   function catOf(p){ return CATS[p.cat] ? p.cat : "other"; }
   function counts(list){ var n = list.length, d = list.filter(isDone).length; return { n:n, d:d, pct: n ? Math.round(d / n * 100) : 0 }; }
+  // progress counts every task, not only finished points: each step of each point (cabling, installed, aligned, configured)
+  // and each cabinet checklist item is one task, so every tick moves the bar. part: "install" (team work) / "config" / all
+  function work(list, part){
+    var n = 0, d = 0;
+    list.forEach(function(p){ var o = state(p); stepsOf(p).forEach(function(x){
+      if (part === "install" && x === "configured" || part === "config" && x !== "configured") return; n++; if (o[x]) d++; }); });
+    if (st.data && st.data.cabinet && list.some(function(p){ return p.cat === "rack"; })) st.data.cabinet.forEach(function(c){
+      if (part === "install" && c.group === "config" || part === "config" && c.group !== "config") return; n++; if (c.done) d++; });
+    return { n:n, d:d, pct: n ? Math.round(d / n * 100) : 0 };
+  }
   function floorName(id){ var f = st.data.floors.find(function(x){ return x.id === id; }); return f ? f.name : ""; }
   function openReports(){ return issues().filter(function(i){ return i.status === "open"; }).length; }
 
@@ -669,9 +679,9 @@
     $("pSub").textContent = d.role === "customer" ? "Installation progress" : d.role === "office" ? "Office view" + (d.project.paused ? " · paused" : "") : paused() ? "⏸ Paused by the office · view only" : (me && STAFF ? me + " · " : "") + "tap a point to update";
     var rt = $("roleTag"); rt.textContent = ROLE_TAG[d.role] || "Team";
     rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" || d.role === "manager" ? " office" : "");
-    var c = counts(pts());
+    var c = work(pts());
     var fin = d.project.status === "done";
-    $("pct").textContent = fin ? "✓" : c.pct + "%"; $("cnt").textContent = (fin ? "Completed " + day(new Date(d.project.completed_at || Date.now()).toISOString().slice(0,10)) + " · " : "") + c.d + " of " + c.n + " done" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
+    $("pct").textContent = fin ? "✓" : c.pct + "%"; $("cnt").textContent = (fin ? "Completed " + day(new Date(d.project.completed_at || Date.now()).toISOString().slice(0,10)) + " · " : "") + c.d + " of " + c.n + " tasks done" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
     $("barI").style.width = c.pct + "%";
     $("tabRep").classList.toggle("hidden", !canEdit());
     $("reportBtn").classList.toggle("hidden", !canEdit());
@@ -1143,8 +1153,8 @@
     }
     html += '<div class="sec">By type</div><div class="card">' + Object.keys(CATS).map(function(k){
       var list = all.filter(function(p){ return catOf(p) === k; }); if (!list.length) return "";
-      var c = counts(list), col = list[0].color, ic = list[0] ? miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"') : "";
-      var head = '<div class="h"><span>' + ic + CATS[k].name + "</span><small>" + c.d + " / " + c.n + " done</small></div>";
+      var c = work(list), col = list[0].color, ic = list[0] ? miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"') : "";
+      var head = '<div class="h"><span>' + ic + CATS[k].name + "</span><small>" + c.d + " / " + c.n + " tasks · " + c.pct + "%</small></div>";
       var vs = visibleSteps(list[0]);
       if (vs.length < 2) return '<div class="catc">' + head + '<div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
       // one bar per step (installed, aligned for cameras, configured for the engineer and manager)
@@ -1153,8 +1163,8 @@
       return '<div class="catc">' + head + '<div class="sbars">' + sb + "</div></div>";
     }).join("") + "</div>";
     html += '<div class="sec">By floor</div><div class="card">' + d.floors.map(function(f){
-      var c = counts(all.filter(function(p){ return p.floor_id === f.id; })); if (!c.n) return "";
-      return '<div class="catc"><div class="h"><span>' + esc(f.name) + "</span><small>" + c.d + " / " + c.n + '</small></div><div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
+      var c = work(all.filter(function(p){ return p.floor_id === f.id; })); if (!c.n) return "";
+      return '<div class="catc"><div class="h"><span>' + esc(f.name) + "</span><small>" + c.d + " / " + c.n + " tasks · " + c.pct + '%</small></div><div class="bar"><i style="width:' + c.pct + '%"></i></div></div>';
     }).join("") + "</div>";
     $("progBody").innerHTML = html + '<div style="height:16px"></div>';
     $("progBody").querySelectorAll("[data-stage]").forEach(function(b){ b.onclick = function(){ openStage(b.dataset.stage); }; });
@@ -1162,19 +1172,18 @@
   }
   // the customer's progress: one bar for the installation, one for the configuration, then by type and by floor
   function custProgress(d, all){
-    var c = counts(all), cfg = all.filter(function(p){ return stepsOf(p).indexOf("configured") >= 0; }), cd = cfg.filter(function(p){ return state(p).configured; }).length;
-    var cp = cfg.length ? Math.round(cd / cfg.length * 100) : 0;
+    var c = work(all, "install"), g = work(all, "config"), cd = g.d, cp = g.pct, cfg = { length: g.n };
     function bar(pc){ return '<div class="bar"><i style="width:' + pc + '%"></i></div>'; }
     var html = '<div class="sec">Overall</div><div class="card">' +
-      '<div class="ovr"><div class="h"><span><b>' + c.pct + '%</b>Installation</span><small>' + c.d + " / " + c.n + " points</small></div>" + bar(c.pct) + "</div>" +
-      (cfg.length ? '<div class="ovr"><div class="h"><span><b>' + cp + '%</b>Configuration</span><small>' + cd + " / " + cfg.length + " devices</small></div>" + bar(cp) + "<p>Access points, cameras and other devices set up by our engineer.</p></div>" : "") + "</div>";
+      '<div class="ovr"><div class="h"><span><b>' + c.pct + '%</b>Installation</span><small>' + c.d + " / " + c.n + " tasks</small></div>" + bar(c.pct) + "</div>" +
+      (cfg.length ? '<div class="ovr"><div class="h"><span><b>' + cp + '%</b>Configuration</span><small>' + cd + " / " + cfg.length + " tasks</small></div>" + bar(cp) + "<p>Access points, cameras, the network cabinet and other devices set up by our engineer.</p></div>" : "") + "</div>";
     html += '<div class="sec">By type</div><div class="card">' + Object.keys(CATS).map(function(k){
       var list = all.filter(function(p){ return catOf(p) === k; }); if (!list.length) return "";
-      var cc = counts(list), ic = miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"');
+      var cc = work(list), ic = miniIcon(list[0]).replace('class="mini"', 'class="mini" style="width:20px;height:20px;vertical-align:-5px;margin-right:6px"');
       return '<div class="catc"><div class="h"><span>' + ic + CATS[k].name + "</span><small>" + cc.d + " / " + cc.n + "</small></div>" + bar(cc.pct) + "</div>";
     }).join("") + "</div>";
     html += '<div class="sec">By floor</div><div class="card">' + d.floors.map(function(f){
-      var cc = counts(all.filter(function(p){ return p.floor_id === f.id; })); if (!cc.n) return "";
+      var cc = work(all.filter(function(p){ return p.floor_id === f.id; })); if (!cc.n) return "";
       return '<div class="catc"><div class="h"><span>' + esc(f.name) + "</span><small>" + cc.d + " / " + cc.n + "</small></div>" + bar(cc.pct) + "</div>";
     }).join("") + "</div>";
     return html + '<div class="bfoot"><img src="brand-mark.png" alt="">Express Tech · We help you grow</div><div style="height:12px"></div>';
