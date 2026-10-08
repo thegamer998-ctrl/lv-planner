@@ -681,7 +681,11 @@
     rt.className = "role" + (d.role === "customer" ? " customer" : d.role === "office" || d.role === "manager" ? " office" : "");
     var c = work(pts());
     var fin = d.project.status === "done";
-    $("pct").textContent = fin ? "✓" : c.pct + "%"; $("cnt").textContent = (fin ? "Completed " + day(new Date(d.project.completed_at || Date.now()).toISOString().slice(0,10)) + " · " : "") + c.d + " of " + c.n + " tasks done" + (d.stages && d.stages.project && d.stages.project.status ? " · " + d.stages.project.status.title : "");
+    var stTitle = d.stages && d.stages.project && d.stages.project.status ? d.stages.project.status.title : "";
+    $("pct").textContent = fin ? "✓" : c.pct + "%";
+    // the customer sees only the project status (e.g. "On track"), not task counts
+    $("cnt").textContent = cust ? (fin ? "Completed " + day(new Date(d.project.completed_at || Date.now()).toISOString().slice(0,10)) : stTitle || "In progress")
+      : (fin ? "Completed " + day(new Date(d.project.completed_at || Date.now()).toISOString().slice(0,10)) + " · " : "") + c.d + " of " + c.n + " tasks done" + (stTitle ? " · " + stTitle : "");
     $("barI").style.width = c.pct + "%";
     $("tabRep").classList.toggle("hidden", !canEdit());
     $("reportBtn").classList.toggle("hidden", !canEdit());
