@@ -99,6 +99,8 @@
   .ic.ph::before{ content:""; position:absolute; --b:clamp(calc(7px * var(--inv, 1)), calc(var(--u) * 0.24), calc(14px * var(--inv, 1))); left:calc(var(--b) * -0.2); bottom:calc(var(--b) * -0.2); width:var(--b); height:var(--b); border-radius:50%; box-sizing:border-box; background:#111827; border:calc(var(--b) * 0.18) solid #fff; }
   .ic.cfg > svg{ filter:drop-shadow(0 0 calc(var(--u) * 0.06) #2563eb) drop-shadow(0 0 calc(var(--u) * 0.06) #2563eb); }
   .ic.dim{ opacity:.22; }
+  .mk.find{ z-index:5; animation:findp 1s ease-in-out 5; }
+  @keyframes findp{ 0%,100%{ box-shadow:0 0 0 0 rgba(210,30,28,.0); } 50%{ box-shadow:0 0 0 calc(14px * var(--inv, 1)) rgba(210,30,28,.45); } }
   .ic.sel{ outline:calc(2.5px * var(--inv, 1)) solid var(--accent); outline-offset:calc(2px * var(--inv, 1)); border-radius:50%; }
   .ic .lb{ top:calc(100% + 2px * var(--inv, 1)); }
   .labels .ic .lb{ display:block; }
@@ -318,6 +320,23 @@
   body.brand .modeseg button.on{ background:#2b2b2b; color:#fff; }
   @media (prefers-color-scheme: dark){ body.brand .modeseg button.on{ background:#efefef; color:#1b1b1b; } }
   body.brand .loading .sp{ border-top-color:#FF0D07; }
+  .dest{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:var(--panel-2); margin:-4px 0 12px; }
+  .dest .di{ width:34px; height:34px; border-radius:9px; background:#3d3d3d; color:#fff; display:grid; place-items:center; flex-shrink:0; }
+  .dest .di svg{ width:18px; height:18px; }
+  .dest .dt{ flex:1; min-width:0; } .dest small{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .dest b{ display:block; font-size:16px; font-weight:800; } .dest .ds{ display:block; font-size:12.5px; color:var(--muted); }
+  .dest em{ display:block; font-style:normal; font-size:12px; color:var(--accent); font-weight:600; margin-top:2px; }
+  .dest .lbtns{ display:flex; gap:6px; flex:0 0 auto; }
+  .dest button{ height:36px; padding:0 11px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:13px; }
+  .destpick{ border:1.5px solid var(--accent); border-radius:12px; padding:10px 12px; margin:-4px 0 12px; }
+  .destpick > small{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .destpick .opt{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px; margin-bottom:6px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-size:14px; }
+  .destpick .opt span{ flex:1; min-width:0; } .destpick .opt span small{ display:block; font-size:12px; color:var(--muted); font-weight:500; }
+  .destpick .opt.cur{ border-color:var(--ink); background:var(--panel-2); } .destpick .opt i{ font-style:normal; font-size:11.5px; font-weight:700; color:var(--muted); }
+  .destpick .q{ font-size:16px; font-weight:800; margin:2px 0 8px; } .destpick .ft{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:14px; margin-bottom:6px; }
+  .destpick .ft s{ color:var(--muted); } .destpick .ft b{ color:var(--accent); } .destpick p{ margin:0 0 4px; font-size:12.5px; color:var(--muted); }
+  .destpick .lrow{ display:flex; gap:8px; margin-top:8px; } .destpick .lrow button{ flex:1; height:44px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:14px; }
+  .destpick .lrow button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .uplink{ margin:10px 0 4px; border:1px solid var(--line); border-radius:12px; padding:8px 12px; background:var(--panel-2); }
   .uplink .lbl{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:2px 0 6px; }
   .uprow{ display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--line); font-size:14px; } .uprow:first-of-type{ border-top:0; }
@@ -899,7 +918,7 @@
     var html = list.map(function(p){
       var done = isDone(p), half = !done && isHalf(p), cfg = canConfig() && state(p).configured, dim = !shown(p);
       var hasPh = p.photos.length || (st.pending[p.point_id] || []).some(function(i){ return i.kind === "photo"; });
-      var svg = iconSvg(p), cls = (done ? " done" : "") + (half ? " half" : "") + (cfg ? " cfg" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : ""), pos = "";
+      var svg = iconSvg(p), cls = (done ? " done" : "") + (half ? " half" : "") + (cfg ? " cfg" : "") + (hasPh ? " ph" : "") + (dim ? " dim" : "") + (st.sel === p.point_id ? " sel" : "") + (findPt === p.point_id ? " find" : ""), pos = "";
       if (svg){
         var o = ptMeta(p);
         return '<button type="button" class="mk ic' + cls + '" data-pt="' + esc(p.point_id) + '" data-x="' + p.x + '" data-y="' + p.y + '" style="--sz:' + iconSize(p).toFixed(4) + '" aria-label="' + esc(p.label) + '">' + svg +
@@ -1232,7 +1251,7 @@
     "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
     "project-started":"started the project", "project-done":"marked the project complete", "project-reopened":"reopened the project",
-    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cabinet-done":"ticked on the cabinet", "cabinet-undone":"reopened on the cabinet" };
+    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cable-dest":"changed the cable destination of", "cabinet-done":"ticked on the cabinet", "cabinet-undone":"reopened on the cabinet" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });
     var rows = (d.activity || []).map(function(a){ return { at:a.at, src:"site", a:a }; });
@@ -1253,7 +1272,7 @@
       var who = a.by_name || "Someone", target = p ? p.label : isIssue || isStage ? "" : a.detail;
       var attr = p ? ' data-open="' + esc(p.point_id) + '"' : isIssue ? ' data-issue="' + esc(a.point_id.slice(6)) + '"' : isStage ? ' data-stage="' + esc(a.point_id.slice(6)) + '"' : "";
       return '<div class="act"' + attr + '><span class="av">' + esc(who.slice(0, 1).toUpperCase()) + '</span><div class="tx"><b>' + esc(who) + "</b>" + (a.by_role && role() !== "customer" ? ' <span class="who">' + esc(a.by_role) + "</span>" : "") + " " + (ACT[a.action] || a.action) + (target ? " <b>" + esc(target) + "</b>" : "") +
-        ((a.action === "note" || a.action === "label" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
+        ((a.action === "note" || a.action === "label" || a.action === "cable-dest" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
         (ph ? '<img loading="lazy" src="' + imgUrl("photo", ph.id) + '" alt="">' : "") + "</div>";
     }).join("");
     $("actBody").innerHTML = html ? '<div class="sec">Latest updates</div><div class="card">' + html + '</div><div style="height:16px"></div>' : '<div class="empty">No updates yet. Ticks, photos, notes and Asana changes appear here.</div>';
@@ -1264,10 +1283,10 @@
 
   // ---- sheet (point / report / stage)
   function openSheet(){ scrimDown = false; $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
-  function openPoint(id){ st.sel = id; labelEdit = null; renderSheet(); openSheet(); }
+  function openPoint(id){ st.sel = id; labelEdit = null; destEdit = null; renderSheet(); openSheet(); }
   function openIssue(id){ st.sel = "issue:" + id; renderSheet(); openSheet(); }
   function openStage(gid){ st.sel = "stage:" + gid; renderSheet(); openSheet(); }
-  function closeSheet(){ st.sel = null; draft = null; labelEdit = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
+  function closeSheet(){ st.sel = null; draft = null; labelEdit = null; destEdit = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
   // the backdrop closes the sheet only for a tap that started on it: Android Chrome sends the tap that opened
   // the sheet a second time as a "click" (now landing on the fresh backdrop), which used to close it at once
   var scrimDown = false;
@@ -1297,7 +1316,7 @@
     var bsvg = iconSvg(p); $("shBadge").className = "badge" + (bsvg ? " icon" : "");
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = typeName(p); $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
-    var h = labelHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
+    var h = labelHtml(p) + destHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
     if (catOf(p) === "rack") h += uplinkHtml(p);
     if (catOf(p) === "rack" && st.data.cabinet){
       h += cabinetHtml();
@@ -1326,7 +1345,7 @@
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-step]").forEach(function(b){ b.onclick = function(){ setStep(p, b.dataset.step, b.dataset.v === "1"); }; });
-    bindLabel(p); bindCabinet();
+    bindLabel(p); bindDest(p); bindCabinet();
     if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
@@ -1410,6 +1429,61 @@
     }
     $("lbSave").onclick = function(){ save($("lbIn").value); };
     if ($("lbReset")) $("lbReset").onclick = function(e){ e.preventDefault(); save(""); };
+  }
+  // ---- where this point's cable goes (the cabinet chosen in the planner). The technician and the site engineer see it before
+  // installing, and can correct it on site: Change → pick the cabinet → "Are you sure…?" → saved for everyone, in the
+  // activity ("Kutbuddin changed the cable destination of GF-AP03 · Rack B (GF) → Main rack (Basement)"); the planner takes it in.
+  var destEdit = null, findPt = null, findT = null;   // { pt, to } while choosing / confirming
+  var CAB_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2.5" width="16" height="19" rx="2"/><path d="M7.5 7h9M7.5 11h9M7.5 15h9"/><circle cx="12" cy="18.6" r=".6" fill="currentColor"/></svg>';
+  function racksMeta(){ var m = st.data && st.data.project.meta; return (m && m.racks) || []; }
+  function rackById(id){ return racksMeta().find(function(r){ return r.id === id; }) || null; }
+  function rackSub(r){ return [r.label, r.floor].filter(Boolean).join(" · "); }
+  function destHtml(p){
+    if (!p.rack || catOf(p) === "rack" || role() === "customer") return "";
+    var R = racksMeta(), cur = rackById(p.rack); if (!R.length || !cur) return "";
+    if (destEdit && destEdit.pt === p.point_id && canEdit()){
+      var to = destEdit.to && rackById(destEdit.to);
+      if (to) return '<div class="destpick"><div class="q">Are you sure you want to change the cable destination?</div>' +
+        '<div class="ft"><span class="lbl-code">' + esc(p.label) + ':</span><s>' + esc(cur.name) + '</s> → <b>' + esc(to.name) + '</b></div>' +
+        (rackSub(to) ? '<p>' + esc(to.name) + ': ' + esc(rackSub(to)) + '</p>' : "") +
+        '<p>Everyone sees the new cabinet at once, the office too. It is recorded in Activity with your name.</p>' +
+        '<div class="lrow"><button type="button" id="dsNo">Cancel</button><button type="button" class="pri" id="dsYes">Yes, change it</button></div></div>';
+      return '<div class="destpick"><small>Cable goes to which cabinet?</small>' + R.map(function(r){
+        var on = r.id === cur.id;
+        return '<button type="button" class="opt' + (on ? " cur" : "") + '" data-rk="' + esc(r.id) + '"><span class="di" style="width:30px;height:30px;border-radius:8px;background:#3d3d3d;color:#fff;display:grid;place-items:center;flex:0 0 auto">' + CAB_SVG + '</span><span><b>' + esc(r.name) + (r.main && !/main/i.test(r.name) ? " · main" : "") + '</b><small>' + esc(rackSub(r) || "Not placed on the drawing") + '</small></span>' + (on ? "<i>NOW</i>" : "") + "</button>";
+      }).join("") + '<div class="lrow"><button type="button" id="dsNo">Cancel</button></div></div>';
+    }
+    return '<div class="dest"><span class="di">' + CAB_SVG + '</span><div class="dt"><small>Cable goes to</small><b>' + esc(cur.name) + (cur.main && R.length > 1 && !/main/i.test(cur.name) ? " · main" : "") + '</b>' +
+      (rackSub(cur) ? '<span class="ds">' + esc(rackSub(cur)) + "</span>" : "") +
+      (p.rack_edited ? "<em>Changed on site " + whoTxt(p.site_rack_by, p.site_rack_at) + "</em>" : "") + '</div><span class="lbtns">' +
+      (cur.point ? '<button type="button" id="dsShow">Show</button>' : "") +
+      (canEdit() && R.length > 1 ? '<button type="button" id="dsChg">Change</button>' : "") + "</span></div>";
+  }
+  function bindDest(p){
+    if ($("dsShow")) $("dsShow").onclick = function(){
+      var cur = rackById(p.rack), cp = cur && pts().find(function(x){ return x.point_id === cur.point; }); if (!cp) return;
+      closeSheet(); switchView("vPlan"); if (st.floor !== cp.floor_id){ st.floor = cp.floor_id; view.fitNext = true; renderFloors(); }
+      // the cabinet blinks on its floor; tap it for its checklist
+      findPt = cp.point_id; clearTimeout(findT); findT = setTimeout(function(){ findPt = null; renderPlanMarks(); }, 5200);
+      setTimeout(function(){ var r = $("plan").getBoundingClientRect(); view.s = Math.max(view.s, view.fitS * 2.4); view.x = r.width/2 - cp.x * view.w * view.s; view.y = r.height/2 - cp.y * view.h * view.s; applyView(); renderPlanMarks();
+        toast(cur.name + " · " + rackSub(cur)); }, 80);
+    };
+    if ($("dsChg")) $("dsChg").onclick = function(){ destEdit = { pt:p.point_id, to:null }; renderSheet(); };
+    if ($("dsNo")) $("dsNo").onclick = function(){ destEdit = null; renderSheet(); };
+    $("shBody").querySelectorAll("[data-rk]").forEach(function(b){ b.onclick = function(){
+      if (b.dataset.rk === p.rack){ destEdit = null; renderSheet(); return; }
+      destEdit = { pt:p.point_id, to:b.dataset.rk }; renderSheet();
+    }; });
+    if ($("dsYes")) $("dsYes").onclick = function(){
+      var to = destEdit && destEdit.to; if (!to) return;
+      needName(function(){
+        if ($("dsYes")){ $("dsYes").disabled = true; $("dsYes").textContent = "Saving…"; }
+        req("POST", "/pt/" + encodeURIComponent(p.point_id) + "/rack", JSON.stringify({ rack:to }), "application/json").then(function(r){
+          p.rack = r.rack; p.rack_plan = r.rack_plan; p.rack_edited = r.rack_edited; p.site_rack_by = r.site_rack_by; p.site_rack_at = r.site_rack_at;
+          destEdit = null; render(); var nr = rackById(r.rack); toast("Cable now goes to " + (nr ? nr.name : "the new cabinet")); load(true);
+        }).catch(function(e){ if ($("dsYes")){ $("dsYes").disabled = false; $("dsYes").textContent = "Yes, change it"; } toast(e.status ? e.message : "No signal. Try again when you have signal."); });
+      });
+    };
   }
   function renderIssue(id){
     var i = issues().find(function(x){ return x.id === id; }); if (!i){ closeSheet(); return; }

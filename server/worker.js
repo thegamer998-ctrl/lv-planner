@@ -41,7 +41,8 @@ const COLUMNS = [
   "log ADD COLUMN by_role TEXT",
   "points ADD COLUMN cabled INTEGER DEFAULT 0", "points ADD COLUMN cabled_by TEXT", "points ADD COLUMN cabled_at INTEGER", "projects ADD COLUMN cabling INTEGER DEFAULT 0", "projects ADD COLUMN paused INTEGER DEFAULT 0",
   "points ADD COLUMN site_label TEXT", "points ADD COLUMN site_label_by TEXT", "points ADD COLUMN site_label_at INTEGER",
-  "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT"
+  "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT",
+  "points ADD COLUMN rack TEXT", "points ADD COLUMN site_rack TEXT", "points ADD COLUMN site_rack_by TEXT", "points ADD COLUMN site_rack_at INTEGER"
 ];
 let schemaReady = false;
 async function ensureSchema(db) {
@@ -306,7 +307,7 @@ export default {
         return new Response(toBytes(ph.img), { headers: { ...cors, "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=31536000, immutable" } });
       }
       // point actions: installed tick, photo, note
-      if ((mm = rest.match(/^pt\/([^/]+)\/(status|photo|note|label)$/)) && req.method === "POST") {
+      if ((mm = rest.match(/^pt\/([^/]+)\/(status|photo|note|label|rack)$/)) && req.method === "POST") {
         if (!canEdit) return json({ error: "View only — use the team link to make changes" }, 403);
         const ptid = decodeURIComponent(mm[1]);
         const pt = await db.prepare("SELECT * FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
@@ -339,6 +340,22 @@ export default {
           await log("label", ptid, lbl(pt) + " → " + (val || pt.label));
           await touch(db, pid);
           return json({ ok: true, label: val || pt.label, label_plan: pt.label, label_edited: val ? 1 : 0, site_label_by: val ? by : null, site_label_at: val ? t : null });
+        }
+        if (mm[2] === "rack") {
+          // body: { rack: "<cabinet id>" } — the cabinet this point's cable goes to, corrected on site (technician, engineer, office).
+          // The app asks "Are you sure?" first; the change is in the activity and the planner picks it up into the drawing.
+          const b = await req.json(), t = now(), racks = (safeJson(proj.meta).racks || []);
+          const to = racks.find(r => r.id === String(b.rack || "")), cur = pt.site_rack || pt.rack;
+          if (!pt.rack || pt.cat === "rack") return json({ error: "This point has no cable to a cabinet" }, 400);
+          if (!to) return json({ error: "That cabinet is not in this project" }, 400);
+          if (to.id !== cur) {
+            const from = racks.find(r => r.id === cur), nm = r => r ? r.name + (r.floor ? " (" + r.floor + ")" : "") : "another cabinet";
+            await db.prepare("UPDATE points SET site_rack = ?, site_rack_by = ?, site_rack_at = ? WHERE project_id = ? AND point_id = ?").bind(to.id, by, t, pid, ptid).run();
+            await log("cable-dest", ptid, nm(from) + " → " + nm(to));
+            await touch(db, pid);
+          }
+          const np = await db.prepare("SELECT COALESCE(site_rack, rack) AS rack, rack AS rack_plan, CASE WHEN site_rack IS NULL THEN 0 ELSE 1 END AS rack_edited, site_rack_by, site_rack_at FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
+          return json({ ok: true, ...np });
         }
         if (mm[2] === "photo") return json(await savePhoto(db, req, url, pid, ptid, by, lbl(pt), byRole));
         if (mm[2] === "note") return json(await saveNote(db, req, pid, ptid, by, lbl(pt), byRole));
@@ -637,12 +654,17 @@ async function publish(db, b) {
   for (const [i, p] of b.points.entries()) {
     // a label changed on site stays until the planner has seen it (the planner then sends it back as its own label, or replaces it)
     const seen = +p.labelSeen || 0;
-    await db.prepare(`INSERT INTO points (project_id, point_id, floor_id, type, cat, label, model, color, x, y, ord, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    // the same for the cabinet the cable goes to (changed on site by the technician / engineer)
+    const rseen = +p.rackSeen || 0;
+    await db.prepare(`INSERT INTO points (project_id, point_id, floor_id, type, cat, label, model, color, x, y, ord, active, rack) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
         ON CONFLICT (project_id, point_id) DO UPDATE SET floor_id = excluded.floor_id, type = excluded.type, cat = excluded.cat, label = excluded.label,
-          model = excluded.model, color = excluded.color, x = excluded.x, y = excluded.y, ord = excluded.ord, active = 1,
+          model = excluded.model, color = excluded.color, x = excluded.x, y = excluded.y, ord = excluded.ord, active = 1, rack = excluded.rack,
           site_label = CASE WHEN site_label_at > ? THEN site_label END, site_label_by = CASE WHEN site_label_at > ? THEN site_label_by END,
-          site_label_at = CASE WHEN site_label_at > ? THEN site_label_at END`)
-      .bind(proj.id, String(p.id), String(p.floorId), p.type || "", p.cat || "data", p.label || "", p.model || "", p.color || "#3b82f6", +p.x || 0, +p.y || 0, i, seen, seen, seen).run();
+          site_label_at = CASE WHEN site_label_at > ? THEN site_label_at END,
+          site_rack = CASE WHEN site_rack_at > ? THEN site_rack END, site_rack_by = CASE WHEN site_rack_at > ? THEN site_rack_by END,
+          site_rack_at = CASE WHEN site_rack_at > ? THEN site_rack_at END`)
+      .bind(proj.id, String(p.id), String(p.floorId), p.type || "", p.cat || "data", p.label || "", p.model || "", p.color || "#3b82f6", +p.x || 0, +p.y || 0, i, p.rack ? String(p.rack) : null,
+        seen, seen, seen, rseen, rseen, rseen).run();
   }
   // reports the office resolved in the planner (point added / removed)
   for (const r of (b.resolved || [])) {
@@ -663,7 +685,7 @@ async function projectView(db, proj, role) {
   const pid = proj.id;
   const [floors, points, photos, notes, issues, log] = await Promise.all([
     db.prepare("SELECT floor_id, ord, name, w, h, v, pdf_parts, pdf_v, pw, ph FROM floors WHERE project_id = ? ORDER BY ord").bind(pid).all(),
-    db.prepare("SELECT point_id, floor_id, type, cat, COALESCE(site_label, label) AS label, label AS label_plan, CASE WHEN site_label IS NULL THEN 0 ELSE 1 END AS label_edited, site_label_by, site_label_at, model, color, x, y, cabled, cabled_by, cabled_at, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
+    db.prepare("SELECT point_id, floor_id, type, cat, COALESCE(site_label, label) AS label, label AS label_plan, CASE WHEN site_label IS NULL THEN 0 ELSE 1 END AS label_edited, site_label_by, site_label_at, COALESCE(site_rack, rack) AS rack, rack AS rack_plan, CASE WHEN site_rack IS NULL THEN 0 ELSE 1 END AS rack_edited, site_rack_by, site_rack_at, model, color, x, y, cabled, cabled_by, cabled_at, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
     db.prepare("SELECT id, point_id, w, h, by_name, at, caption FROM photos WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT id, point_id, text, by_name, at FROM notes WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT * FROM issues WHERE project_id = ? ORDER BY at DESC").bind(pid).all(),

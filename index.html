@@ -817,7 +817,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-10.1</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-11.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1015,7 +1015,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-10.1</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-11.1</p>
     </section>
   </aside>
 
@@ -1080,6 +1080,7 @@
     </div>
     <div class="scard">
       <h3>Hardware list <span><button type="button" class="rpt-pdf" data-report="hardware" title="Export this as a PDF report">PDF</button> <button class="link-btn" id="hwCsvBtn" title="Spreadsheet (CSV) for Zoho Books">Export CSV</button></span></h3>
+      <label class="rk-cabtog hw-others"><input type="checkbox" id="hwByOthers"> Cabling, termination &amp; patch panels by others <small>(left out of this list and the quote)</small></label>
       <div class="hw-list" id="hwList"></div>
     </div>
   </aside>
@@ -1870,6 +1871,9 @@
     Object.keys(CABLE_CATS).forEach(function(k){ out.roll[k] = (c.roll && (c.roll[k] === 500 || c.roll[k] === 305 || c.roll[k] === 1)) ? c.roll[k] : 305; });
     return out;
   }
+  // Cabling, termination, patch panels and testing done by another company (e.g. the contractor): the hardware list and
+  // the quote then leave out the cable boxes, the patch panels and the point termination; patch panels stay in the rack drawing
+  function cablingByOthers(){ return !!(project.cableCalc && project.cableCalc.byOthers); }
   function getTypeSizeDefault(key){ return project.typeSizeDefaults[key] || 0.8; }
   function setTypeSizeDefault(key, size, applyToFloor){
     size = Math.max(0.4, Math.min(2.5, size));
@@ -4105,7 +4109,8 @@
       if (m.type !== "rack" && connectsToRack(m) && project.racks.length > 1){
         var cur = resolveRackId(m);
         rackHtml += '<label class="popover-hint" style="display:block;margin-bottom:5px;">Cabinet (cable goes to)</label>'+
-          '<select id="popCabinet">'+project.racks.map(function(r){ return '<option value="'+r.id+'"'+(r.id===cur?' selected':'')+'>'+escapeHtml(rackLabel(r)+(r.main?' (main)':''))+'</option>'; }).join("")+'</select>';
+          '<select id="popCabinet">'+project.racks.map(function(r){ return '<option value="'+r.id+'"'+(r.id===cur?' selected':'')+'>'+escapeHtml(rackLabel(r)+(r.main?' (main)':''))+'</option>'; }).join("")+'</select>'+
+          (m.siteRackBy ? '<p class="popover-hint" style="margin:4px 0 0;">Changed on site by <b>'+escapeHtml(m.siteRackBy)+'</b>.</p>' : '');
       }
       var modelHtml = "";
       if (UBNT.on && CATALOG[m.type]){
@@ -4283,6 +4288,7 @@
         var mk = f.markers.find(function(x){ return x.id===id; }); if (!mk) return;
         var r = project.racks.find(function(x){ return x.id === cabSel.value; });
         if (r && r.main) delete mk.rack; else mk.rack = cabSel.value;
+        delete mk.siteRackBy;
         showStatus("Connects to " + (r ? r.name : "main rack")); updateAllReadouts();
       });
       var linkSel = document.getElementById("popRackLink");
@@ -4942,7 +4948,7 @@
     function newId(prefix){ return prefix+Date.now()+Math.random().toString(16).slice(2)+(count++); }
 
     src.markers.filter(function(m){ return m.page===srcPage; }).forEach(function(m){
-      var copy = Object.assign({}, m, { id:newId("pt"), page:targetPage }); delete copy.ptId; delete copy.siteLabel; delete copy.siteLabelAt; delete copy.siteLabelBy;
+      var copy = Object.assign({}, m, { id:newId("pt"), page:targetPage }); delete copy.ptId; delete copy.siteLabel; delete copy.siteLabelAt; delete copy.siteLabelBy; delete copy.siteRackAt; delete copy.siteRackBy;
       f.markers.push(copy);
     });
     src.walls.filter(function(w){ return w.page===srcPage; }).forEach(function(w){
@@ -6604,7 +6610,8 @@
         var sheet = f.id + (f.numPages > 1 ? "-p" + m.page : "");
         var v = markerVariant(m), cat = m.type === "rack" ? "rack" : m.type === "viewport" ? "vp" : CABLED_TYPES[m.type] ? vlanKeyOf(m) : isApLike(t) ? "ap" : "other";
         var label = m.siteLabel || pointLabel(m, ids) + (m.type === "rack" && v && !m.ptName ? " " + v.name : "");
-        out.push({ id:m.id, floorId:sheet, type:m.type, cat:cat, label:label, labelSeen: m.siteLabelAt || 0, model: v && !v.rackTag ? v.name : "", color: cat === "rack" ? "#475569" : cat === "other" ? t.color : vlanColorOf(m), x:+m.xRatio.toFixed(5), y:+m.yRatio.toFixed(5) });
+        out.push({ id:m.id, floorId:sheet, type:m.type, cat:cat, label:label, labelSeen: m.siteLabelAt || 0,
+          rack: m.type !== "rack" && connectsToRack(m) && needsRun(m) ? resolveRackId(m) : "", rackSeen: m.siteRackAt || 0, model: v && !v.rackTag ? v.name : "", color: cat === "rack" ? "#475569" : cat === "other" ? t.color : vlanColorOf(m), x:+m.xRatio.toFixed(5), y:+m.yRatio.toFixed(5) });
       });
     });
     return out;
@@ -6623,6 +6630,14 @@
         feeds: feeds.map(function(x){ return { name: x.name, label: lab(x), cable: uplinkCableLabel((x.uplink && x.uplink.cable) || "fiber") }; }) };
     });
     return out;
+  }
+  // every cabinet for the site app, so each point shows where its cable goes and the team can correct it on site:
+  // [{ id, name, label, floor, point, main }] (point = the cabinet's own point on the drawing, if placed)
+  function siteRacks(){
+    var ids = pointIds();
+    ensureRacks();
+    return project.racks.map(function(r){ var loc = rackLocation(r);
+      return { id:r.id, name:r.name, main:!!r.main, label: loc ? (loc.m.siteLabel || pointLabel(loc.m, ids)) : "", floor: loc ? loc.f.name : "", point: r.markerId && loc ? r.markerId : "" }; });
   }
   // the exact drawing icons for the site app: one SVG per point type, plus each point's rotation, model tag and cable tag
   function siteIcons(){
@@ -6699,7 +6714,7 @@
     msg.textContent = (opts.start ? "Starting the project — " : "Publishing ") + pts.length + " points…";
     var resolved = (project.site && project.site.resolved) || [];
     Promise.all(sheets.map(function(sh){ return sheetDims(sh).then(function(d){ dims[sh.id] = d; }); })).then(function(){
-      var meta = Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "", sheets: dims, uplinks: siteUplinks() }, siteIcons());
+      var meta = Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "", sheets: dims, uplinks: siteUplinks(), racks: siteRacks() }, siteIcons());
       var body = { id: project.site && project.site.id, name: project.name, meta: meta, floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
       if (opts.start){ body.team = opts.team || []; body.cabling = !!opts.cabling; }
       return siteFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) });
@@ -6737,7 +6752,8 @@
     return siteFetch("/site/p/" + project.site.id).then(function(d){
       siteUi.data = d; siteUi.status = {};
       d.points.forEach(function(p){ siteUi.status[p.point_id] = { installed: !!p.installed, aligned: !!p.aligned, configured: !!p.configured, cam: p.cat === "cam", photos: p.photos.length, by: p.installed_by }; });
-      if (syncSiteLabels(d.points) && typeof autosaveTick === "function") autosaveTick();
+      var lc = syncSiteLabels(d.points), rc = syncSiteRacks(d.points);
+      if ((lc || rc) && typeof autosaveTick === "function") autosaveTick();
       renderSiteDialog(started ? "Started. Send the client link, and their own link to anyone who doesn't have it yet." : afterPublish ? "Site updated." : "");
       if (typeof renderMarkers === "function") renderMarkers();
     }).catch(function(e){
@@ -6800,6 +6816,28 @@
     if (changed && typeof renderMarkers === "function") renderMarkers();
     return changed;
   }
+  // the cabinet a cable goes to, corrected on site ("Are you sure you want to change the cable destination?"): the drawing
+  // follows (the point now connects to that cabinet in Racks, the port plan, the quote). m.siteRackAt remembers the last site
+  // change already taken in; a cabinet chosen here afterwards replaces it again on the next Update site.
+  function syncSiteRacks(points){
+    var byId = {}, moved = [];
+    project.floors.forEach(function(f){ f.markers.forEach(function(m){ byId[m.id] = m; }); });
+    points.forEach(function(p){
+      var m = byId[p.point_id]; if (!m || !p.rack_edited || !((p.site_rack_at || 0) > (m.siteRackAt || 0))) return;
+      var r = project.racks.find(function(x){ return x.id === p.rack; }); if (!r) return;
+      m.siteRackAt = p.site_rack_at; m.siteRackBy = p.site_rack_by || "";
+      if (resolveRackId(m) === r.id) return;
+      if (r.main) delete m.rack; else m.rack = r.id;
+      moved.push((p.label || "") + " → " + r.name + (m.siteRackBy ? " (" + m.siteRackBy + ")" : ""));
+    });
+    if (moved.length){
+      if (typeof renderMarkers === "function") renderMarkers();
+      if (typeof updateAllReadouts === "function") updateAllReadouts();
+      if (typeof renderHardwareList === "function") renderHardwareList();
+      showStatus("Cable destination changed on site: " + moved.slice(0, 3).join(" · ") + (moved.length > 3 ? " +" + (moved.length - 3) + " more" : ""));
+    }
+    return moved.length > 0;
+  }
   // ---- Project execution: Start project (after the customer approves) → client link + the team's own links → Mark complete
   function siteStaff(){
     if (siteUi.staff) return Promise.resolve(siteUi.staff);
@@ -6852,7 +6890,7 @@
       }
       h += '<div class="st-step"><b>Customer approved the quotation?</b><small>Start the project: it appears in the team’s site app and you get the client’s link.</small></div>';
       h += '<div class="st-lbl">Team on this project <button type="button" class="st-mini" data-addpeople>+ Add people</button></div>' + (staff ? teamPicker(staff, null) : '<p class="st-msg">Loading the team…</p>');
-      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"> Express Tech pulls the cables: add a <b>Cabling</b> step before Installed</label>';
+      h += '<label class="rk-cabtog" style="margin:6px 0 2px;"><input type="checkbox" id="stCabling"' + (cablingByOthers() ? " disabled" : "") + '> Express Tech pulls the cables: add a <b>Cabling</b> step before Installed' + (cablingByOthers() ? " <small>(off — cabling is by others)</small>" : "") + '</label>';
       h += '<div class="st-lbl">Asana project (optional)</div><input type="text" class="select-input" id="stAsana" placeholder="Paste the Asana project link — or link it later">';
       if (!twin) h += '<p class="st-msg" id="stMsg">' + escapeHtml(note || "") + '</p>';
       h += '<div class="qt-btns"><button type="button" class="tbtn' + (twin ? "" : " primary") + '" id="stStart" style="flex:1;height:40px;font-size:14px;">▶ Start ' + (twin ? "a new project" : "project") + '</button></div>';
@@ -7360,8 +7398,8 @@
       if (runsEl + runsStd) add("el", "Patch cord 0.15 m", "", "Racks", runsEl + runsStd);
     }
     if (fib) add("fib", "10G SFP+ multi-mode fibre module", "", "Racks", fib*2);
-    var cc = cableCalc();
-    cc.order.forEach(function(k){
+    var cc = cableCalc(), others = cablingByOthers();
+    if (!others) cc.order.forEach(function(k){
       var c = cc.cats[k];
       add("cable:"+k, CABLE_CATS[k].label + " cable, " + (c.roll === 1 ? "by the metre (m)" : rollName(c.roll)), "", "All floors", c.order);
     });
@@ -7378,7 +7416,7 @@
       });
     });
     project.racks.forEach(function(r){ if (!r.items.length) return; var hd = rackHdd(r); if (hd.qty) add("hdd:"+hd.tb, "Surveillance hard disk " + hd.tb + " TB", "", r.name, hd.qty); });
-    if (ppTotal){
+    if (ppTotal && !others){
       var pp6a = Math.min(ppTotal, Math.ceil(a6 / 24)), pp6 = ppTotal - pp6a, rk = Object.keys(ppWhere)[0] || "Racks";
       if (pp6) add("pp:cat6", "Patch panel 24-port Cat6", "", rk, pp6);
       if (pp6a) add("pp:cat6a", "Patch panel 24-port Cat6A", "", rk, pp6a);
@@ -7387,11 +7425,20 @@
   }
   function renderHardwareList(){
     if (!el.hwList) return;
-    var items = hardwareItems();
+    var items = hardwareItems(), bo = document.getElementById("hwByOthers");
+    if (bo) bo.checked = cablingByOthers();
     el.hwList.innerHTML = items.length ? items.map(function(r){
       return '<div class="srow"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(r.name)+'</span><b>'+r.qty+'</b></div>';
     }).join("") : '<p class="sempty">Place points and build a rack to see the hardware list.</p>';
   }
+  (function(){ var bo = document.getElementById("hwByOthers"); if (!bo) return;
+    bo.addEventListener("change", function(){
+      project.cableCalc = project.cableCalc || {};
+      if (bo.checked) project.cableCalc.byOthers = true; else delete project.cableCalc.byOthers;
+      showStatus(bo.checked ? "Cabling by others: cable boxes, patch panels and termination are left out" : "Cable boxes, patch panels and termination are back in the list");
+      renderHardwareList(); renderRunsSummary(); if (typeof histSoon === "function") histSoon(); if (typeof updateDirtyDot === "function") updateDirtyDot();
+    });
+  })();
   function csvCell(v){ v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v; }
   el.hwCsvBtn.addEventListener("click", function(){
     var items = hardwareItems();
@@ -7519,12 +7566,14 @@
       else q.notes.push(r.name + ": no Zoho cabinet item for " + r.height + "U.");
     });
     line(q.net, "_shelf", shelves);
-    if (pps){
+    var others = cablingByOthers();
+    if (others) q.notes.push("Cabling, termination, patch panels and testing are by others — not quoted.");
+    if (pps && !others){
       var pp6a = Math.min(pps, Math.ceil(q.counts.cat6a / 24)), pp6 = pps - pp6a;
       line(q.net, "_pp", pp6, { rate:26, description:"Cat 6\nModular Patch Panels\nKuwes Made in Taiwan" });
       line(q.net, "_pp", pp6a, { rate:32, description:"Cat 6A\nModular Patch Panels\nKuwes Made in Taiwan" });
     }
-    line(q.net, "_pt", q.counts.network, { rate:6, description:"Point to Point Tracing, Crimping & Termination." });
+    if (!others) line(q.net, "_pt", q.counts.network, { rate:6, description:"Point to Point Tracing, Crimping & Termination." });
     // CCTV
     Object.keys(dev.cam).forEach(function(k){ line(q.cctv, k, dev.cam[k]); });
     Object.keys(dev.entry).forEach(function(k){ line(q.cctv, k, dev.entry[k]); });
@@ -7536,7 +7585,7 @@
       else q.notes.push("No Zoho item for a " + hd.tb + " TB hard disk — add one in Zoho or pick another size.");
     });
     if (!hddAny && q.counts.cameras && !racks.some(function(r){ return rackBays(r); })) line(q.cctv, "_hdd", 1);
-    line(q.cctv, "_pt", q.counts.cameras, { rate:7, description:"Point to Point Tracing, Crimping & Camera Termination." });
+    if (!others) line(q.cctv, "_pt", q.counts.cameras, { rate:7, description:"Point to Point Tracing, Crimping & Camera Termination." });
     line(q.cctv, "_ps", 1, { description:"Installation, Configuration, Training & Support" });
     Object.keys(unmatched).forEach(function(n){ q.notes.push(n + " ×" + unmatched[n] + ": no Zoho item matched — find or add it."); });
     Object.keys(skipped).forEach(function(n){ q.notes.push(n + " ×" + skipped[n] + " in the rack is not quoted (no Zoho item)."); });
@@ -8238,6 +8287,7 @@
     if (!el.runsSummary) return;
     var cc = cableCalc();
     var calcHtml = '<div class="cc-box"><p class="section-label" style="margin:0 0 8px;">Cable calculator</p>'+
+      (cablingByOthers() ? '<p class="note" style="margin:0 0 8px;">Cabling is by others on this project — these rolls are not in the hardware list or the quote.</p>' : '')+
       '<label class="cc-per">Average cable per point <input type="number" id="ccPer" min="5" max="200" step="1" value="'+cc.perPoint+'"> m</label>'+
       (cc.order.length ? cc.order.map(function(k){
         var c = cc.cats[k], by = Object.keys(c.byType).map(function(t){ var d = getTypeDef(t); return c.byType[t] + " " + (d ? d.label : t); }).join(" · ");
