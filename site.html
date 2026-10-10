@@ -318,6 +318,13 @@
   body.brand .modeseg button.on{ background:#2b2b2b; color:#fff; }
   @media (prefers-color-scheme: dark){ body.brand .modeseg button.on{ background:#efefef; color:#1b1b1b; } }
   body.brand .loading .sp{ border-top-color:#FF0D07; }
+  .uplink{ margin:10px 0 4px; border:1px solid var(--line); border-radius:12px; padding:8px 12px; background:var(--panel-2); }
+  .uplink .lbl{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:2px 0 6px; }
+  .uprow{ display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--line); font-size:14px; } .uprow:first-of-type{ border-top:0; }
+  .uprow .upk{ color:var(--muted); font-size:12px; width:70px; flex-shrink:0; } .uprow .upw{ min-width:0; } .uprow .upw small{ color:var(--muted); margin-left:4px; }
+  .uprow .upc{ font-weight:700; font-size:12px; padding:3px 9px; border-radius:20px; background:var(--panel); border:1px solid var(--line-2); flex-shrink:0; }
+  .uprow .upc.fib{ background:#fdeceb; color:#D21E1C; border-color:#f6c9c6; }
+  @media (prefers-color-scheme: dark){ .uprow .upc.fib{ background:#3a1715; color:#ff6b62; border-color:#5a2420; } }
   .ovr{ padding:14px 12px 12px; } .ovr .h{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; font-weight:600; } .ovr .h small{ color:var(--muted); font-weight:500; }
   .ovr .h b{ font-size:20px; color:var(--accent); margin-right:6px; } .ovr + .ovr{ border-top:1px solid var(--line); } .ovr .bar{ height:10px; } .ovr p{ margin:7px 0 0; font-size:12px; color:var(--muted); }
   body.cust .bfoot{ display:flex; align-items:center; justify-content:center; gap:10px; margin:26px 12px 10px; color:#808080; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; }
@@ -1286,6 +1293,7 @@
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = typeName(p); $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
     var h = labelHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
+    if (catOf(p) === "rack") h += uplinkHtml(p);
     if (catOf(p) === "rack" && st.data.cabinet){
       h += cabinetHtml();
     } else if (visibleSteps(p).length > 1){
@@ -1323,6 +1331,15 @@
   // then the configuration (site engineer only). Each tick completes that Asana step.
   var CAB_GROUPS = [["work","Cabinet works"],["label","Labelling"],["config","Configuration · site engineer"]];
   var cabBusy = null;
+  // cabinet-to-cabinet uplink (set in the planner's Racks): which cabinet feeds this one and over which cable, and what it feeds
+  function uplinkHtml(p){
+    var U = st.data.project.meta && st.data.project.meta.uplinks, u = U && U[p.point_id]; if (!u) return "";
+    function who(x){ return esc(x.label || x.name) + (x.label && x.name && x.label !== x.name ? ' <small>' + esc(x.name) + "</small>" : ""); }
+    var rows = "";
+    if (u.from) rows += '<div class="uprow"><span class="upk">Uplink in</span><span class="upc' + (/fiber/i.test(u.cable) ? " fib" : "") + '">' + esc(u.cable) + '</span><span class="upw">from ' + who(u.from) + "</span></div>";
+    (u.feeds || []).forEach(function(f){ rows += '<div class="uprow"><span class="upk">Uplink out</span><span class="upc' + (/fiber/i.test(f.cable) ? " fib" : "") + '">' + esc(f.cable) + '</span><span class="upw">to ' + who(f) + "</span></div>"; });
+    return rows ? '<div class="uplink"><div class="lbl">Cabinet uplinks' + (u.main ? " · main cabinet" : "") + "</div>" + rows + "</div>" : "";
+  }
   function cabinetHtml(){
     var list = st.data.cabinet || [], mine = list.filter(function(c){ return c.group !== "config" || canConfig(); });
     var works = list.filter(function(c){ return c.group !== "config"; }), nd = works.filter(function(c){ return c.done; }).length;

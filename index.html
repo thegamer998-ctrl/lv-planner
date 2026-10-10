@@ -817,7 +817,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-08.3</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-10.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1015,7 +1015,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-08.3</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-10.1</p>
     </section>
   </aside>
 
@@ -5739,7 +5739,7 @@
       sw.ports.forEach(function(p){
         if (p.dev){ var m = p.dev.m, t = getTypeDef(m.type);
           rows.push([String(p.n), { t:(ids[m.id] || "") + " · " + p.dev.label + (p.dev.note ? " · " + p.dev.note : ""), dot:p.dev.color }, p.dev.floor, p.speed, p.dev.poe || "—", p.dev.w ? fmtW(p.dev.w) : "—", CABLE_CATS[cabledOf(m)].label]); }
-        else if (p.up) rows.push([String(p.n), { t:p.up, bold:true }, "Uplink", p.speed, "—", "—", uplinkCableName(p.kind || "patch")]);
+        else if (p.up) rows.push([String(p.n), { t:p.up, bold:true }, "Uplink", p.speed, "—", "—", uplinkCableName(p.kind || "patch", p.cable)]);
         else free.push(p.n);
       });
       if (free.length) rows.push([{ t:free.length + " free", muted:true }, { t:"Ports " + compactRanges(free), muted:true }, "", "", "", "", ""]);
@@ -5783,7 +5783,7 @@
       var used = sw.ports.filter(function(p){ return p.dev; }).length;
       var sx = M + 30*k, sw2 = 280*k;
       vline(spine, trunkTop, y + bh/2, sw.fibre); hline(spine, sx, y + bh/2);
-      box(sx, y, sw2, bh, sw.name + (sw.fibre ? " (fibre)" : ""), sw.rack.name + " · " + used + " of " + sw.ports.length + " ports" + (sw.budget ? " · " + fmtW(sw.usedW) + " PoE" : ""), "#006fff");
+      box(sx, y, sw2, bh, sw.name + (sw.crossRack ? " (" + sw.uplinkCable + " from " + (sw.parentSw ? sw.parentSw.rack.name : "main rack") + ")" : ""), sw.rack.name + " · " + used + " of " + sw.ports.length + " ports" + (sw.budget ? " · " + fmtW(sw.usedW) + " PoE" : ""), "#006fff");
       trunkTop = y + bh/2;
       var busY = y + bh + 13*k; vline(bx, y + bh, busY);
       groups.forEach(function(g, gi){
@@ -5801,7 +5801,7 @@
       y = busY + rows*(gh + 34*k) + 14*k;
     });
     R.y = y + 6*k;
-    rNote("Each switch hangs off the gateway; boxes under a switch are the devices it feeds, grouped by floor. Dashed lines are fibre links between racks.");
+    rNote("Each switch hangs off the gateway or the cabinet it is fed from; boxes under a switch are the devices it feeds, grouped by floor. Dashed lines are fibre links between cabinets.");
   }
   SECTION.racks = function(){
     var racks = project.racks.filter(function(r){ return r.items.length; });
@@ -5809,7 +5809,9 @@
     var imgs = R.rackImgs || {};
     racks.forEach(function(r){
       var loc = rackLocation(r);
-      rPage(r.name + (r.main ? " (main rack)" : ""), r.height + "U · " + r.size + " cm · " + (r.mount === "wall" ? "wall-mount" : "floor-standing") + (loc ? " · " + loc.f.name : ""));
+      var up = rackUplink(r), feeds = project.racks.filter(function(x){ return x !== r && rackFeedsFrom(x) === r; });
+      rPage(r.name + (r.main ? " (main rack)" : ""), r.height + "U · " + r.size + " cm · " + (r.mount === "wall" ? "wall-mount" : "floor-standing") + (loc ? " · " + loc.f.name : "") +
+        (up ? " · Uplink: " + uplinkCableLabel(up.cable) + " from " + up.from.name : "") + (feeds.length ? " · Feeds: " + feeds.map(function(x){ return x.name + " (" + uplinkCableLabel((x.uplink && x.uplink.cable) || "fiber") + ")"; }).join(", ") : ""));
       var d = R.doc, k = R.k, im = imgs[r.id], top = R.y, imgW = 0;
       if (im){
         var maxW = (R.W - 2*R.M) * 0.52, maxH = R.H - top - 80*k, s = Math.min(maxW / im.w, maxH / im.h);
@@ -6607,6 +6609,21 @@
     });
     return out;
   }
+  // cabinet-to-cabinet uplinks for the site app, keyed by each cabinet's point on the drawing:
+  // { from:{ name, label }, cable:"Fiber" } and feeds:[{ name, label, cable }]
+  function siteUplinks(){
+    var ids = pointIds(), out = {};
+    function lab(r){ var loc = rackLocation(r); return loc ? (loc.m.siteLabel || pointLabel(loc.m, ids)) : ""; }
+    project.racks.forEach(function(r){
+      if (!r.markerId) return;
+      var up = rackUplink(r), feeds = project.racks.filter(function(x){ return x !== r && rackFeedsFrom(x) === r; });
+      if (!up && !feeds.length) return;
+      out[r.markerId] = { main: !!r.main, name: r.name,
+        from: up ? { name: up.from.name, label: lab(up.from) } : null, cable: up ? uplinkCableLabel(up.cable) : "",
+        feeds: feeds.map(function(x){ return { name: x.name, label: lab(x), cable: uplinkCableLabel((x.uplink && x.uplink.cable) || "fiber") }; }) };
+    });
+    return out;
+  }
   // the exact drawing icons for the site app: one SVG per point type, plus each point's rotation, model tag and cable tag
   function siteIcons(){
     var icons = {}, pt = {}, types = {};
@@ -6682,7 +6699,7 @@
     msg.textContent = (opts.start ? "Starting the project — " : "Publishing ") + pts.length + " points…";
     var resolved = (project.site && project.site.resolved) || [];
     Promise.all(sheets.map(function(sh){ return sheetDims(sh).then(function(d){ dims[sh.id] = d; }); })).then(function(){
-      var meta = Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "", sheets: dims }, siteIcons());
+      var meta = Object.assign({ planner: (document.querySelector(".ver") || {}).textContent || "", sheets: dims, uplinks: siteUplinks() }, siteIcons());
       var body = { id: project.site && project.site.id, name: project.name, meta: meta, floors: sheets.map(function(sh){ return { id:sh.id, name:sh.name }; }), points: pts, resolved: resolved };
       if (opts.start){ body.team = opts.team || []; body.cabling = !!opts.cabling; }
       return siteFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) });
@@ -7159,6 +7176,15 @@
       '<p class="rk-info">'+(rack.main ? '<b>Main rack</b> — every point without a chosen cabinet connects here.<br>' : '')+
         (loc ? 'Placed on <b>'+escapeHtml(loc.f.name)+'</b>.' : 'Not on the drawing yet — place a <b>Cabinet / IT Rack</b> point where it goes.')+'<br>'+
         (Object.keys(byFloor).length ? 'Connected: ' + Object.keys(byFloor).map(function(k){ return '<b>'+byFloor[k]+'</b> on '+escapeHtml(k); }).join(", ") : 'No points connected yet.')+'</p>'+
+      (function(){
+        var feeds = project.racks.filter(function(x){ return x !== rack && rackFeedsFrom(x) === rack; });
+        var fd = feeds.length ? '<p class="rk-info" style="margin-top:0">Feeds: ' + feeds.map(function(x){ return '<b>' + escapeHtml(x.name) + '</b> (' + uplinkCableLabel((x.uplink && x.uplink.cable) || "fiber") + ')'; }).join(", ") + '</p>' : '';
+        if (rack.main) return fd;
+        var up = rackUplink(rack), bad = rackDescendants(rack);
+        var opts = project.racks.filter(function(x){ return x !== rack && bad.indexOf(x) < 0; }).map(function(x){ return '<option value="'+x.id+'"'+(x===up.from?' selected':'')+'>'+escapeHtml(x.name)+(x.main?' (main)':'')+'</option>'; }).join("");
+        return '<div class="rk-grid" style="grid-template-columns:3fr 2fr;"><div><label>Uplink from (cabinet)</label><select class="select-input" id="rkUpFrom">'+opts+'</select></div>'+
+          '<div><label>Uplink cable</label><select class="select-input" id="rkUpCable">'+UPLINK_CABLES.map(function(c){ return '<option value="'+c[0]+'"'+(c[0]===up.cable?' selected':'')+'>'+c[1]+'</option>'; }).join("")+'</select></div></div>' + fd;
+      })()+
       '<div class="rk-grid"><div><label>Height</label><select class="select-input" id="rkH">'+RACK_HEIGHTS.map(function(h){ return '<option'+(h===rack.height?' selected':'')+' value="'+h+'">'+h+'U</option>'; }).join("")+'</select></div>'+
       '<div><label>Size (cm)</label><select class="select-input" id="rkS">'+RACK_SIZES.map(function(z){ return '<option'+(z===rack.size?' selected':'')+'>'+z+'</option>'; }).join("")+'</select></div>'+
       '<div><label>Mount</label><select class="select-input" id="rkM"><option value="wall"'+(rack.mount==="wall"?' selected':'')+'>Wall</option><option value="floor"'+(rack.mount==="floor"?' selected':'')+'>Floor</option></select></div></div>'+
@@ -7195,6 +7221,9 @@
     document.getElementById("rkH").onchange = function(){ rack.height = parseInt(this.value,10); if (rack.height <= 12) rack.mount = "wall"; if (rack.height >= 18) rack.mount = "floor"; renderRacks(); renderHardwareList(); };
     document.getElementById("rkS").onchange = function(){ rack.size = this.value; renderRacks(); renderHardwareList(); };
     document.getElementById("rkM").onchange = function(){ rack.mount = this.value; renderRacks(); renderHardwareList(); };
+    var upF = document.getElementById("rkUpFrom"), upC = document.getElementById("rkUpCable");
+    if (upF) upF.onchange = function(){ rack.uplink = rack.uplink || {}; rack.uplink.from = this.value; renderRacks(); renderHardwareList(); if (typeof autosaveTick === "function") autosaveTick(); };
+    if (upC) upC.onchange = function(){ rack.uplink = rack.uplink || {}; rack.uplink.cable = this.value; renderRacks(); renderHardwareList(); if (typeof autosaveTick === "function") autosaveTick(); };
     var vlBox = el.rackEditor.querySelector(".rk-vlans");
     if (vlBox){
       vlBox.addEventListener("toggle", function(){ rackUi.vlanOpen = vlBox.open; });
@@ -7316,7 +7345,7 @@
       });
     });
     var np = buildNetworkPlan(), dac = 0, fib = 0, patch = 0, runsEl = 0, runsStd = 0;
-    np.links.forEach(function(l){ if (l.kind === "dac") dac++; else if (l.kind === "fibre") fib++; else patch++; });
+    np.links.forEach(function(l){ if (l.kind === "dac") dac++; else if (l.kind === "fibre") fib++; else if (l.kind === "copper") patch += 2; else patch++; });
     np.racks.forEach(function(r){ r.switches.forEach(function(sw){
       var el = isEtherlightSwitch(sw.item.sku);
       sw.ports.forEach(function(pt){ if (pt.dev){ if (el) runsEl++; else runsStd++; } });
@@ -7474,7 +7503,7 @@
     Object.keys(dev.ap).forEach(function(k){ line(q.net, k, dev.ap[k]); });
     // patch cords + DAC from the port plan
     var np = buildNetworkPlan(), dac = 0, runsEl = 0, runsStd = 0;
-    np.links.forEach(function(l){ if (l.kind !== "fibre") dac++; });
+    np.links.forEach(function(l){ if (l.kind === "dac" || l.kind === "patch") dac++; });
     np.racks.forEach(function(r){ r.switches.forEach(function(sw){
       var e = isEtherlightSwitch(sw.item.sku);
       sw.ports.forEach(function(pt){ if (pt.dev){ if (e) runsEl++; else runsStd++; } });
@@ -7483,7 +7512,7 @@
     var noPort = np.racks.reduce(function(n, r){ return n + (r.unassigned ? r.unassigned.length : 0); }, 0);
     if (noPort) q.notes.push(noPort + " point" + (noPort > 1 ? "s have" : " has") + " no free switch port — add a switch in Racks, or they get no patch cable.");
     line(q.net, "_el", runsEl); line(q.net, "_pc", runsStd); line(q.net, "_dac", dac);
-    if (np.links.some(function(l){ return l.kind === "fibre"; })) q.notes.push("Fibre link between racks: add fibre modules/cable manually.");
+    np.links.forEach(function(l){ if (l.kind === "fibre" || l.kind === "copper") q.notes.push(l.cable + " uplink " + l.from + " → " + l.to + (l.kind === "fibre" ? ": add the fibre cable and 2 SFP+ modules." : ": add the " + l.cable + " cable run.")); });
     racks.forEach(function(r){
       var id = ZOHO_CABINETS[r.height];
       if (id) line(q.net, "", 1, { z:[id, ZOHO_CAB_RATE[r.height], ZOHO_CAB_NAME[r.height] || ("Network Cabinet " + r.height + "U")] });
@@ -7664,6 +7693,22 @@
       .sort(function(a,b){ return (a.sku==="UDM-SE") - (b.sku==="UDM-SE") || a.pos - b.pos; });
   }
   function mainRack(){ ensureRacks(); return project.racks.find(function(r){ return r.main; }) || project.racks[0]; }
+  // cabinet-to-cabinet uplinks: every extra cabinet is fed from another one (default the main rack) over a chosen cable,
+  // so a chain like Main → GF → 2nd floor can be drawn and counted. rack.uplink = { from: rackId, cable: "fiber"|"cat8"|"cat6a"|"cat6" }
+  var UPLINK_CABLES = [["fiber","Fiber"],["cat8","Cat8"],["cat6a","Cat6A"],["cat6","Cat6"]];
+  function uplinkCableLabel(c){ var x = UPLINK_CABLES.find(function(u){ return u[0] === c; }); return x ? x[1] : "Fiber"; }
+  function rackFeedsFrom(r, seen){   // the cabinet r is fed from (null for the main rack); guards against loops
+    if (!r || r.main) return null; seen = seen || {}; if (seen[r.id]) return null; seen[r.id] = 1;
+    var u = r.uplink || {}, p = u.from && project.racks.find(function(x){ return x.id === u.from && x.id !== r.id; });
+    if (p && !p.main){ var q = p, hops = 0; while (q && !q.main && hops++ < 50){ if (q.id === r.id){ p = null; break; } var uu = q.uplink || {}; q = uu.from ? project.racks.find(function(x){ return x.id === uu.from; }) : null; } }
+    return p || mainRack();
+  }
+  function rackUplink(r){ if (!r || r.main) return null; return { from: rackFeedsFrom(r), cable: (r.uplink && r.uplink.cable) || "fiber" }; }
+  function rackDescendants(r){   // cabinets fed (directly or further down) from r
+    var out = [], todo = [r];
+    while (todo.length){ var x = todo.shift(); project.racks.forEach(function(y){ if (!y.main && y !== r && out.indexOf(y) < 0 && rackFeedsFrom(y) === x){ out.push(y); todo.push(y); } }); }
+    return out;
+  }
   function rackGateway(rack){ var it = rack.items.find(function(i){ var e = EQUIP_BY_SKU[i.sku]; return e && e.kind==="gw"; }); return it ? EQUIP_BY_SKU[it.sku] : null; }
 
   // Builds every rack's switch ports: uplinks first, then devices (manual choices, then automatic)
@@ -7684,7 +7729,8 @@
     // ---- uplinks: gateway -> core switch -> other switches / floor racks
     var main = plan.racks.find(function(r){ return r.rack.main; }) || plan.racks[0];
     plan.links = [];
-    function takeUplink(sw, label, kind){ // the switch's own uplink port; kind = "dac" (same rack) or "fibre" (between racks)
+    function takeUplink(sw, label, kind){ // the switch's own uplink port; kind = "dac" (same rack), "fibre" or "copper" (between cabinets)
+      if (kind === "copper") for (var j=sw.ports.length-1;j>=0;j--) if (!sw.ports[j].up && !sw.ports[j].dev){ sw.ports[j].up = label; sw.ports[j].kind = "copper"; sw.ports[j].cable = (label.match(/\((Cat[^)]*)\)/) || [])[1] || ""; return "Port " + sw.ports[j].n; }
       var s = sw.sfp.find(function(x){ return !x.up; });
       if (s){ s.up = label; s.kind = kind || "dac"; return "SFP+ " + s.n; }
       for (var i=sw.ports.length-1;i>=0;i--) if (!sw.ports[i].up && !sw.ports[i].dev){ sw.ports[i].up = label; sw.ports[i].kind = "patch"; return "Port " + sw.ports[i].n; }
@@ -7700,17 +7746,30 @@
       coreSw.uplinkTo = gw ? equipName(gw) : "Gateway";
       coreSw.isCore = true;
     }
+    // each cabinet's head switch (the core for the main rack); other switches in a cabinet hang off their own head switch,
+    // and a cabinet's head switch hangs off the head switch of the cabinet it is fed from (Fiber / Cat8 / Cat6A / Cat6)
+    var headOf = {};
+    plan.racks.forEach(function(r){
+      if (r.rack.main && coreSw){ headOf[r.rack.id] = coreSw; return; }
+      var ss = r.switches.filter(function(x){ return x.item.sku !== "UDM-SE"; });
+      headOf[r.rack.id] = ss.find(function(x){ return x.item.sku === "USW-Aggregation"; }) || ss[0] || null;
+    });
+    function headFor(rack){ var q = rack, hops = 0; while (q && hops++ < 50){ if (headOf[q.id]) return headOf[q.id]; q = rackFeedsFrom(q); } return coreSw; }
+    var depth = function(rack){ var n = 0, q = rack; while (q && !q.main && n < 50){ q = rackFeedsFrom(q); n++; } return n; };
     var others = [];
-    plan.racks.forEach(function(r){ r.switches.forEach(function(sw){ if (sw !== coreSw && sw.item.sku !== "UDM-SE") others.push(sw); }); });
+    plan.racks.slice().sort(function(a, b){ return depth(a.rack) - depth(b.rack); }).forEach(function(r){ r.switches.forEach(function(sw){ if (sw !== coreSw && sw.item.sku !== "UDM-SE") others.push(sw); }); });
     others.forEach(function(sw){
-      var parent = coreSw;
-      if (!parent){ sw.uplinkTo = gw ? equipName(gw) : "Gateway"; takeUplink(sw, "↑ " + sw.uplinkTo, "dac"); plan.links.push({ kind:"dac" }); return; }
-      var viaFibre = sw.rack !== parent.rack;
-      var p = takeUplink(parent, "↓ " + sw.name + (viaFibre ? " · " + sw.rack.name : ""), viaFibre ? "fibre" : "dac");
-      plan.links.push({ kind: viaFibre ? "fibre" : (p && p.indexOf("SFP") === 0 ? "dac" : "patch") });
+      var isHead = headOf[sw.rack.id] === sw && !sw.rack.main;
+      var up = isHead ? rackUplink(sw.rack) : null;
+      var parent = isHead ? headFor(up.from) : (headOf[sw.rack.id] && headOf[sw.rack.id] !== sw ? headOf[sw.rack.id] : coreSw);
+      if (!parent || parent === sw){ sw.uplinkTo = gw ? equipName(gw) : "Gateway"; takeUplink(sw, "↑ " + sw.uplinkTo, "dac"); plan.links.push({ kind:"dac" }); return; }
+      var cross = sw.rack !== parent.rack, cable = cross ? ((up && up.cable) || "fiber") : "";
+      var kind = !cross ? "dac" : cable === "fiber" ? "fibre" : "copper", cl = cross ? uplinkCableLabel(cable) : "";
+      var p = takeUplink(parent, "↓ " + sw.name + (cross ? " · " + sw.rack.name + " (" + cl + ")" : ""), kind);
+      plan.links.push({ kind: cross ? kind : (p && p.indexOf("SFP") === 0 ? "dac" : "patch"), cable: cl, from: parent.rack.name, to: sw.rack.name });
       if (!p){ plan.warnings.push(parent.name + " has no free port for the uplink to " + sw.name + " (" + sw.rack.name + ")."); }
-      takeUplink(sw, "↑ " + parent.name + (viaFibre ? " · " + parent.rack.name + " (fibre)" : ""), viaFibre ? "fibre" : "dac");
-      sw.uplinkTo = parent.name; sw.parentPort = p; sw.fibre = viaFibre;
+      takeUplink(sw, "↑ " + parent.name + (cross ? " · " + parent.rack.name + " (" + cl + ")" : ""), kind);
+      sw.uplinkTo = parent.name; sw.parentPort = p; sw.parentSw = parent; sw.fibre = kind === "fibre"; sw.uplinkCable = cl; sw.crossRack = cross;
     });
     // ---- devices
     plan.racks.forEach(function(r){
@@ -7756,8 +7815,9 @@
     return plan;
   }
 
-  function uplinkCableName(kind){
+  function uplinkCableName(kind, cable){
     if (kind === "fibre") return "Fibre + SFP+ modules";
+    if (kind === "copper") return (cable || "Copper") + " uplink cable";
     if (kind === "patch") return "Patch cord";
     return UBNT.on ? "UniFi 10G DAC" : "10G DAC";
   }
@@ -7795,7 +7855,7 @@
         var sfps = sw.sfp.map(function(x){ return '<button type="button" class="fport sfp'+(x.up?' up':'')+'" title="SFP+ '+x.n+' · '+x.speed+(x.up?' — '+escapeHtml(x.up):' — free')+'">S'+x.n+'</button>'; }).join("");
         var rows = sw.ports.filter(function(pt){ return pt.dev || pt.up; }).map(function(pt){
           var d = pt.dev;
-          if (!d) return '<tr><td class="num">'+pt.n+'</td><td><span class="sw" style="background:#475569"></span>'+escapeHtml(pt.up)+'</td><td>Uplink</td><td>—</td><td>—</td><td>'+uplinkCableName("patch")+'</td><td></td></tr>';
+          if (!d) return '<tr><td class="num">'+pt.n+'</td><td><span class="sw" style="background:#475569"></span>'+escapeHtml(pt.up)+'</td><td>Uplink</td><td>—</td><td>—</td><td>'+uplinkCableName(pt.kind || "patch", pt.cable)+'</td><td></td></tr>';
           return '<tr'+(nv.sel===d.id?' class="sel"':'')+' data-row="'+d.id+'"><td class="num">'+pt.n+'</td><td><span class="sw" style="background:'+d.color+'"></span>'+escapeHtml(d.label)+' #'+d.num+(d.note?' <span style="color:var(--text-muted)">· '+escapeHtml(d.note)+'</span>':'')+'</td>'+
             '<td>'+escapeHtml(d.floor)+' <button type="button" class="loc" data-loc="'+d.id+'" data-fl="'+d.floorId+'" title="Show on the drawing">⌖</button></td>'+
             '<td>'+(d.poe||"—")+'</td><td class="num">'+(d.w?fmtW(d.w):"—")+'</td><td>'+CABLE_CATS[cableOf(d.m)].label+'</td>'+
@@ -7844,7 +7904,10 @@
   function topologyLayout(plan){
     var sws = []; plan.racks.forEach(function(r){ r.switches.forEach(function(sw){ sws.push(sw); }); });
     var core = sws.find(function(s){ return s.isCore; });
-    if (core){ sws = [core].concat(sws.filter(function(s){ return s !== core; })); }
+    // main cabinet first, then the cabinets in the order they are fed (Main → GF → 2nd …)
+    var dep = function(r){ var n = 0, q = r; while (q && !q.main && n < 50){ q = rackFeedsFrom(q); n++; } return n; };
+    var rIdx = function(r){ return project.racks.indexOf(r); };
+    sws = sws.map(function(x, i){ return { x:x, i:i }; }).sort(function(a, b){ return (a.x === core ? -1 : b.x === core ? 1 : 0) || dep(a.x.rack) - dep(b.x.rack) || rIdx(a.x.rack) - rIdx(b.x.rack) || a.i - b.i; }).map(function(o){ return o.x; });
     var colW = 170, nodeW = 150, x = 20, cols = [];
     sws.forEach(function(sw){
       var gs = deviceGroups(sw), w = Math.max(1, gs.length) * colW;
@@ -7865,12 +7928,20 @@
         (t2?'<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" font-size="11" fill="var(--text-muted)">'+escapeHtml(t2.length>30?t2.slice(0,29)+"…":t2)+'</text>':'');
     }
     function edge(x1,y1,x2,y2,dash){ var my=(y1+y2)/2; return '<path d="M'+x1+' '+y1+' C'+x1+' '+my+' '+x2+' '+my+' '+x2+' '+y2+'" fill="none" stroke="var(--hairline-2)" stroke-width="2.2"'+(dash?' stroke-dasharray="6 5"':'')+'/>'; }
-    var core = L.cols[0];
-    s += edge(L.mid, 78, L.mid, 150) + edge(L.mid, 206, core.cx, 262);
-    L.cols.slice(1).forEach(function(c){ s += edge(core.cx, 318, c.cx, 262 + 0, c.sw.fibre); });
+    var core = L.cols[0], gx0 = Math.max(130, core.cx);
+    s += edge(gx0, 78, gx0, 150) + edge(gx0, 206, core.cx, 262);
+    L.cols.slice(1).forEach(function(c, ci){
+      var pc = L.cols.find(function(x){ return x.sw === c.sw.parentSw; }) || core;
+      if (pc === c) pc = core;
+      // an arc above the switches from the feeding switch to this one, labelled with the cable between cabinets
+      var top = 238 - (ci % 2) * 10, x1 = pc.cx + (c.cx > pc.cx ? 60 : -60), x2 = c.cx - (c.cx > pc.cx ? 60 : -60);
+      s += '<path d="M'+x1+' 262 C'+x1+' '+top+' '+x2+' '+top+' '+x2+' 262" fill="none" stroke="'+(c.sw.crossRack ? (c.sw.fibre ? '#D21E1C' : '#808080') : 'var(--hairline-2)')+'" stroke-width="2.4"'+(c.sw.fibre?' stroke-dasharray="7 5"':'')+'/>';
+      if (c.sw.crossRack && c.sw.uplinkCable){ var lx = (x1 + x2) / 2, ly = top + 6;
+        s += '<rect x="'+(lx-34)+'" y="'+(ly-11)+'" width="68" height="18" rx="9" fill="'+(c.sw.fibre ? '#fdeceb' : 'var(--bg-panel-raised)')+'" stroke="var(--hairline-2)"/><text x="'+lx+'" y="'+(ly+2)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="'+(c.sw.fibre ? '#D21E1C' : 'var(--text-muted)')+'">'+escapeHtml(c.sw.uplinkCable)+'</text>'; }
+    });
     L.cols.forEach(function(c){ c.groups.forEach(function(g, gi){ var gx = c.x + L.colW*gi + L.colW/2; s += edge(c.cx, 318, gx, 402); }); });
-    s += node(L.mid, 50, 170, "Internet", "ISP · fibre / 5G", "#94a3b8");
-    s += node(L.mid, 178, 240, L.gw ? equipName(L.gw) : "Gateway / router", mainRack().name, "#006fff");
+    s += node(gx0, 50, 170, "Internet", "ISP · fibre / 5G", "#94a3b8");
+    s += node(gx0, 178, 240, L.gw ? equipName(L.gw) : "Gateway / router", mainRack().name, "#006fff");
     L.cols.forEach(function(c){
       var used = c.sw.ports.filter(function(p){ return p.dev; }).length;
       s += node(c.cx, 290, 230, c.sw.name, c.sw.rack.name + " · " + used + " ports" + (c.sw.budget ? " · " + Math.round(c.sw.usedW) + " W" : ""), "#006fff");
@@ -7880,7 +7951,7 @@
         s += '<text x="'+gx+'" y="478" text-anchor="middle" font-size="10.5" font-weight="700" letter-spacing=".5" fill="var(--text-dim)">'+escapeHtml(g.floor.toUpperCase())+'</text>';
       });
     });
-    return '<div class="nv-topo">'+s+'</svg></div><p class="nv-note" style="margin-top:12px;">Built from your racks and the points you placed. Dashed lines are fibre links between racks.</p>';
+    return '<div class="nv-topo">'+s+'</svg></div><p class="nv-note" style="margin-top:12px;">Built from your racks and the points you placed. Links between cabinets are labelled with their cable; dashed = fibre.</p>';
   }
   function wireNetwork(plan){
     el.netBody.querySelectorAll("[data-dev]").forEach(function(b){ b.onclick = function(){ var id = b.getAttribute("data-dev"); if (id){ nv.sel = id; renderNetwork(); } }; });
@@ -7945,7 +8016,7 @@
     sws.forEach(function(sw){
       var rows = sw.ports.filter(function(p){ return p.dev || p.up; }).map(function(p){
         return p.dev ? [String(p.n), p.dev.label + " #" + p.dev.num + (p.dev.note ? " · " + p.dev.note : ""), p.dev.floor, p.dev.poe || "-", p.dev.w ? fmtW(p.dev.w) : "-", CABLE_CATS[cableOf(p.dev.m)].label]
-                     : [String(p.n), p.up, "Uplink", "-", "-", uplinkCableName("patch")];
+                     : [String(p.n), p.up, "Uplink", "-", "-", uplinkCableName(p.kind || "patch", p.cable)];
       }).concat(sw.sfp.filter(function(x){ return x.up; }).map(function(x){ return ["SFP+ " + x.n, x.up, "Uplink", x.speed, "-", uplinkCableName(x.kind)]; }));
       var need = 60 + rows.length * 17;
       if (y + need > H - 40){ page("Switch ports (continued)"); }
