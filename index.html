@@ -7910,7 +7910,7 @@
     sws = sws.map(function(x, i){ return { x:x, i:i }; }).sort(function(a, b){ return (a.x === core ? -1 : b.x === core ? 1 : 0) || dep(a.x.rack) - dep(b.x.rack) || rIdx(a.x.rack) - rIdx(b.x.rack) || a.i - b.i; }).map(function(o){ return o.x; });
     var colW = 170, nodeW = 150, x = 20, cols = [];
     sws.forEach(function(sw){
-      var gs = deviceGroups(sw), w = Math.max(1, gs.length) * colW;
+      var gs = deviceGroups(sw), w = Math.max(250, Math.max(1, gs.length) * colW);   // never narrower than the switch box
       cols.push({ sw:sw, groups:gs, x:x, w:w, cx:x + w/2 }); x += w + 30;
     });
     var width = Math.max(x, 700), mid = width/2;

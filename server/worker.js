@@ -356,7 +356,6 @@ export default {
             ON CONFLICT (project_id, item) DO UPDATE SET done = excluded.done, by_name = excluded.by_name, at = excluded.at`).bind(pid, it.key, done, by, t).run();
         if (it.gid) {
           await asanaApi(env, `/tasks/${it.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: !!done } }) });
-          await asanaApi(env, `/tasks/${it.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${done ? "Done" : "Reopened"} — ticked by ${by} on the cabinet in the ExpressTech site app.` } }) });
           await asanaRefresh(db, env, proj);
           if (await syncParents(env, proj)) await asanaRefresh(db, env, proj);
         }
@@ -476,7 +475,6 @@ export default {
           if (who === "office" && !officeLike) return json({ error: "This one is for the office" }, 403);
           if (who === "engineer" && !canTick(role, "configured")) return json({ error: "Only the site engineer can tick this one" }, 403);
           await asanaApi(env, `/tasks/${gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: done } }) });
-          await asanaApi(env, `/tasks/${gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: `${done ? "Completed" : "Reopened"} by ${by} in the ExpressTech site app.` } }) });
           await log(done ? "stage-done" : "stage-reopened", "stage:" + gid, found.task.name);
         }
         let stages = await asanaRefresh(db, env, proj);
@@ -838,7 +836,6 @@ async function syncParents(env, proj) {
     const all = t.subtasks.every(x => x.completed);
     if (all === !!t.completed) continue;
     await asanaApi(env, `/tasks/${t.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: all } }) });
-    await asanaApi(env, `/tasks/${t.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text: all ? "All steps done in the ExpressTech site app." : "Reopened: a step was reopened in the ExpressTech site app." } }) });
     changed = true;
   }
   return changed;
@@ -866,11 +863,7 @@ async function asanaPush(db, env, proj, step, by) {
     for (const target of targets) {
     if (complete === target.completed) continue;
     await asanaApi(env, `/tasks/${target.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: complete } }) });
-    const verb = { cabled: "cabled", installed: "installed", aligned: "aligned", configured: "configured" }[step] || step;
-    const text = complete
-      ? `All ${n} ${rule.what} ${verb} and ticked in the ExpressTech site app (last by ${by}).`
-      : `Reopened: ${done} of ${n} ${rule.what} ${verb} (unticked by ${by} in the ExpressTech site app).`;
-    await asanaApi(env, `/tasks/${target.gid}/stories`, { method: "POST", body: JSON.stringify({ data: { text } }) });
+    // no Asana comment: the task is only ticked / unticked (Husain: don't comment on our behalf)
     target.completed = complete; changed = true;
     }
   }

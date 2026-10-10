@@ -699,7 +699,12 @@
     var n = openReports(); $("tabRep").querySelectorAll(".badge").forEach(function(b){ b.remove(); });
     if (n && canEdit()) $("tabRep").insertAdjacentHTML("beforeend", '<span class="badge">' + n + "</span>");
     renderFloors(); renderPlanMarks(); renderList(); renderProgress(); renderReports(); renderActivity();
-    if (st.sel && !(labelEdit && $("lbIn"))) renderSheet();   // never wipe a label being typed
+    // refresh the open panel; a label being typed is kept (labels are optional: ticking a step never waits for one)
+    if (st.sel){
+      var li = labelEdit && $("lbIn"), typed = li ? li.value : null, focused = li && document.activeElement === li, caret = li ? li.selectionStart : 0;
+      renderSheet();
+      var ni = typed != null && $("lbIn"); if (ni){ ni.value = typed; if (focused){ ni.focus(); try { ni.setSelectionRange(caret, caret); } catch(e){} } }
+    }
   }
 
   // ---- plan
