@@ -14,7 +14,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 060f20228ea8711e50feefd07e88799c
         run: |
-          q(){ npx --yes wrangler@4 d1 execute expresstech --remote --json --command "$1" 2>&1 | grep -v '^\s*$' | tail -60; }
+          q(){ npx --yes wrangler@4 d1 execute expresstech --remote --json --command "$1" > out.json 2>&1 || true; python3 -c "import json,sys;t=open('out.json').read();i=t.find('[')
+d=json.loads(t[i:]) if i>=0 else None
+rows=d[0]['results'] if d else [t[-300:]]
+[print('::notice::'+json.dumps(r)) for r in rows]"; }
           q "SELECT id, name, datetime(updated_at/1000,'unixepoch') AS upd, instr(meta,'\"racks\"') AS has_racks, instr(meta,'\"kit\"') AS has_kit, substr(json_extract(meta,'$.planner'),1,40) AS planner FROM projects WHERE name LIKE '%Bisher%'"
           q "SELECT cat, COUNT(*) AS n, SUM(rack IS NOT NULL) AS with_rack, SUM(site_rack IS NOT NULL) AS site_changed FROM points WHERE project_id IN (SELECT id FROM projects WHERE name LIKE '%Bisher%') AND active = 1 GROUP BY cat"
           q "SELECT datetime(at/1000,'unixepoch') AS t, by_name, action, detail FROM log WHERE project_id IN (SELECT id FROM projects WHERE name LIKE '%Bisher%') ORDER BY at DESC LIMIT 12"
