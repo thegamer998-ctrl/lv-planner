@@ -143,6 +143,44 @@ function cabinetList(cache, rows) {
   return CABINET_DEFAULT.map(([group, name], i) => { const key = "d:" + group + ":" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), r = by[key] || {};
     return { key, group, name, done: r.done ? 1 : 0, by: r.done ? r.by_name : null, at: r.done ? r.at : null, asana: false }; });
 }
+// Villas with several cabinets: each cabinet has its own checklist, with only the steps for the hardware in it (from the
+// planner's Racks: the UDM in the main cabinet, 2 switches in Rack C…). A tick is for that cabinet only (stored as
+// "c:<cabinet point>:<step key>"); the Asana step completes when every cabinet that has it is done, and reopens if one
+// is undone. Steps that fit no cabinet's hardware (e.g. IP PBX) go to the main cabinet. Ticks made before a project had
+// per-cabinet lists count for the main cabinet.
+const KIT_RULES = [
+  [/udm|firewall|gateway|router|dream machine/i, "gw"], [/\bu?nvr\b|recording/i, "nvr"], [/\bhdd\b|hard ?dis[kc]/i, "hdd"],
+  [/switch/i, "sw"], [/\bups\b/i, "ups"], [/patch panels?|punching/i, "pp"], [/\bpbx\b/i, "pbx"], [/\bdac\b/i, "dac"]
+];
+function kitOf(name) { for (const [rx, k] of KIT_RULES) if (rx.test(name)) return k; return null; }
+function kitHas(kit, k) { return k === "dac" ? (kit.gw || 0) + (kit.sw || 0) + (kit.nvr || 0) >= 2 : (kit[k] || 0) > 0; }
+function rackPoints(points) { return points.filter(p => p.cat === "rack" && p.active !== 0).sort((a, b) => (a.ord || 0) - (b.ord || 0)); }
+// { <cabinet point id>: [items] } — one list per cabinet on the drawing
+function cabinetLists(cache, rows, rackPts, meta) {
+  const base = cabinetList(cache, rows), out = {};
+  if (!rackPts.length) return out;
+  if (rackPts.length === 1) { out[rackPts[0].point_id] = base.map(it => ({ ...it, cab: rackPts[0].point_id })); return out; }
+  const by = {}; for (const r of rows || []) by[r.item] = r;
+  const racks = (meta && meta.racks) || [], info = id => racks.find(r => r.point === id) || null;
+  const main = (racks.find(r => r.main && rackPts.some(p => p.point_id === r.point)) || {}).point || rackPts[0].point_id;
+  for (const rp of rackPts) {
+    const kit = (info(rp.point_id) || {}).kit;
+    out[rp.point_id] = base.filter(it => {
+      const k = kitOf(it.name); if (!k || !kit) return true;
+      if (kitHas(kit, k)) return true;
+      // hardware the planner doesn't list in any cabinet (IP PBX…): the main cabinet's job
+      return rp.point_id === main && !rackPts.some(x => { const kk = (info(x.point_id) || {}).kit; return kk && kitHas(kk, k); });
+    }).map(it => {
+      const r = by["c:" + rp.point_id + ":" + it.key], k = kitOf(it.name), qty = kit && k && k !== "dac" ? kit[k] || 0 : 0;
+      const o = { ...it, key: it.key, cab: rp.point_id, qty };
+      // no tick for this cabinet yet: the main cabinet keeps a tick made before the lists were split, the others start open
+      const r0 = r || (rp.point_id === main ? by[it.key] : null);
+      o.done = r0 && r0.done ? 1 : 0; o.by = o.done ? r0.by_name : null; o.at = o.done ? r0.at : null;
+      return o;
+    });
+  }
+  return out;
+}
 // money / admin tasks: shown in the office view only
 const PRIVATE_STAGE = /payment|invoice|it flow|customer details|quotation|advance/i;
 const MAX_IMG = 1900 * 1024;   // D1 rows are limited to 2 MB (floor PDFs are stored in parts of this size)
@@ -364,26 +402,43 @@ export default {
       // engineer's (and the office's). With Asana linked each tick completes that exact Asana step, with a comment.
       if (rest === "cabinet" && req.method === "POST") {
         if (!canEdit) return json({ error: "View only" }, 403);
+        // body { key, done, cab } — cab = the cabinet's point (needed when the villa has several cabinets)
         const b = await req.json(), done = b.done ? 1 : 0, t = now();
-        const rows = (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results;
-        const list = cabinetList(asanaOn ? safeJson(proj.asana_cache) : null, rows), it = list.find(x => x.key === String(b.key || ""));
-        if (!it) return json({ error: "Not on the cabinet checklist" }, 404);
+        const meta = safeJson(proj.meta), cache = () => asanaOn ? safeJson(proj.asana_cache) : null;
+        const rpts = rackPoints((await db.prepare("SELECT point_id, label, site_label, ord, cat, active FROM points WHERE project_id = ? AND cat = 'rack' AND active = 1").bind(pid).all()).results);
+        const getRows = async () => (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results;
+        const multi = rpts.length > 1, cab = multi ? String(b.cab || "") : (rpts[0] || {}).point_id;
+        const lists = cabinetLists(cache(), await getRows(), rpts, meta), list = lists[cab] || [];
+        if (multi && !lists[cab]) return json({ error: "Pick the cabinet first" }, 400);
+        const it = list.find(x => x.key === String(b.key || ""));
+        if (!it) return json({ error: "Not on this cabinet's checklist" }, 404);
         if (it.group === "config" && !canTick(role, "configured")) return json({ error: "Only the site engineer can tick the configuration" }, 403);
         await db.prepare(`INSERT INTO checks (project_id, item, done, by_name, at) VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (project_id, item) DO UPDATE SET done = excluded.done, by_name = excluded.by_name, at = excluded.at`).bind(pid, it.key, done, by, t).run();
-        if (it.gid) {
-          await asanaApi(env, `/tasks/${it.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: !!done } }) });
-          await asanaRefresh(db, env, proj);
-          if (await syncParents(env, proj)) await asanaRefresh(db, env, proj);
+            ON CONFLICT (project_id, item) DO UPDATE SET done = excluded.done, by_name = excluded.by_name, at = excluded.at`).bind(pid, multi ? "c:" + cab + ":" + it.key : it.key, done, by, t).run();
+        if (it.gid && asanaOn) {
+          // one cabinet: the Asana step follows the tick. Several: it completes when every cabinet that has it is done.
+          let complete = !!done;
+          if (multi) { const now1 = cabinetLists(cache(), await getRows(), rpts, meta); complete = Object.values(now1).every(l => l.filter(x => x.key === it.key).every(x => x.done)); }
+          const cur = cache() && cache().sections ? cache().sections.flatMap(s2 => s2.tasks).flatMap(x => [x, ...(x.subtasks || [])]).find(x => x.gid === it.gid) : null;
+          if (!cur || !!cur.completed !== complete) {
+            await asanaApi(env, `/tasks/${it.gid}`, { method: "PUT", body: JSON.stringify({ data: { completed: complete } }) });
+            await asanaRefresh(db, env, proj);
+            proj = await db.prepare("SELECT * FROM projects WHERE id = ?").bind(pid).first();
+            if (await syncParents(env, proj)) await asanaRefresh(db, env, proj);
+            proj = await db.prepare("SELECT * FROM projects WHERE id = ?").bind(pid).first();
+          }
         }
-        await log(done ? "cabinet-done" : "cabinet-undone", "", it.name);
-        // the cabinet point counts as done on the plan when all its works are ticked
-        const now2 = cabinetList(asanaOn ? safeJson(proj.asana_cache) : null, (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results);
-        const works = now2.filter(x => x.group !== "config"), allDone = works.length && works.every(x => x.done) ? 1 : 0;
-        await db.prepare("UPDATE points SET installed = ?, installed_by = ?, installed_at = ? WHERE project_id = ? AND cat = 'rack' AND active = 1 AND installed <> ?")
-          .bind(allDone, allDone ? by : null, allDone ? t : null, pid, allDone).run();
+        const rp = rpts.find(x => x.point_id === cab), cabName = rp ? (rp.site_label || rp.label) : "";
+        await log(done ? "cabinet-done" : "cabinet-undone", "", it.name + (multi && cabName ? " · " + cabName : ""));
+        // each cabinet point counts as done on the plan when all its works are ticked
+        const now2 = cabinetLists(cache(), await getRows(), rpts, meta);
+        for (const id of Object.keys(now2)) {
+          const works = now2[id].filter(x => x.group !== "config"), allDone = works.length && works.every(x => x.done) ? 1 : 0;
+          await db.prepare("UPDATE points SET installed = ?, installed_by = ?, installed_at = ? WHERE project_id = ? AND point_id = ? AND installed <> ?")
+            .bind(allDone, allDone ? by : null, allDone ? t : null, pid, id, allDone).run();
+        }
         await touch(db, pid);
-        return json({ ok: true, cabinet: now2 });
+        return json({ ok: true, cabinets: now2, cabinet: now2[cab] || [] });
       }
       // many points at once (the site engineer configures all access points, all cameras… together)
       if (rest === "bulk" && req.method === "POST") {
@@ -700,8 +755,12 @@ async function projectView(db, proj, role) {
       status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null, cabling: proj.cabling ? 1 : 0, paused: proj.paused ? 1 : 0 },
     floors: floors.results.map(f => ({ id: f.floor_id, name: f.name, w: f.w, h: f.h, v: f.v, pdf: f.pdf_parts ? f.pdf_v : 0, pw: f.pw, ph: f.ph })),
     points: [], issues: [], stages: proj.asana_cache ? stagesFor(safeJson(proj.asana_cache), role, autoMap(safeJson(proj.asana_cache), points.results, proj.cabling, checks)) : null, activity: [],
-    cabinet: hasRack ? cabinetList(proj.asana_gid ? safeJson(proj.asana_cache) : null, checks) : null
+    cabinet: null, cabinets: null
   };
+  if (hasRack) {
+    out.cabinets = cabinetLists(proj.asana_gid ? safeJson(proj.asana_cache) : null, checks, rackPoints(points.results), safeJson(proj.meta));
+    out.cabinet = Object.values(out.cabinets)[0] || [];   // older app versions
+  }
   out.steps = STEPS;
   out.v = (proj.updated_at || 0) + ":" + (proj.asana_at || 0) + ":" + (proj.status || "");   // same as GET …/v
   if (role !== "customer") for (const is of issues.results) byIssue[is.id] = {
@@ -718,14 +777,14 @@ async function projectView(db, proj, role) {
 }
 
 async function projectList(db, withKeys, person) {
-  const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team, paused, cabling FROM projects ORDER BY updated_at DESC").all();
+  const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team, paused, cabling, meta FROM projects ORDER BY updated_at DESC").all();
   const ps = { results: all.results.filter(p => !person || onTeam(p, person)) };
   // done = every installation step ticked (cameras: installed and aligned)
   const cnt = await db.prepare(`SELECT pt.project_id, COUNT(*) AS n, SUM(CASE WHEN pt.installed = 1 AND (pt.cat <> 'cam' OR pt.aligned = 1)
       AND (COALESCE(pr.cabling, 0) = 0 OR pt.cabled = 1 OR pt.cat NOT IN ('ap','cam','data','phone','icom','vp')) THEN 1 ELSE 0 END) AS done
       FROM points pt LEFT JOIN projects pr ON pr.id = pt.project_id WHERE pt.active = 1 GROUP BY pt.project_id`).all();
   // progress = tasks: every step of every point plus every cabinet checklist item (same as the site app's bar)
-  const stp = await db.prepare("SELECT project_id, cat, cabled, installed, aligned, configured FROM points WHERE active = 1").all();
+  const stp = await db.prepare("SELECT project_id, point_id, ord, cat, cabled, installed, aligned, configured FROM points WHERE active = 1").all();
   const chk = await db.prepare("SELECT project_id, item, done, by_name, at FROM checks").all();
   const grp = (rows) => { const o = {}; for (const r of rows.results) (o[r.project_id] = o[r.project_id] || []).push(r); return o; };
   const PT = grp(stp), CK = grp(chk);
@@ -737,7 +796,8 @@ async function projectList(db, withKeys, person) {
     const c = safeJson(p.asana_cache);
     let tDone = 0, tAll = 0, next = null, wAll = 0, wDone = 0;
     for (const pt of PT[p.id] || []) for (const s of stepsOf(pt.cat, p.cabling)) { wAll++; if (pt[s]) wDone++; }
-    if ((PT[p.id] || []).some(pt => pt.cat === "rack")) for (const it of cabinetList(p.asana_gid ? c : null, CK[p.id] || [])) { wAll++; if (it.done) wDone++; }
+    const rpts = rackPoints(PT[p.id] || []);
+    if (rpts.length) for (const l of Object.values(cabinetLists(p.asana_gid ? c : null, CK[p.id] || [], rpts, safeJson(p.meta)))) for (const it of l) { wAll++; if (it.done) wDone++; }
     for (const s of (c.sections || [])) for (const t of s.tasks) { if (!withKeys && t.private) continue; tAll++; if (t.completed) tDone++; else if (!next && !PRIVATE_STAGE.test(t.name)) next = t.name; }
     return { id: p.id, name: p.name, team_key: withKeys ? p.team_key : undefined, view_key: withKeys ? p.view_key : undefined, updated_at: p.updated_at, points: (C[p.id] || {}).n || 0, installed: (C[p.id] || {}).done || 0,
       open_reports: (I[p.id] || {}).n || 0, photos: (H[p.id] || {}).n || 0, asana: !!p.asana_gid, asana_at: p.asana_at, stages_done: tDone, stages_all: tAll, next_stage: next,

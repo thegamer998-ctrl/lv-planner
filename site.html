@@ -337,6 +337,12 @@
   .destpick .ft s{ color:var(--muted); } .destpick .ft b{ color:var(--accent); } .destpick p{ margin:0 0 4px; font-size:12.5px; color:var(--muted); }
   .destpick .lrow{ display:flex; gap:8px; margin-top:8px; } .destpick .lrow button{ flex:1; height:44px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:14px; }
   .destpick .lrow button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .cabnote{ margin:-2px 0 8px; font-size:12.5px; color:var(--muted); }
+  .cabchips{ display:flex; gap:6px; overflow-x:auto; margin:0 0 10px; padding-bottom:2px; }
+  .cabchip{ flex:0 0 auto; text-align:left; padding:7px 11px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); }
+  .cabchip b{ display:block; font-size:13px; } .cabchip small{ display:block; font-size:11.5px; color:var(--muted); }
+  .cabchip.on{ border-color:var(--ink); background:var(--panel-2); } .cabchip.ok small{ color:#16a34a; font-weight:700; }
+  .steprow .qty{ display:inline-block; margin-left:4px; padding:0 6px; border-radius:6px; background:var(--panel-2); font-size:12px; font-weight:700; color:var(--muted); vertical-align:1px; }
   .uplink{ margin:10px 0 4px; border:1px solid var(--line); border-radius:12px; padding:8px 12px; background:var(--panel-2); }
   .uplink .lbl{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:2px 0 6px; }
   .uprow{ display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--line); font-size:14px; } .uprow:first-of-type{ border-top:0; }
@@ -686,10 +692,18 @@
     var n = 0, d = 0;
     list.forEach(function(p){ var o = state(p); stepsOf(p).forEach(function(x){
       if (part === "install" && x === "configured" || part === "config" && x !== "configured") return; n++; if (o[x]) d++; }); });
-    if (st.data && st.data.cabinet && list.some(function(p){ return p.cat === "rack"; })) st.data.cabinet.forEach(function(c){
-      if (part === "install" && c.group === "config" || part === "config" && c.group !== "config") return; n++; if (c.done) d++; });
+    // each cabinet in the list brings its own checklist (a floor's bar counts only that floor's cabinets)
+    list.forEach(function(p){ if (p.cat !== "rack") return; cabOf(p).forEach(function(c){
+      if (part === "install" && c.group === "config" || part === "config" && c.group !== "config") return; n++; if (c.done) d++; }); });
     return { n:n, d:d, pct: n ? Math.round(d / n * 100) : 0 };
   }
+  // the checklist of one cabinet: villas with several cabinets have one list per cabinet, with only its own hardware
+  function cabOf(p){
+    var d = st.data; if (!d || !p) return [];
+    if (d.cabinets) return d.cabinets[p.point_id] || [];
+    return d.cabinet && pts().filter(function(x){ return x.cat === "rack"; })[0] === p ? d.cabinet : [];
+  }
+  function cabCount(){ return st.data && st.data.cabinets ? Object.keys(st.data.cabinets).length : 1; }
   function floorName(id){ var f = st.data.floors.find(function(x){ return x.id === id; }); return f ? f.name : ""; }
   function openReports(){ return issues().filter(function(i){ return i.status === "open"; }).length; }
 
@@ -1251,7 +1265,7 @@
     "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
     "project-started":"started the project", "project-done":"marked the project complete", "project-reopened":"reopened the project",
-    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cable-dest":"changed the cable destination of", "cabinet-done":"ticked on the cabinet", "cabinet-undone":"reopened on the cabinet" };
+    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cable-dest":"changed the cable destination of", "cabinet-done":"ticked the cabinet step", "cabinet-undone":"reopened the cabinet step" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });
     var rows = (d.activity || []).map(function(a){ return { at:a.at, src:"site", a:a }; });
@@ -1318,8 +1332,8 @@
     $("shTitle").textContent = typeName(p); $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
     var h = labelHtml(p) + destHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
     if (catOf(p) === "rack") h += uplinkHtml(p);
-    if (catOf(p) === "rack" && st.data.cabinet){
-      h += cabinetHtml();
+    if (catOf(p) === "rack" && (st.data.cabinets || st.data.cabinet) && cabOf(p).length){
+      h += cabinetHtml(p);
     } else if (visibleSteps(p).length > 1){
       // installed (+ aligned for cameras) by the technician, configured by the site engineer — each ticked on its own, with who and when
       h += '<div class="steps">' + visibleSteps(p).map(function(x, i){
@@ -1345,7 +1359,7 @@
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-step]").forEach(function(b){ b.onclick = function(){ setStep(p, b.dataset.step, b.dataset.v === "1"); }; });
-    bindLabel(p); bindDest(p); bindCabinet();
+    bindLabel(p); bindDest(p); bindCabinet(p);
     if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
@@ -1364,11 +1378,20 @@
     (u.feeds || []).forEach(function(f){ rows += '<div class="uprow"><span class="upk">Uplink out</span><span class="upc' + (/fiber/i.test(f.cable) ? " fib" : "") + '">' + esc(f.cable) + '</span><span class="upw">to ' + who(f) + "</span></div>"; });
     return rows ? '<div class="uplink"><div class="lbl">Cabinet uplinks' + (u.main ? " · main cabinet" : "") + "</div>" + rows + "</div>" : "";
   }
-  function cabinetHtml(){
-    var list = st.data.cabinet || [], mine = list.filter(function(c){ return c.group !== "config" || canConfig(); });
+  function cabinetHtml(p){
+    var list = cabOf(p), mine = list.filter(function(c){ return c.group !== "config" || canConfig(); }), multi = cabCount() > 1;
     var works = list.filter(function(c){ return c.group !== "config"; }), nd = works.filter(function(c){ return c.done; }).length;
-    var h = '<div class="cabhead"><b>Cabinet checklist</b><span>' + nd + " of " + works.length + " done" + (list.some(function(c){ return c.asana; }) ? " · same steps as Asana" : "") + "</span></div>" +
+    var h = '<div class="cabhead"><b>' + (multi ? "This cabinet&rsquo;s checklist" : "Cabinet checklist") + '</b><span>' + nd + " of " + works.length + " done" + (!multi && list.some(function(c){ return c.asana; }) ? " · same steps as Asana" : "") + "</span></div>" +
       '<div class="cabbar"><i style="width:' + (works.length ? Math.round(nd / works.length * 100) : 0) + '%"></i></div>';
+    if (multi){
+      // the other cabinets: tick each one's hardware on its own checklist
+      var racks = pts().filter(function(x){ return x.cat === "rack" && st.data.cabinets[x.point_id]; });
+      h += '<p class="cabnote">Only the hardware in this cabinet. Asana is ticked when every cabinet is done.</p><div class="cabchips">' + racks.map(function(r){
+        var w = (st.data.cabinets[r.point_id] || []).filter(function(c){ return c.group !== "config"; }), dn = w.filter(function(c){ return c.done; }).length;
+        var mr = racksMeta().find(function(x){ return x.point === r.point_id; }), nm = mr ? mr.name : r.label;
+        return '<button type="button" class="cabchip' + (r.point_id === p.point_id ? " on" : "") + (w.length && dn === w.length ? " ok" : "") + '" data-gocab="' + esc(r.point_id) + '"><b>' + esc(nm) + '</b><small>' + esc(floorName(r.floor_id)) + " · " + dn + "/" + w.length + "</small></button>";
+      }).join("") + "</div>";
+    }
     var num = 0;
     CAB_GROUPS.forEach(function(g){
       var rows = mine.filter(function(c){ return c.group === g[0]; }); if (!rows.length) return;
@@ -1380,18 +1403,23 @@
         var btn = !can ? "" : busy ? '<button type="button" class="go undo" disabled>Saving…</button>'
           : c.done ? '<button type="button" class="go undo" data-cab="' + esc(c.key) + '" data-v="0">Undo</button>'
           : '<button type="button" class="go' + (cfg ? " cfg" : "") + '" data-cab="' + esc(c.key) + '" data-v="1">Done</button>';
-        return '<div class="steprow' + (c.done ? " on" : "") + (cfg ? " cfg" : "") + '"><span class="n">' + (c.done ? CHECK.replace('stroke-width="3.2"', 'stroke-width="3.6" width="14" height="14"') : num) + '</span><span class="t"><b>' + esc(c.name) + "</b><small>" + sub + "</small></span>" + btn + "</div>";
+        return '<div class="steprow' + (c.done ? " on" : "") + (cfg ? " cfg" : "") + '"><span class="n">' + (c.done ? CHECK.replace('stroke-width="3.2"', 'stroke-width="3.6" width="14" height="14"') : num) + '</span><span class="t"><b>' + esc(c.name) + (c.qty > 1 ? ' <span class="qty">×' + c.qty + "</span>" : "") + "</b><small>" + sub + "</small></span>" + btn + "</div>";
       }).join("") + "</div>";
     });
     return h;
   }
-  function bindCabinet(){
+  function bindCabinet(p){
+    $("shBody").querySelectorAll("[data-gocab]").forEach(function(b){ b.onclick = function(){
+      var r = pts().find(function(x){ return x.point_id === b.dataset.gocab; }); if (!r || r.point_id === st.sel) return;
+      if (r.floor_id !== st.floor){ st.floor = r.floor_id; view.fitNext = true; renderFloors(); }
+      openPoint(r.point_id); $("sheet").scrollTop = 0;
+    }; });
     $("shBody").querySelectorAll("[data-cab]").forEach(function(b){ b.onclick = function(){
-      var key = b.dataset.cab, v = b.dataset.v === "1", c = (st.data.cabinet || []).find(function(x){ return x.key === key; });
+      var key = b.dataset.cab, v = b.dataset.v === "1", c = cabOf(p).find(function(x){ return x.key === key; });
       needName(function(){
         cabBusy = key; renderSheet();
-        req("POST", "/cabinet", JSON.stringify({ key:key, done:v }), "application/json").then(function(r){
-          cabBusy = null; st.data.cabinet = r.cabinet; renderSheet(); toast((c ? c.name : "Step") + (v ? " — done" : " — reopened")); load(true);
+        req("POST", "/cabinet", JSON.stringify({ key:key, done:v, cab:p.point_id }), "application/json").then(function(r){
+          cabBusy = null; if (r.cabinets) st.data.cabinets = r.cabinets; st.data.cabinet = r.cabinet; renderSheet(); toast((c ? c.name : "Step") + (v ? " — done" : " — reopened")); load(true);
         }).catch(function(e){ cabBusy = null; renderSheet(); toast(e.status ? e.message : "No signal. Try again when you have signal."); });
       });
     }; });
