@@ -6520,6 +6520,9 @@
 
   /* ---------- Site app: publish the project for the installation team and the customer ---------- */
   var SITE_PAGE = "https://thegamer998-ctrl.github.io/lv-planner/site.html";
+  var PLANNER_LIVE = "https://thegamer998-ctrl.github.io/lv-planner/index.html";
+  var PLANNER_VER = ((document.querySelector(".ver") || {}).textContent || "").trim();
+  function verNum(v){ var m = /v?(\d{4})-(\d{2})-(\d{2})\.(\d+)/.exec(v || ""); return m ? +(m[1] + m[2] + m[3]) * 1000 + +m[4] : 0; }
   var siteUi = { status:null, show:true, busy:false, data:null };
   var SITE_KIND = { missing:"Extra point found on site", extra:"Point not on site", other:"Site issue" };
   var SITE_SUG = { wifi:["wifi","Access point"], cctv:["cctv","Camera"], network:["network","Data point"], ipphone:["ipphone","IP phone"], intercom:["intercom","Intercom"], tv:["tv","TV point"], other:[null,"Other"] };
@@ -6879,6 +6882,15 @@
     document.getElementById("stSetBox").open = !r.url;
     if (!r.url){ body.innerHTML = '<p class="st-msg">Set up the Express Tech server first (below). The setup guide is in the app folder: <b>server/README.md</b>.</p>'; return; }
     var staff = siteUi.staff;
+    // an older planner (a copy opened from the folder, or a tab left open since before an update) can't send what the
+    // site app needs (cable destinations, each cabinet's hardware): say so before Update site / Start
+    if (siteUi.latest === undefined){ siteUi.latest = null;
+      fetch(PLANNER_LIVE.replace(/index\.html$/, "version.json") + "?t=" + Date.now(), { cache:"no-store" }).then(function(x){ return x.json(); })
+        .then(function(j){ siteUi.latest = j && j.planner || ""; if (siteUi.latest && verNum(siteUi.latest) > verNum(PLANNER_VER)) renderSiteDialog(note); }).catch(function(){}); }
+    if (siteUi.latest && verNum(siteUi.latest) > verNum(PLANNER_VER))
+      h += '<div class="st-step" style="border-color:#D21E1C;background:rgba(210,30,28,.08)"><b>This planner is out of date (' + escapeHtml(PLANNER_VER) + ')</b><small>The latest is ' + escapeHtml(siteUi.latest) +
+        '. Open the latest planner and press Update site there, so the site app gets everything (cable destinations, each cabinet&rsquo;s hardware).</small>' +
+        '<div class="qt-btns" style="margin-top:8px"><button type="button" class="tbtn primary" onclick="window.open(\'' + PLANNER_LIVE + '\', \'_blank\')">Open the latest planner</button></div></div>';
     if (!project.site){
       // ---- not started yet. A villa already started from an older copy of this file (saved before Start) is found by
       // its name, so it is reconnected instead of started twice.
