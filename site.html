@@ -337,6 +337,34 @@
   .destpick .ft s{ color:var(--muted); } .destpick .ft b{ color:var(--accent); } .destpick p{ margin:0 0 4px; font-size:12.5px; color:var(--muted); }
   .destpick .lrow{ display:flex; gap:8px; margin-top:8px; } .destpick .lrow button{ flex:1; height:44px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:14px; }
   .destpick .lrow button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .maccard{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid var(--line); margin:-4px 0 12px; }
+  .maccard .mt{ flex:1; min-width:0; } .maccard small{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .maccard b{ display:block; font:800 17px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.03em; }
+  .maccard b.none{ font:600 14px/1.3 inherit; font-family:inherit; color:var(--muted); letter-spacing:0; }
+  .maccard em{ display:block; font-style:normal; font-size:12px; color:var(--muted); margin-top:2px; }
+  .maccard .lbtns{ display:flex; gap:6px; flex:0 0 auto; }
+  .maccard button, .macedit .mrow button{ display:flex; align-items:center; justify-content:center; gap:5px; height:38px; padding:0 11px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:13px; }
+  .maccard button.pri, .macedit button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .maccard svg, .macedit svg{ width:16px; height:16px; }
+  .macedit{ padding:10px 12px; border-radius:12px; border:1.5px solid var(--accent); margin:-4px 0 12px; }
+  .macedit small{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .macedit input{ width:100%; box-sizing:border-box; height:46px; padding:0 12px; border-radius:10px; border:1px solid var(--line-2); background:var(--bg); color:var(--ink); font:800 19px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.04em; text-transform:uppercase; }
+  .macedit .mrow{ display:flex; gap:8px; margin-top:8px; } .macedit .mrow button{ flex:1; height:44px; font-size:14px; }
+  .macedit p{ margin:8px 0 0; font-size:12.5px; color:var(--muted); } .macedit p.err{ color:var(--accent); font-weight:600; }
+  .scanov{ position:fixed; inset:0; z-index:200; background:#000; display:flex; flex-direction:column; }
+  .scanov video{ flex:1; width:100%; height:100%; object-fit:cover; }
+  .scanov .frame{ position:absolute; left:8%; right:8%; top:38%; height:20%; border:3px solid #fff; border-radius:14px; box-shadow:0 0 0 9999px rgba(0,0,0,.45); }
+  .scanov .frame::after{ content:""; position:absolute; left:6px; right:6px; top:50%; height:2px; background:#D21E1C; animation:scanl 1.6s ease-in-out infinite; }
+  @keyframes scanl{ 0%,100%{ transform:translateY(-28px); } 50%{ transform:translateY(28px); } }
+  .scanov .stx{ position:absolute; left:0; right:0; top:calc(38% - 64px); text-align:center; color:#fff; font-weight:700; font-size:16px; padding:0 20px; }
+  .scanov .stx small{ display:block; font-weight:500; font-size:13px; opacity:.85; margin-top:4px; }
+  .scanov .sbt{ position:absolute; left:0; right:0; bottom:calc(28px + env(safe-area-inset-bottom)); display:flex; justify-content:center; gap:10px; }
+  .scanov .sbt button{ height:48px; padding:0 22px; border-radius:24px; border:0; background:#fff; color:#111; font-weight:700; font-size:15px; }
+  .scanov .smsg{ position:absolute; left:16px; right:16px; top:calc(58% + 18px); text-align:center; color:#fff; font-size:13.5px; font-weight:600; }
+  .macrep .mrow2{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-top:1px solid var(--line); } .macrep .mrow2:first-child{ border-top:0; }
+  .macrep .mrow2 .t{ flex:1; min-width:0; } .macrep .mrow2 .t b{ display:block; font-size:14px; } .macrep .mrow2 .t small{ display:block; font-size:12px; color:var(--muted); }
+  .macrep .mrow2 code{ font:700 13.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; } .macrep .mrow2 code.none{ color:var(--muted); font-weight:500; font-family:inherit; }
+  .macsum{ display:flex; gap:8px; margin:0 0 12px; } .macsum button{ flex:1; height:42px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:13.5px; }
   .cabnote{ margin:-2px 0 8px; font-size:12.5px; color:var(--muted); }
   .cabchips{ display:flex; gap:6px; overflow-x:auto; margin:0 0 10px; padding-bottom:2px; }
   .cabchip{ flex:0 0 auto; text-align:left; padding:7px 11px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); }
@@ -515,7 +543,7 @@
     if (item.kind === "bulk") return req("POST", "/bulk", JSON.stringify({ step:item.step, done:item.done, ids:item.ids }), "application/json");
     if (item.kind === "status") return req("POST", base + "/status", JSON.stringify({ step:item.step || "installed", done: item.done != null ? item.done : item.installed }), "application/json");
     if (item.kind === "note") return req("POST", base + "/note", JSON.stringify({ text:item.text }), "application/json");
-    if (item.kind === "photo") return req("POST", base + "/photo?w=" + item.w + "&h=" + item.h, item.blob, "image/jpeg");
+    if (item.kind === "photo") return req("POST", base + "/photo?w=" + item.w + "&h=" + item.h + (item.caption ? "&caption=" + encodeURIComponent(item.caption) : ""), item.blob, "image/jpeg");
     if (item.kind === "report") return req("POST", "/issue", JSON.stringify(item.body), "application/json").then(function(r){ issueMap[item.local] = r.id; try { localStorage.setItem("et_issue_map", JSON.stringify(issueMap)); } catch(e){} return r; });
     return Promise.resolve();
   }
@@ -734,9 +762,11 @@
     renderFloors(); renderPlanMarks(); renderList(); renderProgress(); renderReports(); renderActivity();
     // refresh the open panel; a label being typed is kept (labels are optional: ticking a step never waits for one)
     if (st.sel){
+      var mi = $("macIn"), mFocus = mi && document.activeElement === mi;
       var li = labelEdit && $("lbIn"), typed = li ? li.value : null, focused = li && document.activeElement === li, caret = li ? li.selectionStart : 0;
       renderSheet();
       var ni = typed != null && $("lbIn"); if (ni){ ni.value = typed; if (focused){ ni.focus(); try { ni.setSelectionRange(caret, caret); } catch(e){} } }
+      if (mFocus && $("macIn")){ var m2 = $("macIn"); m2.focus(); try { m2.setSelectionRange(m2.value.length, m2.value.length); } catch(e){} }
     }
   }
 
@@ -1090,13 +1120,15 @@
     $("cfgBar").classList.toggle("on", cfgMode && Object.keys(st.cfgSel).length > 0);
     var seg = canConfig() ? '<div class="modeseg"><button type="button" data-mode="install"' + (!cfgMode ? ' class="on"' : "") + ">Installation</button><button type=\"button\" data-mode=\"config\"" + (cfgMode ? ' class="on"' : "") + ">Configuration</button></div>" : "";
     if (cfgMode) return renderConfigList(q, seg);
-    $("listChips").innerHTML = seg + [["todo","To do", c.n - c.d], ["done","Done", c.d], ["all","All", c.n]].map(function(x){ return '<button type="button" class="chip' + (st.listFilter === x[0] ? " on" : "") + '" data-lf="' + x[0] + '">' + x[1] + '<span class="n">' + x[2] + "</span></button>"; }).join("");
+    $("listChips").innerHTML = seg + [["todo","To do", c.n - c.d], ["done","Done", c.d], ["all","All", c.n]].map(function(x){ return '<button type="button" class="chip' + (st.listFilter === x[0] ? " on" : "") + '" data-lf="' + x[0] + '">' + x[1] + '<span class="n">' + x[2] + "</span></button>"; }).join("") +
+      (role() !== "customer" && all.some(hasMac) ? '<button type="button" class="chip" id="macList">MAC list<span class="n">' + all.filter(function(p){ return hasMac(p) && p.mac; }).length + "/" + all.filter(hasMac).length + "</span></button>" : "");
+    if ($("macList")) $("macList").onclick = openMacs;
     bindListTop();
     var html = "";
     d.floors.forEach(function(f){
       var list = all.filter(function(p){ return p.floor_id === f.id; }).filter(function(p){
         var done = isDone(p); if (st.listFilter === "todo" && done) return false; if (st.listFilter === "done" && !done) return false;
-        return !q || (p.label + " " + p.model + " " + f.name + " " + typeName(p) + " " + CATS[catOf(p)].name).toLowerCase().indexOf(q) >= 0; });
+        return !q || (p.label + " " + p.model + " " + f.name + " " + typeName(p) + " " + CATS[catOf(p)].name + " " + (p.mac || "")).toLowerCase().indexOf(q) >= 0; });
       if (!list.length) return;
       var fc = counts(all.filter(function(p){ return p.floor_id === f.id; }));
       html += '<div class="grp"><span>' + esc(f.name) + "</span><span>" + fc.d + " / " + fc.n + '</span></div><div class="card">' + list.map(function(p){
@@ -1265,7 +1297,7 @@
     "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
     "project-started":"started the project", "project-done":"marked the project complete", "project-reopened":"reopened the project",
-    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cable-dest":"changed the cable destination of", "cabinet-done":"ticked the cabinet step", "cabinet-undone":"reopened the cabinet step" };
+    "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cable-dest":"changed the cable destination of", mac:"saved the MAC address of", "cabinet-done":"ticked the cabinet step", "cabinet-undone":"reopened the cabinet step" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });
     var rows = (d.activity || []).map(function(a){ return { at:a.at, src:"site", a:a }; });
@@ -1286,7 +1318,7 @@
       var who = a.by_name || "Someone", target = p ? p.label : isIssue || isStage ? "" : a.detail;
       var attr = p ? ' data-open="' + esc(p.point_id) + '"' : isIssue ? ' data-issue="' + esc(a.point_id.slice(6)) + '"' : isStage ? ' data-stage="' + esc(a.point_id.slice(6)) + '"' : "";
       return '<div class="act"' + attr + '><span class="av">' + esc(who.slice(0, 1).toUpperCase()) + '</span><div class="tx"><b>' + esc(who) + "</b>" + (a.by_role && role() !== "customer" ? ' <span class="who">' + esc(a.by_role) + "</span>" : "") + " " + (ACT[a.action] || a.action) + (target ? " <b>" + esc(target) + "</b>" : "") +
-        ((a.action === "note" || a.action === "label" || a.action === "cable-dest" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
+        ((a.action === "note" || a.action === "label" || a.action === "cable-dest" || a.action === "mac" || isIssue || isStage) && a.detail ? "<small>" + esc(a.detail) + "</small>" : "") + "<small>" + when(a.at) + (p ? " · " + esc(floorName(p.floor_id)) : "") + "</small></div>" +
         (ph ? '<img loading="lazy" src="' + imgUrl("photo", ph.id) + '" alt="">' : "") + "</div>";
     }).join("");
     $("actBody").innerHTML = html ? '<div class="sec">Latest updates</div><div class="card">' + html + '</div><div style="height:16px"></div>' : '<div class="empty">No updates yet. Ticks, photos, notes and Asana changes appear here.</div>';
@@ -1297,10 +1329,10 @@
 
   // ---- sheet (point / report / stage)
   function openSheet(){ scrimDown = false; $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
-  function openPoint(id){ st.sel = id; labelEdit = null; destEdit = null; renderSheet(); openSheet(); }
+  function openPoint(id){ st.sel = id; labelEdit = null; destEdit = null; macEdit = null; renderSheet(); openSheet(); }
   function openIssue(id){ st.sel = "issue:" + id; renderSheet(); openSheet(); }
   function openStage(gid){ st.sel = "stage:" + gid; renderSheet(); openSheet(); }
-  function closeSheet(){ st.sel = null; draft = null; labelEdit = null; destEdit = null; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
+  function closeSheet(){ st.sel = null; draft = null; labelEdit = null; destEdit = null; macEdit = null; stopScan(); $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
   // the backdrop closes the sheet only for a tap that started on it: Android Chrome sends the tap that opened
   // the sheet a second time as a "click" (now landing on the fresh backdrop), which used to close it at once
   var scrimDown = false;
@@ -1311,6 +1343,7 @@
     if (st.sel === "draft"){ if (draft) renderDraft(); return; }
     if (st.sel.indexOf("issue:") === 0) return renderIssue(st.sel.slice(6));
     if (st.sel.indexOf("stage:") === 0) return renderStage(st.sel.slice(6));
+    if (st.sel === "macs") return renderMacs();
     renderPoint();
   }
   function photosHtml(list, pendList, key){
@@ -1330,7 +1363,7 @@
     var bsvg = iconSvg(p); $("shBadge").className = "badge" + (bsvg ? " icon" : "");
     if (bsvg) $("shBadge").innerHTML = bsvg; else { $("shBadge").style.background = p.color; $("shBadge").textContent = CATS[catOf(p)].tag; }
     $("shTitle").textContent = typeName(p); $("shSub").textContent = (p.model ? p.model + " · " : "") + floorName(p.floor_id);
-    var h = labelHtml(p) + destHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
+    var h = labelHtml(p) + destHtml(p) + macHtml(p), pendStatus = pend.some(function(i){ return i.kind === "status"; });
     if (catOf(p) === "rack") h += uplinkHtml(p);
     if (catOf(p) === "rack" && (st.data.cabinets || st.data.cabinet) && cabOf(p).length){
       h += cabinetHtml(p);
@@ -1359,7 +1392,7 @@
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Add a note…"></textarea><button type="button" id="noteAdd">Add</button></div>';
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-step]").forEach(function(b){ b.onclick = function(){ setStep(p, b.dataset.step, b.dataset.v === "1"); }; });
-    bindLabel(p); bindDest(p); bindCabinet(p);
+    bindLabel(p); bindDest(p); bindMac(p); bindCabinet(p);
     if ($("shCam")) $("shCam").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("shGal")) $("shGal").onclick = function(){ needName(function(){ pickPhotos("gal", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h }); }); setTimeout(renderSheet, 50); }); }); };
     if ($("noteAdd")) $("noteAdd").onclick = function(){ var t = $("noteIn").value.trim(); if (!t) return; needName(function(){ enqueue({ kind:"note", pt:p.point_id, text:t }); render(); toast("Note added"); }); };
@@ -1512,6 +1545,134 @@
         }).catch(function(e){ if ($("dsYes")){ $("dsYes").disabled = false; $("dsYes").textContent = "Yes, change it"; } toast(e.status ? e.message : "No signal. Try again when you have signal."); });
       });
     };
+  }
+  // ---- MAC address of each device (access points, cameras, phones, intercoms, viewports): typed, or scanned from the barcode
+  // / QR code on the box with the phone camera. A photo of the label can be kept too. Team only — never the customer.
+  // The site engineer sees them all in the Checklist → MAC list (with Copy all / CSV for UniFi).
+  var MAC_CATS = ["ap","cam","phone","icom","vp"], macEdit = null;   // { pt, val, err }
+  var SCAN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>';
+  function hasMac(p){ return MAC_CATS.indexOf(catOf(p)) >= 0 && role() !== "customer"; }
+  function fmtMac(v){ var h = String(v || "").toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 12); return (h.match(/.{1,2}/g) || []).join(":"); }
+  // a MAC inside whatever the code says (UniFi boxes: barcode = 12 hex digits; QR = several fields)
+  function macFrom(text){
+    var t = String(text || "").toUpperCase(), m = t.match(/(?:[0-9A-F]{2}[:\-.]){5}[0-9A-F]{2}/);
+    if (m) return fmtMac(m[0]);
+    // 12 hex digits on their own — but not a plain 12-digit product barcode (UPC) on the box
+    m = t.match(/(?:^|[^0-9A-F])([0-9A-F]{12})(?![0-9A-F])/); return m && /[A-F]/.test(m[1]) ? fmtMac(m[1]) : "";
+  }
+  function macHtml(p){
+    if (!hasMac(p)) return "";
+    if (macEdit && macEdit.pt === p.point_id && canEdit()){
+      return '<div class="macedit"><small>MAC address · ' + esc(p.label) + '</small><input type="text" id="macIn" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="17" placeholder="AA:BB:CC:DD:EE:FF" value="' + esc(macEdit.val != null ? macEdit.val : p.mac || "") + '">' +
+        (macEdit.err ? '<p class="err">' + esc(macEdit.err) + "</p>" : '<p>Scan the barcode marked MAC on the box or the device, or type it.</p>') +
+        '<div class="mrow"><button type="button" id="macScan">' + SCAN_SVG + 'Scan</button><button type="button" id="macPhoto">' + CAM_SVG + 'Label photo</button></div>' +
+        '<div class="mrow"><button type="button" id="macCancel">Cancel</button><button type="button" class="pri" id="macSave">Save MAC</button></div></div>';
+    }
+    return '<div class="maccard"><div class="mt"><small>MAC address</small>' + (p.mac ? "<b>" + esc(p.mac) + "</b>" : '<b class="none">Not recorded yet</b>') +
+      (p.mac ? "<em>Saved " + whoTxt(p.mac_by, p.mac_at) + "</em>" : "") + '</div><span class="lbtns">' +
+      (canEdit() && !p.mac ? '<button type="button" class="pri" id="macGo">' + SCAN_SVG + "Scan</button>" : "") +
+      (canEdit() ? '<button type="button" id="macEditB">' + (p.mac ? EDIT_SVG + "Edit" : "Type") + "</button>" : "") +
+      (p.mac ? '<button type="button" id="macCopy">' + COPY_SVG + "</button>" : "") + "</span></div>";
+  }
+  function bindMac(p){
+    if ($("macCopy")) $("macCopy").onclick = function(){ copyText(p.mac); toast("MAC copied"); };
+    if ($("macEditB")) $("macEditB").onclick = function(){ macEdit = { pt:p.point_id }; renderSheet(); var i = $("macIn"); if (i) i.focus(); };
+    if ($("macGo")) $("macGo").onclick = function(){ macEdit = { pt:p.point_id }; renderSheet(); startScan(p); };
+    if (!$("macIn")) return;
+    $("macIn").oninput = function(){ var c = this.selectionStart, before = this.value.length; this.value = fmtMac(this.value); macEdit.val = this.value; macEdit.err = null; };
+    $("macIn").onkeydown = function(e){ if (e.key === "Enter") $("macSave").click(); };
+    $("macCancel").onclick = function(){ macEdit = null; stopScan(); renderSheet(); };
+    $("macScan").onclick = function(){ startScan(p); };
+    $("macPhoto").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h, caption:"MAC label" }); }); toast("Label photo saved with the point"); setTimeout(renderSheet, 50); }); }); };
+    $("macSave").onclick = function(){
+      var v = fmtMac($("macIn").value);
+      if (v && v.length !== 17){ macEdit.val = $("macIn").value; macEdit.err = "A MAC address has 12 letters/digits (0-9, A-F)."; renderSheet(); return; }
+      var dup = v && pts().find(function(x){ return x.point_id !== p.point_id && x.mac === v; });
+      if (dup){ macEdit.val = v; macEdit.err = "This MAC is already saved on " + dup.label + "."; renderSheet(); return; }
+      needName(function(){
+        $("macSave").disabled = true; $("macSave").textContent = "Saving…";
+        req("POST", "/pt/" + encodeURIComponent(p.point_id) + "/mac", JSON.stringify({ mac:v }), "application/json").then(function(r){
+          p.mac = r.mac; p.mac_by = r.mac_by; p.mac_at = r.mac_at; macEdit = null; render(); toast(r.mac ? "MAC saved · " + r.mac : "MAC removed"); load(true);
+        }).catch(function(e){ macEdit.val = v; macEdit.err = e.status ? e.message : "No signal. Try again when you have signal."; renderSheet(); });
+      });
+    };
+  }
+  function copyText(t){ try { navigator.clipboard.writeText(t); } catch(e){ var a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); } catch(e2){} a.remove(); } }
+  // camera barcode / QR scanner: the phone's own detector (Android Chrome), else the ZXing library (iPhone)
+  var scan = null;
+  function stopScan(){
+    if (!scan) return; scan.stop = true;
+    try { if (scan.reader) scan.reader.reset(); } catch(e){}
+    if (scan.stream) scan.stream.getTracks().forEach(function(t){ t.stop(); });
+    if (scan.el) scan.el.remove(); scan = null;
+  }
+  function loadZxing(){
+    if (window.ZXing) return Promise.resolve(window.ZXing);
+    return new Promise(function(res, rej){ var s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"; s.onload = function(){ res(window.ZXing); }; s.onerror = function(){ rej(new Error("Scanner couldn't load")); }; document.head.appendChild(s); });
+  }
+  function startScan(p){
+    stopScan();
+    var ov = document.createElement("div"); ov.className = "scanov";
+    ov.innerHTML = '<video playsinline muted autoplay></video><div class="frame"></div><div class="stx">Point at the MAC barcode<small>on the box or the label of ' + esc(p.label) + '</small></div><div class="smsg" id="scanMsg"></div><div class="sbt"><button type="button" id="scanTorch" style="display:none">Light</button><button type="button" id="scanX">Cancel</button></div>';
+    document.body.appendChild(ov);
+    scan = { el:ov, stop:false };
+    var me = scan, video = ov.querySelector("video");
+    $("scanX").onclick = function(){ stopScan(); };
+    function msg(t){ var m = $("scanMsg"); if (m) m.textContent = t; }
+    function found(text){
+      var mac = macFrom(text);
+      if (!mac){ msg("That code isn't a MAC address — try the barcode marked MAC"); return false; }
+      if (navigator.vibrate) navigator.vibrate(80);
+      stopScan(); macEdit = { pt:p.point_id, val:mac, err:null }; renderSheet(); toast("Scanned " + mac + " — check it and press Save");
+      return true;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ msg("This phone can't open the camera here — type the MAC instead"); return; }
+    navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1920 }, height:{ ideal:1080 } }, audio:false }).then(function(stream){
+      if (me.stop){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+      me.stream = stream; video.srcObject = stream; video.play().catch(function(){});
+      var track = stream.getVideoTracks()[0], caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (caps.torch){ var tb = $("scanTorch"), on = false; tb.style.display = ""; tb.onclick = function(){ on = !on; track.applyConstraints({ advanced:[{ torch:on }] }).catch(function(){}); }; }
+      if ("BarcodeDetector" in window){
+        var det = new BarcodeDetector({ formats:["code_128","code_39","qr_code","data_matrix","code_93"] });
+        (function tick(){ if (me.stop) return;
+          det.detect(video).then(function(codes){ if (me.stop) return; for (var i = 0; i < codes.length; i++) if (found(codes[i].rawValue)) return; setTimeout(tick, 120); }).catch(function(){ setTimeout(tick, 300); });
+        })();
+      } else {
+        loadZxing().then(function(Z){
+          if (me.stop) return;
+          var hints = new Map(); hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.CODE_128, Z.BarcodeFormat.CODE_39, Z.BarcodeFormat.QR_CODE, Z.BarcodeFormat.DATA_MATRIX, Z.BarcodeFormat.CODE_93]); hints.set(Z.DecodeHintType.TRY_HARDER, true);
+          var reader = new Z.BrowserMultiFormatReader(hints, 150); me.reader = reader;
+          var cb = function(res){ if (res && !me.stop) found(res.getText()); };
+          if (reader.decodeFromStream) reader.decodeFromStream(stream, video, cb); else reader.decodeFromVideoElementContinuously(video, cb);
+        }).catch(function(e){ msg(e.message + " — type the MAC instead"); });
+      }
+    }).catch(function(){ msg("Camera not allowed — allow the camera for this site, or type the MAC"); });
+  }
+  // the engineer's list: every device with its location, cabinet and MAC — Copy all / CSV for UniFi
+  function openMacs(){ st.sel = "macs"; renderSheet(); openSheet(); }
+  function macRows(){
+    var order = MAC_CATS, list = pts().filter(hasMac);
+    return list.sort(function(a, b){ return order.indexOf(catOf(a)) - order.indexOf(catOf(b)) || st.data.floors.findIndex(function(f){ return f.id === a.floor_id; }) - st.data.floors.findIndex(function(f){ return f.id === b.floor_id; }) || String(a.label).localeCompare(String(b.label), undefined, { numeric:true }); });
+  }
+  function cabName(p){ var r = typeof rackById === "function" && p.rack ? rackById(p.rack) : null; return r ? r.name : ""; }
+  function renderMacs(){
+    var rows = macRows(), done = rows.filter(function(p){ return p.mac; }).length;
+    $("shBadge").className = "badge"; $("shBadge").style.background = "#3d3d3d"; $("shBadge").innerHTML = SCAN_SVG.replace("<svg ", '<svg style="width:20px;height:20px;color:#fff" ');
+    $("shTitle").textContent = "MAC addresses"; $("shSub").textContent = done + " of " + rows.length + " devices recorded";
+    var h = '<div class="macsum"><button type="button" id="macCopyAll">Copy all</button><button type="button" id="macCsv">Download CSV</button></div>';
+    MAC_CATS.forEach(function(k){
+      var l = rows.filter(function(p){ return catOf(p) === k; }); if (!l.length) return;
+      h += '<div class="lbl cab">' + CATS[k].name + "<span>" + l.filter(function(p){ return p.mac; }).length + " / " + l.length + '</span></div><div class="card macrep">' + l.map(function(p){
+        return '<div class="mrow2" data-open="' + esc(p.point_id) + '">' + miniIcon(p) + '<span class="t"><b class="lbl-code">' + esc(p.label) + "</b><small>" + esc([floorName(p.floor_id), p.model, cabName(p) ? "→ " + cabName(p) : "", state(p).configured ? "configured" : state(p).installed ? "installed" : ""].filter(Boolean).join(" · ")) + "</small></span>" +
+          (p.mac ? "<code>" + esc(p.mac) + "</code>" : '<code class="none">—</code>') + "</div>";
+      }).join("") + "</div>";
+    });
+    $("shBody").innerHTML = h + '<div style="height:12px"></div>';
+    $("shBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(){ openPoint(r.dataset.open); }; });
+    function csv(){ return [["Label","Type","Model","Floor","Cabinet","MAC","Saved by"]].concat(rows.map(function(p){ return [p.label, CATS[catOf(p)].name, p.model || "", floorName(p.floor_id), cabName(p), p.mac || "", p.mac_by || ""]; }))
+      .map(function(r){ return r.map(function(v){ v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\r\n"); }
+    $("macCopyAll").onclick = function(){ copyText(rows.filter(function(p){ return p.mac; }).map(function(p){ return p.label + "\t" + p.mac; }).join("\n")); toast("Copied " + done + " MAC addresses"); };
+    $("macCsv").onclick = function(){ var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + csv()], { type:"text/csv" })); a.download = (st.data.project.name || "project") + " - MAC addresses.csv"; document.body.appendChild(a); a.click(); a.remove(); };
   }
   function renderIssue(id){
     var i = issues().find(function(x){ return x.id === id; }); if (!i){ closeSheet(); return; }

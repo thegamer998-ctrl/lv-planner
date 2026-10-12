@@ -44,7 +44,8 @@ const COLUMNS = [
   "points ADD COLUMN site_label TEXT", "points ADD COLUMN site_label_by TEXT", "points ADD COLUMN site_label_at INTEGER",
   "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT",
   "points ADD COLUMN rack TEXT", "points ADD COLUMN site_rack TEXT", "points ADD COLUMN site_rack_by TEXT", "points ADD COLUMN site_rack_at INTEGER",
-  "projects ADD COLUMN pfile_parts INTEGER DEFAULT 0", "projects ADD COLUMN pfile_at INTEGER", "projects ADD COLUMN pfile_by TEXT", "projects ADD COLUMN pfile_bytes INTEGER"
+  "projects ADD COLUMN pfile_parts INTEGER DEFAULT 0", "projects ADD COLUMN pfile_at INTEGER", "projects ADD COLUMN pfile_by TEXT", "projects ADD COLUMN pfile_bytes INTEGER",
+  "points ADD COLUMN mac TEXT", "points ADD COLUMN mac_by TEXT", "points ADD COLUMN mac_at INTEGER"
 ];
 let schemaReady = false;
 async function ensureSchema(db) {
@@ -347,7 +348,7 @@ export default {
         return new Response(toBytes(ph.img), { headers: { ...cors, "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=31536000, immutable" } });
       }
       // point actions: installed tick, photo, note
-      if ((mm = rest.match(/^pt\/([^/]+)\/(status|photo|note|label|rack)$/)) && req.method === "POST") {
+      if ((mm = rest.match(/^pt\/([^/]+)\/(status|photo|note|label|rack|mac)$/)) && req.method === "POST") {
         if (!canEdit) return json({ error: "View only — use the team link to make changes" }, 403);
         const ptid = decodeURIComponent(mm[1]);
         const pt = await db.prepare("SELECT * FROM points WHERE project_id = ? AND point_id = ?").bind(pid, ptid).first();
@@ -380,6 +381,21 @@ export default {
           await log("label", ptid, lbl(pt) + " → " + (val || pt.label));
           await touch(db, pid);
           return json({ ok: true, label: val || pt.label, label_plan: pt.label, label_edited: val ? 1 : 0, site_label_by: val ? by : null, site_label_at: val ? t : null });
+        }
+        if (mm[2] === "mac") {
+          // body: { mac } — the device's MAC address, typed or scanned from the box by the technician / engineer. Never shown to the
+          // customer. Empty clears it. One MAC can't be on two points.
+          const b = await req.json(), t = now(), raw = String(b.mac || "").toUpperCase().replace(/[^0-9A-F]/g, "");
+          if (raw && raw.length !== 12) return json({ error: "A MAC address has 12 letters/digits (0-9, A-F)" }, 400);
+          const mac = raw ? raw.match(/../g).join(":") : null;
+          if (mac) {
+            const dup = await db.prepare("SELECT COALESCE(site_label, label) AS l FROM points WHERE project_id = ? AND mac = ? AND point_id <> ? AND active = 1").bind(pid, mac, ptid).first();
+            if (dup) return json({ error: "This MAC is already saved on " + dup.l }, 409);
+          }
+          await db.prepare("UPDATE points SET mac = ?, mac_by = ?, mac_at = ? WHERE project_id = ? AND point_id = ?").bind(mac, mac ? by : null, mac ? t : null, pid, ptid).run();
+          await log("mac", ptid, mac || "removed");
+          await touch(db, pid);
+          return json({ ok: true, mac, mac_by: mac ? by : null, mac_at: mac ? t : null });
         }
         if (mm[2] === "rack") {
           // body: { rack: "<cabinet id>" } — the cabinet this point's cable goes to, corrected on site (technician, engineer, office).
@@ -767,7 +783,7 @@ async function projectView(db, proj, role) {
   const pid = proj.id;
   const [floors, points, photos, notes, issues, log] = await Promise.all([
     db.prepare("SELECT floor_id, ord, name, w, h, v, pdf_parts, pdf_v, pw, ph FROM floors WHERE project_id = ? ORDER BY ord").bind(pid).all(),
-    db.prepare("SELECT point_id, floor_id, type, cat, COALESCE(site_label, label) AS label, label AS label_plan, CASE WHEN site_label IS NULL THEN 0 ELSE 1 END AS label_edited, site_label_by, site_label_at, COALESCE(site_rack, rack) AS rack, rack AS rack_plan, CASE WHEN site_rack IS NULL THEN 0 ELSE 1 END AS rack_edited, site_rack_by, site_rack_at, model, color, x, y, cabled, cabled_by, cabled_at, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
+    db.prepare("SELECT point_id, floor_id, type, cat, COALESCE(site_label, label) AS label, label AS label_plan, CASE WHEN site_label IS NULL THEN 0 ELSE 1 END AS label_edited, site_label_by, site_label_at, COALESCE(site_rack, rack) AS rack, rack AS rack_plan, CASE WHEN site_rack IS NULL THEN 0 ELSE 1 END AS rack_edited, site_rack_by, site_rack_at, mac, mac_by, mac_at, model, color, x, y, cabled, cabled_by, cabled_at, installed, installed_by, installed_at, aligned, aligned_by, aligned_at, configured, configured_by, configured_at FROM points WHERE project_id = ? AND active = 1 ORDER BY ord").bind(pid).all(),
     db.prepare("SELECT id, point_id, w, h, by_name, at, caption FROM photos WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT id, point_id, text, by_name, at FROM notes WHERE project_id = ? ORDER BY at").bind(pid).all(),
     db.prepare("SELECT * FROM issues WHERE project_id = ? ORDER BY at DESC").bind(pid).all(),
@@ -776,7 +792,10 @@ async function projectView(db, proj, role) {
   const byPt = {}, byIssue = {};
   const hasRack = points.results.some(p => p.cat === "rack");
   const checks = hasRack ? (await db.prepare("SELECT item, done, by_name, at FROM checks WHERE project_id = ?").bind(pid).all()).results : [];
-  for (const p of points.results) byPt[p.point_id] = { ...p, steps: stepsOf(p.cat, proj.cabling), photos: [], notes: [] };
+  for (const p of points.results) {
+    if (role === "customer") { delete p.mac; delete p.mac_by; delete p.mac_at; }   // MAC addresses are for the team only
+    byPt[p.point_id] = { ...p, steps: stepsOf(p.cat, proj.cabling), photos: [], notes: [] };
+  }
   const out = {
     role, project: { id: pid, name: proj.name, updated_at: proj.updated_at, meta: safeJson(proj.meta), asana: !!proj.asana_gid,
       status: proj.status || "active", started_at: proj.started_at || proj.created_at, completed_at: proj.completed_at || null, cabling: proj.cabling ? 1 : 0, paused: proj.paused ? 1 : 0 },
@@ -798,7 +817,7 @@ async function projectView(db, proj, role) {
   for (const n of notes.results) { const t = target(n.point_id); if (t) t.notes.push({ id: n.id, text: n.text, by: n.by_name, at: n.at }); }
   out.points = Object.values(byPt);
   out.issues = Object.values(byIssue);
-  out.activity = log.results.filter(a => role !== "customer" || !/^(report|stage-comment)/.test(a.action));
+  out.activity = log.results.filter(a => role !== "customer" || !/^(report|stage-comment|mac)/.test(a.action));
   if (role === "office" || role === "manager") { out.links = { team_key: proj.team_key, view_key: proj.view_key }; out.project.asana_gid = proj.asana_gid; out.project.team = safeJsonArr(proj.team);
     out.project.file_at = proj.pfile_parts ? proj.pfile_at : 0; out.project.file_by = proj.pfile_by || ""; }
   return out;
