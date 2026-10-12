@@ -2,7 +2,7 @@
 // The app page itself: always fetched fresh when online (you get updates immediately);
 // the saved copy is only used when there's no internet.
 // Libraries and icons: served from the saved copy, refreshed in the background.
-var CACHE = "lvplanner-v22";
+var CACHE = "lvplanner-v23";
 var SHELL = [
   "./", "./index.html", "./site.html", "./manifest.webmanifest", "./site.webmanifest",
   "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png", "./brand-logo.png", "./brand-mark.png", "./site-icon-192.png", "./site-icon-512.png", "./site-touch-icon.png",
@@ -36,6 +36,7 @@ self.addEventListener("fetch", function(e){
   var url = new URL(req.url);
   // only our own pages and the cdnjs libraries are cached; server data (ticks, photos, quotes) always comes live
   if (url.origin !== self.location.origin && url.hostname !== "cdnjs.cloudflare.com") return;
+  if (/version\.json$/.test(url.pathname)) return;   // always asked from the network (update check)
 
   if (isAppPage(req, url)){
     e.respondWith(
