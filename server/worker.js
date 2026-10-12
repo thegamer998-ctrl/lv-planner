@@ -26,6 +26,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT, at INTEGER, by_name TEXT,
      action TEXT, point_id TEXT, detail TEXT)`,
   `CREATE TABLE IF NOT EXISTS floor_pdf (project_id TEXT, floor_id TEXT, part INTEGER, data BLOB, PRIMARY KEY (project_id, floor_id, part))`,
+  `CREATE TABLE IF NOT EXISTS pfile (project_id TEXT, part INTEGER, data BLOB, PRIMARY KEY (project_id, part))`,
   `CREATE TABLE IF NOT EXISTS checks (project_id TEXT, item TEXT, done INTEGER DEFAULT 0, by_name TEXT, at INTEGER, PRIMARY KEY (project_id, item))`,
   `CREATE TABLE IF NOT EXISTS staff (id TEXT PRIMARY KEY, name TEXT, role TEXT, key TEXT UNIQUE, active INTEGER DEFAULT 1, created_at INTEGER)`,
   `CREATE INDEX IF NOT EXISTS photos_pt ON photos (project_id, point_id)`,
@@ -42,7 +43,8 @@ const COLUMNS = [
   "points ADD COLUMN cabled INTEGER DEFAULT 0", "points ADD COLUMN cabled_by TEXT", "points ADD COLUMN cabled_at INTEGER", "projects ADD COLUMN cabling INTEGER DEFAULT 0", "projects ADD COLUMN paused INTEGER DEFAULT 0",
   "points ADD COLUMN site_label TEXT", "points ADD COLUMN site_label_by TEXT", "points ADD COLUMN site_label_at INTEGER",
   "projects ADD COLUMN status TEXT DEFAULT 'active'", "projects ADD COLUMN started_at INTEGER", "projects ADD COLUMN completed_at INTEGER", "projects ADD COLUMN team TEXT",
-  "points ADD COLUMN rack TEXT", "points ADD COLUMN site_rack TEXT", "points ADD COLUMN site_rack_by TEXT", "points ADD COLUMN site_rack_at INTEGER"
+  "points ADD COLUMN rack TEXT", "points ADD COLUMN site_rack TEXT", "points ADD COLUMN site_rack_by TEXT", "points ADD COLUMN site_rack_at INTEGER",
+  "projects ADD COLUMN pfile_parts INTEGER DEFAULT 0", "projects ADD COLUMN pfile_at INTEGER", "projects ADD COLUMN pfile_by TEXT", "projects ADD COLUMN pfile_bytes INTEGER"
 ];
 let schemaReady = false;
 async function ensureSchema(db) {
@@ -570,11 +572,36 @@ export default {
         await touch(db, pid);
         return json({ ok: true, paused: !!pz });
       }
+      // the planner's project file itself (drawings, points, racks…), saved by the planner on every Save of a started project,
+      // so the iPad and the laptop always open the same latest version. Stored in parts (D1 rows are limited to 2 MB). Office key only.
+      if (rest === "file" && req.method === "PUT") {
+        if (role !== "office") return json({ error: "Office only" }, 403);
+        const q = url.searchParams, part = +q.get("part") || 0, parts = Math.max(1, +q.get("parts") || 1), at = +q.get("at") || now();
+        const buf = await req.arrayBuffer();
+        if (buf.byteLength > MAX_IMG) return json({ error: "Part too large" }, 413);
+        if (part === 0) await db.prepare("DELETE FROM pfile WHERE project_id = ?").bind(pid).run();
+        await db.prepare("INSERT OR REPLACE INTO pfile (project_id, part, data) VALUES (?, ?, ?)").bind(pid, part, new Uint8Array(buf)).run();
+        if (part === parts - 1) {
+          const sz = (await db.prepare("SELECT SUM(LENGTH(data)) AS n FROM pfile WHERE project_id = ?").bind(pid).first()).n || 0;
+          await db.prepare("UPDATE projects SET pfile_parts = ?, pfile_at = ?, pfile_by = ?, pfile_bytes = ? WHERE id = ?")
+            .bind(parts, at, String(q.get("by") || "").slice(0, 40), sz, pid).run();
+        }
+        return json({ ok: true, at });
+      }
+      if (rest === "file" && req.method === "GET") {
+        if (role !== "office") return json({ error: "Office only" }, 403);
+        if (!proj.pfile_parts) return json({ error: "No file saved yet" }, 404);
+        const r = await db.prepare("SELECT data FROM pfile WHERE project_id = ? ORDER BY part").bind(pid).all();
+        if (r.results.length !== proj.pfile_parts) return json({ error: "File incomplete" }, 404);
+        const chunks = r.results.map(x => toBytes(x.data)), total = chunks.reduce((a, c) => a + c.byteLength, 0), out = new Uint8Array(total);
+        let o = 0; for (const c of chunks) { out.set(c, o); o += c.byteLength; }
+        return new Response(out, { headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store", "X-File-At": String(proj.pfile_at || 0) } });
+      }
       // delete for good (office key only): the project, its drawings, points, ticks, photos, notes, reports and history.
       // It disappears from every app and the client link stops working. The planner file is not touched.
       if (rest === "" && req.method === "DELETE") {
         if (role !== "office") return json({ error: "Only the office key can delete a project" }, 403);
-        for (const t of ["points", "floors", "floor_pdf", "photos", "notes", "issues", "log", "checks"])
+        for (const t of ["points", "floors", "floor_pdf", "photos", "notes", "issues", "log", "checks", "pfile"])
           await db.prepare(`DELETE FROM ${t} WHERE project_id = ?`).bind(pid).run();
         await db.prepare("DELETE FROM projects WHERE id = ?").bind(pid).run();
         return json({ ok: true, deleted: pid });
@@ -772,12 +799,13 @@ async function projectView(db, proj, role) {
   out.points = Object.values(byPt);
   out.issues = Object.values(byIssue);
   out.activity = log.results.filter(a => role !== "customer" || !/^(report|stage-comment)/.test(a.action));
-  if (role === "office" || role === "manager") { out.links = { team_key: proj.team_key, view_key: proj.view_key }; out.project.asana_gid = proj.asana_gid; out.project.team = safeJsonArr(proj.team); }
+  if (role === "office" || role === "manager") { out.links = { team_key: proj.team_key, view_key: proj.view_key }; out.project.asana_gid = proj.asana_gid; out.project.team = safeJsonArr(proj.team);
+    out.project.file_at = proj.pfile_parts ? proj.pfile_at : 0; out.project.file_by = proj.pfile_by || ""; }
   return out;
 }
 
 async function projectList(db, withKeys, person) {
-  const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team, paused, cabling, meta FROM projects ORDER BY updated_at DESC").all();
+  const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team, paused, cabling, meta, pfile_parts, pfile_at, pfile_by FROM projects ORDER BY updated_at DESC").all();
   const ps = { results: all.results.filter(p => !person || onTeam(p, person)) };
   // done = every installation step ticked (cameras: installed and aligned)
   const cnt = await db.prepare(`SELECT pt.project_id, COUNT(*) AS n, SUM(CASE WHEN pt.installed = 1 AND (pt.cat <> 'cam' OR pt.aligned = 1)
@@ -803,7 +831,8 @@ async function projectList(db, withKeys, person) {
       open_reports: (I[p.id] || {}).n || 0, photos: (H[p.id] || {}).n || 0, asana: !!p.asana_gid, asana_at: p.asana_at, stages_done: tDone, stages_all: tAll, next_stage: next,
       status: c.project && c.project.status ? c.project.status : null,
       state: p.status || "active", started_at: p.started_at || p.created_at, completed_at: p.completed_at || null, team: withKeys ? safeJsonArr(p.team) : undefined,
-      paused: p.paused ? 1 : 0, cabling: p.cabling ? 1 : 0, asana_gid: withKeys ? p.asana_gid : undefined, tasks_all: wAll, tasks_done: wDone };
+      paused: p.paused ? 1 : 0, cabling: p.cabling ? 1 : 0, asana_gid: withKeys ? p.asana_gid : undefined, tasks_all: wAll, tasks_done: wDone,
+      file_at: withKeys && p.pfile_parts ? p.pfile_at : undefined, file_by: withKeys && p.pfile_parts ? p.pfile_by : undefined };
   });
 }
 

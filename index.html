@@ -817,7 +817,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-11.2</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-12.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1015,7 +1015,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-11.2</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-12.1</p>
     </section>
   </aside>
 
@@ -1121,7 +1121,9 @@
     <details class="qt-set" id="stSetBox"><summary>Express Tech server</summary>
       <p class="pane-note">The same server as direct Zoho quotes. Saved on this device only.</p>
       <input type="url" class="select-input" id="stUrl" placeholder="Server address (https://…workers.dev)">
-      <input type="password" class="select-input" id="stKey" placeholder="Office key">
+      <div style="display:flex;gap:6px;align-items:center"><input type="password" class="select-input" id="stKey" placeholder="Office key" style="flex:1" autocomplete="off">
+      <button type="button" class="tbtn" id="stKeyShow" onclick="var k=document.getElementById('stKey');k.type=k.type==='password'?'text':'password';this.textContent=k.type==='password'?'Show':'Hide';">Show</button></div>
+      <p class="pane-note">Set once on each device (laptop, iPad): the address and the same office key. Then every Save of a started project keeps the live site and your other devices up to date.</p>
       <button type="button" class="tbtn" id="stSave">Save</button>
     </details>
   </div>
@@ -2516,12 +2518,14 @@
   }
   function saveProjectAs(){
     if (!requireCustomerName()) return Promise.resolve(false);
+    siteSaveSync();
     var sig = stateSig();
     return saveOutputFile(projectJsonBlob(), safeName(project.name) + ".json", "application/json", true).then(function(ok){ if (ok) markSaved(sig); return !!ok; });
   }
   // Overwrite the project file this project was last saved to / loaded from - no dialog.
   function saveProjectReplace(){
     var fh = fsState.projectFile; if (!fh) return Promise.resolve(false);
+    siteSaveSync();
     var blob = projectJsonBlob();
     var perm = fh.queryPermission ? fh.queryPermission({ mode:"readwrite" }) : Promise.resolve("granted");
     return perm.then(function(state){
@@ -6714,7 +6718,7 @@
   }
   function publishSite(opts){
     opts = opts || {};
-    var msg = document.getElementById("stMsg"), btn = document.getElementById("stPub") || document.getElementById("stStart");
+    var msg = document.getElementById("stMsg") || { textContent:"" }, btn = opts.auto ? null : (document.getElementById("stPub") || document.getElementById("stStart"));
     if (siteUi.busy) return; siteUi.busy = true; if (btn) btn.disabled = true;
     if (freezePointIds() && typeof autosaveTick === "function") autosaveTick();   // labels on site never renumber after this
     var sheets = siteSheets(), pts = sitePoints(), dims = {};
@@ -6750,9 +6754,9 @@
       siteUi.busy = false; if (btn) btn.disabled = false;
       if (typeof autosaveTick === "function") autosaveTick();
       updateDirtyDot();
-      showStatus(opts.start ? "Project started — press Save so this file keeps the link to it" : "Site updated");
+      showStatus(opts.start ? "Project started — press Save so this file keeps the link to it" : opts.auto ? "Saved · live site updated" : "Site updated");
       return (opts.asana ? linkAsana(opts.asana).catch(function(){}) : Promise.resolve()).then(function(){ return loadSite(true, opts.start); });
-    }).catch(function(e){ siteUi.busy = false; if (btn) btn.disabled = false; msg.textContent = "Couldn't publish: " + e.message; });
+    }).catch(function(e){ siteUi.busy = false; if (btn) btn.disabled = false; msg.textContent = "Couldn't publish: " + e.message; if (opts.auto) showStatus("Saved — but the live site couldn't be updated: " + e.message); });
   }
   function loadSite(afterPublish, started){
     if (!project.site || !project.site.id || !zRelay().url) return Promise.resolve();
@@ -6760,6 +6764,7 @@
       siteUi.data = d; siteUi.status = {};
       d.points.forEach(function(p){ siteUi.status[p.point_id] = { installed: !!p.installed, aligned: !!p.aligned, configured: !!p.configured, cam: p.cat === "cam", photos: p.photos.length, by: p.installed_by }; });
       var lc = syncSiteLabels(d.points), rc = syncSiteRacks(d.points);
+      if (!afterPublish) checkNewerFile(d);
       if ((lc || rc) && typeof autosaveTick === "function") autosaveTick();
       renderSiteDialog(started ? "Started. Send the client link, and their own link to anyone who doesn't have it yet." : afterPublish ? "Site updated." : "");
       if (typeof renderMarkers === "function") renderMarkers();
@@ -6781,10 +6786,14 @@
         var pct = p.tasks_all ? Math.round(p.tasks_done / p.tasks_all * 100) : p.points ? Math.round(p.installed / p.points * 100) : 0;
         return '<div class="lp-row' + (p.paused ? " off" : "") + '"><b>' + escapeHtml(p.name) + (p.id === mine ? '<span class="lp-chip">open here</span>' : "") + '</b>' +
           '<small>' + (p.tasks_all ? p.tasks_done + ' / ' + p.tasks_all + ' tasks' : p.installed + ' / ' + p.points + ' done') + ' · ' + pct + '% · ' + (p.paused ? "⏸ Disabled" : p.state === "done" ? "Completed" : "In progress") + (p.asana ? " · Asana" : "") + '</small>' +
-          '<div class="lp-btns"><button type="button" class="tbtn" data-lp-open="' + escapeHtml(p.id) + '">Open</button>' +
+          '<div class="lp-btns">' + (p.file_at ? '<button type="button" class="tbtn primary" data-lp-plan="' + escapeHtml(p.id) + '" title="Saved on ' + escapeHtml(p.file_by || "") + ' ' + escapeHtml(new Date(p.file_at).toLocaleString()) + '">Open in planner</button>' : '') +
+          '<button type="button" class="tbtn" data-lp-open="' + escapeHtml(p.id) + '">' + (p.file_at ? 'Site view' : 'Open') + '</button>' +
           '<button type="button" class="tbtn" data-lp-pause="' + escapeHtml(p.id) + '" data-v="' + (p.paused ? "0" : "1") + '">' + (p.paused ? "Enable" : "Disable") + '</button>' +
           '<button type="button" class="tbtn lp-del" data-lp-del="' + escapeHtml(p.id) + '" data-name="' + escapeHtml(p.name) + '">Delete</button></div></div>';
       }).join("");
+      box.querySelectorAll("[data-lp-plan]").forEach(function(b){ b.onclick = function(){
+        guardUnsaved(function(){ fsState.projectFile = null; siteOpenFile(b.dataset.lpPlan, function(){ updateSaveHint(); showStatus("Opened the latest version — Save keeps it in sync on every device"); }); }, "opening this project");
+      }; });
       box.querySelectorAll("[data-lp-open]").forEach(function(b){ b.onclick = function(){ window.open(SITE_PAGE + "#office&s=" + encodeURIComponent(r.url) + "&p=" + b.dataset.lpOpen, "_blank"); }; });
       box.querySelectorAll("[data-lp-pause]").forEach(function(b){ b.onclick = function(){
         var on = b.dataset.v === "1"; b.disabled = true;
@@ -6822,6 +6831,40 @@
     });
     if (changed && typeof renderMarkers === "function") renderMarkers();
     return changed;
+  }
+  // ---- one project on every device: each Save of a started project also stores the project file on the Express Tech
+  // server and updates the live site, so the iPad and the laptop always open the same latest version (Live projects →
+  // Open in planner, or "newer version saved on iPad" when an older copy is opened). Needs the server + office key once per device.
+  function deviceName(){ var u = navigator.userAgent; return IS_IOS ? (/iPhone/.test(u) ? "iPhone" : "iPad") : /Macintosh/.test(u) ? "Mac" : /Windows/.test(u) ? "Windows PC" : "laptop"; }
+  function siteSaveSync(){
+    var r = zRelay(); if (!project.site || !project.site.id || !r.url || !r.key) return;
+    var id = project.site.id, at = Date.now();
+    project.site.fileAt = at; project.site.fileBy = deviceName();
+    var bytes = new TextEncoder().encode(JSON.stringify(projectObject(true)));
+    var parts = Math.max(1, Math.ceil(bytes.length / SITE_PART)), chain = Promise.resolve();
+    for (var i = 0; i < parts; i++) (function(i){ chain = chain.then(function(){
+      return siteFetch("/site/p/" + id + "/file?part=" + i + "&parts=" + parts + "&at=" + at + "&by=" + encodeURIComponent(deviceName()),
+        { method:"PUT", headers:{ "Content-Type":"application/json" }, body:bytes.slice(i * SITE_PART, (i + 1) * SITE_PART) });
+    }); })(i);
+    chain.then(function(){ if (!siteUi.busy) publishSite({ auto:true }); })
+      .catch(function(e){ showStatus("Saved — but couldn't reach the Express Tech server (" + e.message + "). Save again when online."); });
+  }
+  function siteOpenFile(id, then){
+    showStatus("Opening the latest version from the server…");
+    siteFetch("/site/p/" + id + "/file").then(function(parsed){
+      if (!parsed || !parsed.floors){ showStatus("No saved file for this project yet — save it once from the device that has it"); return; }
+      return loadProjectObject(parsed, false).then(function(){ if (then) then(); });
+    }).catch(function(e){ showStatus("Couldn't open it: " + e.message); });
+  }
+  // a copy older than the one on the server (saved on the other device): offer the newer one
+  function checkNewerFile(d){
+    var at = d.project.file_at || 0, mine = (project.site && project.site.fileAt) || 0;
+    if (!at || at <= mine + 1000 || siteUi.offeredFor === project.site.id + ":" + at) return;
+    siteUi.offeredFor = project.site.id + ":" + at;
+    askChoice({ title:"A newer version is on the server", message:"Saved on " + (d.project.file_by || "another device") + ", " + new Date(at).toLocaleString(undefined, { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }) +
+        ". The copy open here is older. Open the newer one? (Press Save afterwards to update this file too.)",
+      buttons:[{ label:"Open the newer version", value:"open", kind:"primary" }, { label:"Keep this copy", value:null }] },
+      function(v){ if (v !== "open") return; var keep = fsState.projectFile; siteOpenFile(project.site.id, function(){ fsState.projectFile = keep; updateSaveHint(); AUTOSAVE.savedSig = null; updateDirtyDot(); showStatus("Newer version opened — press Save to update this file too"); }); });
   }
   // the cabinet a cable goes to, corrected on site ("Are you sure you want to change the cable destination?"): the drawing
   // follows (the point now connects to that cabinet in Racks, the port plan, the quote). m.siteRackAt remembers the last site
