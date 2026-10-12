@@ -337,7 +337,10 @@
   .destpick .ft s{ color:var(--muted); } .destpick .ft b{ color:var(--accent); } .destpick p{ margin:0 0 4px; font-size:12.5px; color:var(--muted); }
   .destpick .lrow{ display:flex; gap:8px; margin-top:8px; } .destpick .lrow button{ flex:1; height:44px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:14px; }
   .destpick .lrow button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
-  .maccard{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; border:1px solid var(--line); margin:-4px 0 12px; }
+  .maccard{ padding:10px 12px; border-radius:12px; border:1px solid var(--line); margin:-4px 0 12px; }
+  .maccard .mtop{ display:flex; align-items:center; gap:10px; }
+  .maccard .mopts{ display:flex; gap:6px; margin-top:10px; } .maccard .mopts button{ flex:1; height:44px; font-size:13.5px; padding:0 6px; }
+  .maccard .chev{ width:38px; padding:0; font-size:15px; }
   .maccard .mt{ flex:1; min-width:0; } .maccard small{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
   .maccard b{ display:block; font:800 17px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.03em; }
   .maccard b.none{ font:600 14px/1.3 inherit; font-family:inherit; color:var(--muted); letter-spacing:0; }
@@ -1330,7 +1333,7 @@
 
   // ---- sheet (point / report / stage)
   function openSheet(){ scrimDown = false; $("sheet").classList.add("on"); $("scrim").classList.add("on"); renderPlanMarks(); }
-  function openPoint(id){ st.sel = id; labelEdit = null; destEdit = null; macEdit = null; renderSheet(); openSheet(); }
+  function openPoint(id){ st.sel = id; labelEdit = null; destEdit = null; macEdit = null; macMenu = null; renderSheet(); openSheet(); }
   function openIssue(id){ st.sel = "issue:" + id; renderSheet(); openSheet(); }
   function openStage(gid){ st.sel = "stage:" + gid; renderSheet(); openSheet(); }
   function closeSheet(){ st.sel = null; draft = null; labelEdit = null; destEdit = null; macEdit = null; stopScan(); $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); if (st.data) renderPlanMarks(); }
@@ -1550,7 +1553,7 @@
   // ---- MAC address of each device (access points, cameras, phones, intercoms, viewports): typed, or scanned from the barcode
   // / QR code on the box with the phone camera. A photo of the label can be kept too. Team only — never the customer.
   // The site engineer sees them all in the Checklist → MAC list (with Copy all / CSV for UniFi).
-  var MAC_CATS = ["ap","cam","phone","icom","vp"], macEdit = null;   // { pt, val, err }
+  var MAC_CATS = ["ap","cam","phone","icom","vp"], macEdit = null, macMenu = null;   // { pt, val, err }
   var SCAN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>';
   function hasMac(p){ return MAC_CATS.indexOf(catOf(p)) >= 0 && role() !== "customer"; }
   function fmtMac(v){ var h = String(v || "").toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 12); return (h.match(/.{1,2}/g) || []).join(":"); }
@@ -1569,20 +1572,24 @@
         '<div class="mrow"><button type="button" id="macScan">' + SCAN_SVG + 'Scan</button><button type="button" id="macPhoto">' + CAM_SVG + 'Label photo</button></div>' +
         '<div class="mrow"><button type="button" id="macCancel">Cancel</button><button type="button" class="pri" id="macSave">Save MAC</button></div></div>';
     }
-    return '<div class="maccard"><div class="mt"><small>MAC address</small>' + (p.mac ? "<b>" + esc(p.mac) + "</b>" : '<b class="none">Not recorded yet</b>') +
+    // all the ways to record it are shown when there is no MAC yet; once saved they fold under the ▾ button
+    var open = canEdit() && (!p.mac || macMenu === p.point_id);
+    return '<div class="maccard' + (open ? " open" : "") + '"><div class="mtop"><div class="mt"><small>MAC address</small>' + (p.mac ? "<b>" + esc(p.mac) + "</b>" : '<b class="none">Not recorded yet</b>') +
       (p.mac ? "<em>Saved " + whoTxt(p.mac_by, p.mac_at) + "</em>" : "") + '</div><span class="lbtns">' +
-      (canEdit() && !p.mac ? '<button type="button" class="pri" id="macGo">' + SCAN_SVG + "Scan</button>" : "") +
-      (canEdit() ? '<button type="button" id="macEditB">' + (p.mac ? EDIT_SVG + "Edit" : "Type") + "</button>" : "") +
-      (p.mac ? '<button type="button" id="macCopy">' + COPY_SVG + "</button>" : "") + "</span></div>";
+      (p.mac ? '<button type="button" id="macCopy" aria-label="Copy MAC">' + COPY_SVG + "</button>" : "") +
+      (p.mac && canEdit() ? '<button type="button" id="macMore" aria-label="More options" class="chev">' + (open ? "▴" : "▾") + "</button>" : "") + "</span></div>" +
+      (open ? '<div class="mopts"><button type="button" class="pri" id="macGo">' + SCAN_SVG + (p.mac ? "Scan again" : "Scan") + '</button><button type="button" id="macEditB">' + EDIT_SVG + (p.mac ? "Edit" : "Type") + '</button><button type="button" id="macPhotoB">' + CAM_SVG + "Photo</button></div>" : "") + "</div>";
   }
   function bindMac(p){
     if ($("macCopy")) $("macCopy").onclick = function(){ copyText(p.mac); toast("MAC copied"); };
+    if ($("macMore")) $("macMore").onclick = function(){ macMenu = macMenu === p.point_id ? null : p.point_id; renderSheet(); };
+    if ($("macPhotoB")) $("macPhotoB").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h, caption:"MAC label" }); }); toast("Label photo saved with the point"); setTimeout(renderSheet, 50); }); }); };
     if ($("macEditB")) $("macEditB").onclick = function(){ macEdit = { pt:p.point_id }; renderSheet(); var i = $("macIn"); if (i) i.focus(); };
     if ($("macGo")) $("macGo").onclick = function(){ macEdit = { pt:p.point_id }; renderSheet(); startScan(p); };
     if (!$("macIn")) return;
     $("macIn").oninput = function(){ var c = this.selectionStart, before = this.value.length; this.value = fmtMac(this.value); macEdit.val = this.value; macEdit.err = null; };
     $("macIn").onkeydown = function(e){ if (e.key === "Enter") $("macSave").click(); };
-    $("macCancel").onclick = function(){ macEdit = null; stopScan(); renderSheet(); };
+    $("macCancel").onclick = function(){ macEdit = null; macMenu = null; stopScan(); renderSheet(); };
     $("macScan").onclick = function(){ startScan(p); };
     $("macPhoto").onclick = function(){ needName(function(){ pickPhotos("cam", function(list){ list.forEach(function(r){ enqueue({ kind:"photo", pt:p.point_id, blob:r.blob, w:r.w, h:r.h, caption:"MAC label" }); }); toast("Label photo saved with the point"); setTimeout(renderSheet, 50); }); }); };
     $("macSave").onclick = function(){
@@ -1593,7 +1600,7 @@
       needName(function(){
         $("macSave").disabled = true; $("macSave").textContent = "Saving…";
         req("POST", "/pt/" + encodeURIComponent(p.point_id) + "/mac", JSON.stringify({ mac:v }), "application/json").then(function(r){
-          p.mac = r.mac; p.mac_by = r.mac_by; p.mac_at = r.mac_at; macEdit = null; render(); toast(r.mac ? "MAC saved · " + r.mac : "MAC removed"); load(true);
+          p.mac = r.mac; p.mac_by = r.mac_by; p.mac_at = r.mac_at; macEdit = null; macMenu = null; render(); toast(r.mac ? "MAC saved · " + r.mac : "MAC removed"); load(true);
         }).catch(function(e){ macEdit.val = v; macEdit.err = e.status ? e.message : "No signal. Try again when you have signal."; renderSheet(); });
       });
     };
