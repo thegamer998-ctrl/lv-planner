@@ -353,17 +353,18 @@
   .macedit p{ margin:8px 0 0; font-size:12.5px; color:var(--muted); } .macedit p.err{ color:var(--accent); font-weight:600; }
   .scanov{ position:fixed; inset:0; z-index:200; background:#000; display:flex; flex-direction:column; }
   .scanov video{ flex:1; width:100%; height:100%; object-fit:cover; }
-  .scanov .frame{ position:absolute; left:8%; right:8%; top:38%; height:20%; border:3px solid #fff; border-radius:14px; box-shadow:0 0 0 9999px rgba(0,0,0,.45); }
-  .scanov .frame::after{ content:""; position:absolute; left:6px; right:6px; top:50%; height:2px; background:#D21E1C; animation:scanl 1.6s ease-in-out infinite; }
-  @keyframes scanl{ 0%,100%{ transform:translateY(-28px); } 50%{ transform:translateY(28px); } }
-  .scanov .stx{ position:absolute; left:0; right:0; top:calc(38% - 64px); text-align:center; color:#fff; font-weight:700; font-size:16px; padding:0 20px; }
+  .scanov .frame{ position:absolute; left:12%; right:12%; top:calc(50% - 34px); height:68px; border:2.5px solid #fff; border-radius:10px; box-shadow:0 0 0 9999px rgba(0,0,0,.55); }
+  .scanov .frame i{ position:absolute; left:-14px; right:-14px; top:50%; height:2px; margin-top:-1px; background:#ff2a26; box-shadow:0 0 8px #ff2a26; }
+  .scanov .stx{ position:absolute; left:0; right:0; top:calc(50% - 110px); text-align:center; color:#fff; font-weight:700; font-size:16px; padding:0 20px; }
   .scanov .stx small{ display:block; font-weight:500; font-size:13px; opacity:.85; margin-top:4px; }
   .scanov .sbt{ position:absolute; left:0; right:0; bottom:calc(28px + env(safe-area-inset-bottom)); display:flex; justify-content:center; gap:10px; }
   .scanov .sbt button{ height:48px; padding:0 22px; border-radius:24px; border:0; background:#fff; color:#111; font-weight:700; font-size:15px; }
-  .scanov .smsg{ position:absolute; left:16px; right:16px; top:calc(58% + 18px); text-align:center; color:#fff; font-size:13.5px; font-weight:600; }
+  .scanov .smsg{ position:absolute; left:16px; right:16px; top:calc(50% + 50px); text-align:center; color:#fff; font-size:13.5px; font-weight:600; }
   .macrep .mrow2{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-top:1px solid var(--line); } .macrep .mrow2:first-child{ border-top:0; }
   .macrep .mrow2 .t{ flex:1; min-width:0; } .macrep .mrow2 .t b{ display:block; font-size:14px; } .macrep .mrow2 .t small{ display:block; font-size:12px; color:var(--muted); }
   .macrep .mrow2 code{ font:700 13.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; } .macrep .mrow2 code.none{ color:var(--muted); font-weight:500; font-family:inherit; }
+  .macrep .mcopy{ width:38px; height:38px; flex:0 0 auto; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); display:grid; place-items:center; padding:0; color:var(--ink); }
+  .macrep .mcopy svg{ width:17px; height:17px; } .macrep .mcopy.ok{ background:#16a34a; border-color:#16a34a; color:#fff; }
   .macsum{ display:flex; gap:8px; margin:0 0 12px; } .macsum button{ flex:1; height:42px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel); font-weight:700; font-size:13.5px; }
   .cabnote{ margin:-2px 0 8px; font-size:12.5px; color:var(--muted); }
   .cabchips{ display:flex; gap:6px; overflow-x:auto; margin:0 0 10px; padding-bottom:2px; }
@@ -1613,17 +1614,29 @@
   function startScan(p){
     stopScan();
     var ov = document.createElement("div"); ov.className = "scanov";
-    ov.innerHTML = '<video playsinline muted autoplay></video><div class="frame"></div><div class="stx">Point at the MAC barcode<small>on the box or the label of ' + esc(p.label) + '</small></div><div class="smsg" id="scanMsg"></div><div class="sbt"><button type="button" id="scanTorch" style="display:none">Light</button><button type="button" id="scanX">Cancel</button></div>';
+    ov.innerHTML = '<video playsinline muted autoplay></video><div class="frame"><i></i></div><div class="stx">Put the red line on the MAC barcode<small>only the code under the line is read · ' + esc(p.label) + '</small></div><div class="smsg" id="scanMsg"></div><div class="sbt"><button type="button" id="scanTorch" style="display:none">Light</button><button type="button" id="scanX">Cancel</button></div>';
     document.body.appendChild(ov);
     scan = { el:ov, stop:false };
-    var me = scan, video = ov.querySelector("video");
+    var me = scan, video = ov.querySelector("video"), frame = ov.querySelector(".frame"), cv = document.createElement("canvas"), cx = cv.getContext("2d", { willReadFrequently:true });
     $("scanX").onclick = function(){ stopScan(); };
     function msg(t){ var m = $("scanMsg"); if (m) m.textContent = t; }
     function found(text){
       var mac = macFrom(text);
-      if (!mac){ msg("That code isn't a MAC address — try the barcode marked MAC"); return false; }
+      if (!mac){ msg("That code isn't a MAC address — move the line to the barcode marked MAC"); return false; }
       if (navigator.vibrate) navigator.vibrate(80);
       stopScan(); macEdit = { pt:p.point_id, val:mac, err:null }; renderSheet(); toast("Scanned " + mac + " — check it and press Save");
+      return true;
+    }
+    // only what is inside the small frame (the strip around the red line) is read, so a barcode next to the MAC one is ignored
+    function grab(){
+      var vw = video.videoWidth, vh = video.videoHeight; if (!vw || !vh) return false;
+      var vr = video.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+      var sc = Math.max(vr.width / vw, vr.height / vh), ox = (vr.width - vw * sc) / 2, oy = (vr.height - vh * sc) / 2;
+      var sx = Math.max(0, (fr.left - vr.left - ox) / sc), sy = Math.max(0, (fr.top - vr.top - oy) / sc), sw = Math.min(vw - sx, fr.width / sc), sh = Math.min(vh - sy, fr.height / sc);
+      if (sw < 10 || sh < 10) return false;
+      cv.width = Math.round(sw); cv.height = Math.round(sh);
+      cx.drawImage(video, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+      if (window.__scanDebug) window.__scanDebug(cv);
       return true;
     }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ msg("This phone can't open the camera here — type the MAC instead"); return; }
@@ -1632,20 +1645,30 @@
       me.stream = stream; video.srcObject = stream; video.play().catch(function(){});
       var track = stream.getVideoTracks()[0], caps = track.getCapabilities ? track.getCapabilities() : {};
       if (caps.torch){ var tb = $("scanTorch"), on = false; tb.style.display = ""; tb.onclick = function(){ on = !on; track.applyConstraints({ advanced:[{ torch:on }] }).catch(function(){}); }; }
+      if (caps.focusMode && caps.focusMode.indexOf("continuous") >= 0) track.applyConstraints({ advanced:[{ focusMode:"continuous" }] }).catch(function(){});
+      var decode;
       if ("BarcodeDetector" in window){
-        var det = new BarcodeDetector({ formats:["code_128","code_39","qr_code","data_matrix","code_93"] });
-        (function tick(){ if (me.stop) return;
-          det.detect(video).then(function(codes){ if (me.stop) return; for (var i = 0; i < codes.length; i++) if (found(codes[i].rawValue)) return; setTimeout(tick, 120); }).catch(function(){ setTimeout(tick, 300); });
-        })();
+        var det = new BarcodeDetector({ formats:["code_128","code_39","code_93","qr_code","data_matrix"] });
+        // several codes in the strip: the one the red line (the middle of the strip) passes through
+        decode = function(){ return det.detect(cv).then(function(codes){
+          var mid = cv.height / 2, hit = codes.filter(function(c){ var b = c.boundingBox; return !b || (b.top <= mid + 2 && b.bottom >= mid - 2); });
+          return hit.length ? hit[0].rawValue : null; }); };
       } else {
-        loadZxing().then(function(Z){
-          if (me.stop) return;
-          var hints = new Map(); hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.CODE_128, Z.BarcodeFormat.CODE_39, Z.BarcodeFormat.QR_CODE, Z.BarcodeFormat.DATA_MATRIX, Z.BarcodeFormat.CODE_93]); hints.set(Z.DecodeHintType.TRY_HARDER, true);
-          var reader = new Z.BrowserMultiFormatReader(hints, 150); me.reader = reader;
-          var cb = function(res){ if (res && !me.stop) found(res.getText()); };
-          if (reader.decodeFromStream) reader.decodeFromStream(stream, video, cb); else reader.decodeFromVideoElementContinuously(video, cb);
-        }).catch(function(e){ msg(e.message + " — type the MAC instead"); });
+        decode = function(){ return loadZxing().then(function(Z){
+          if (!me.zx){ var hints = new Map(); hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.CODE_128, Z.BarcodeFormat.CODE_39, Z.BarcodeFormat.CODE_93, Z.BarcodeFormat.QR_CODE, Z.BarcodeFormat.DATA_MATRIX]); hints.set(Z.DecodeHintType.TRY_HARDER, true);
+            me.zx = new Z.MultiFormatReader(); me.zx.setHints(hints); me.Z = Z; }
+          var r; try { r = me.zx.decode(new me.Z.BinaryBitmap(new me.Z.HybridBinarizer(new me.Z.HTMLCanvasElementLuminanceSource(cv)))); } catch(e){ return null; }
+          // the code must sit on the red line: its points (bar scan row, or the QR corners) have to reach the middle of the strip
+          var ys = (r.getResultPoints() || []).filter(Boolean).map(function(q){ return q.getY(); }), mid = cv.height / 2, tol = cv.height * 0.3;
+          if (ys.length && (Math.min.apply(null, ys) > mid + tol || Math.max.apply(null, ys) < mid - tol)) return null;
+          return r.getText();
+        }); };
       }
+      (function tick(){ if (me.stop) return;
+        if (!grab()){ setTimeout(tick, 150); return; }
+        decode().then(function(text){ if (me.stop) return; if (text && found(text)) return; setTimeout(tick, 110); })
+          .catch(function(e){ if (me.stop) return; if (/load/i.test(e && e.message)){ msg(e.message + " — type the MAC instead"); return; } setTimeout(tick, 300); });
+      })();
     }).catch(function(){ msg("Camera not allowed — allow the camera for this site, or type the MAC"); });
   }
   // the engineer's list: every device with its location, cabinet and MAC — Copy all / CSV for UniFi
@@ -1664,11 +1687,14 @@
       var l = rows.filter(function(p){ return catOf(p) === k; }); if (!l.length) return;
       h += '<div class="lbl cab">' + CATS[k].name + "<span>" + l.filter(function(p){ return p.mac; }).length + " / " + l.length + '</span></div><div class="card macrep">' + l.map(function(p){
         return '<div class="mrow2" data-open="' + esc(p.point_id) + '">' + miniIcon(p) + '<span class="t"><b class="lbl-code">' + esc(p.label) + "</b><small>" + esc([floorName(p.floor_id), p.model, cabName(p) ? "→ " + cabName(p) : "", state(p).configured ? "configured" : state(p).installed ? "installed" : ""].filter(Boolean).join(" · ")) + "</small></span>" +
-          (p.mac ? "<code>" + esc(p.mac) + "</code>" : '<code class="none">—</code>') + "</div>";
+          (p.mac ? "<code>" + esc(p.mac) + '</code><button type="button" class="mcopy" data-mcopy="' + esc(p.mac) + '" data-l="' + esc(p.label) + '" aria-label="Copy MAC">' + COPY_SVG + "</button>" : '<code class="none">—</code>') + "</div>";
       }).join("") + "</div>";
     });
     $("shBody").innerHTML = h + '<div style="height:12px"></div>';
-    $("shBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(){ openPoint(r.dataset.open); }; });
+    $("shBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(e){ if (e.target.closest("[data-mcopy]")) return; openPoint(r.dataset.open); }; });
+    // one tap copies that device's MAC, ready to paste in UniFi
+    $("shBody").querySelectorAll("[data-mcopy]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); copyText(b.dataset.mcopy); toast("Copied " + b.dataset.mcopy + " · " + b.dataset.l);
+      $("shBody").querySelectorAll(".mcopy.ok").forEach(function(x){ x.classList.remove("ok"); x.innerHTML = COPY_SVG; }); b.classList.add("ok"); b.innerHTML = CHECK; }; });
     function csv(){ return [["Label","Type","Model","Floor","Cabinet","MAC","Saved by"]].concat(rows.map(function(p){ return [p.label, CATS[catOf(p)].name, p.model || "", floorName(p.floor_id), cabName(p), p.mac || "", p.mac_by || ""]; }))
       .map(function(r){ return r.map(function(v){ v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(","); }).join("\r\n"); }
     $("macCopyAll").onclick = function(){ copyText(rows.filter(function(p){ return p.mac; }).map(function(p){ return p.label + "\t" + p.mac; }).join("\n")); toast("Copied " + done + " MAC addresses"); };
