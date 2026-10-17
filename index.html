@@ -391,7 +391,7 @@
   .cv-opt b{ font-size:13px; } .cv-opt small{ font-size:11px; color:var(--text-muted); white-space:nowrap; }
   .cv-mini{ position:relative; width:58px; height:82px; border-radius:3px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.18); overflow:hidden; display:block; }
   .cv-mini i{ position:absolute; left:0; right:0; display:block; }
-  .cv-type{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; } .cv-type input{ flex:1; max-width:260px; }
+  .cv-type{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; } .cv-type input{ flex:1; max-width:260px; margin-left:auto; } .cv-type{ max-width:380px; }
   .cv-prev{ margin-top:10px; }
   .st-box{ width:520px; max-height:calc(100vh - 24px); max-height:calc(100dvh - 24px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .site-pin{ position:absolute; width:28px; height:28px; margin:-28px 0 0 -14px; cursor:pointer; z-index:6; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
@@ -827,7 +827,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-17.1</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-17.2</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1025,7 +1025,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-17.1</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-17.2</p>
     </section>
   </aside>
 
@@ -5474,8 +5474,8 @@
   ];
   var REPORT_BY_KEY = {}; REPORTS.forEach(function(r){ REPORT_BY_KEY[r.key] = r; });
   var rptPrefs = { mode:"full", single:"summary", off:{ checklist:true }, paper:"a4", floorsOff:{}, typesOff:{} };
-  try { var rp0 = JSON.parse(localStorage.getItem("lvplanner_reportprefs") || "null"); if (rp0){ rptPrefs.mode = rp0.mode || "full"; rptPrefs.single = rp0.single || "summary"; rptPrefs.off = rp0.off || rptPrefs.off; rptPrefs.paper = rp0.paper || "a4"; rptPrefs.cover = rp0.cover || "A"; } } catch(e){}
-  function saveRptPrefs(){ try { localStorage.setItem("lvplanner_reportprefs", JSON.stringify({ mode:rptPrefs.mode, single:rptPrefs.single, off:rptPrefs.off, paper:rptPrefs.paper, cover:rptPrefs.cover })); } catch(e){} }
+  try { var rp0 = JSON.parse(localStorage.getItem("lvplanner_reportprefs") || "null"); if (rp0){ rptPrefs.mode = rp0.mode || "full"; rptPrefs.single = rp0.single || "summary"; rptPrefs.off = rp0.off || rptPrefs.off; rptPrefs.paper = rp0.paper || "a4"; rptPrefs.cover = rp0.cover || "A"; if (rp0.consultant != null) rptPrefs.consultant = rp0.consultant; } } catch(e){}
+  function saveRptPrefs(){ try { localStorage.setItem("lvplanner_reportprefs", JSON.stringify({ mode:rptPrefs.mode, single:rptPrefs.single, off:rptPrefs.off, paper:rptPrefs.paper, cover:rptPrefs.cover, consultant:rptPrefs.consultant })); } catch(e){} }
 
   // ---------- point IDs: GF-AP01, FF-CAM03, GF-D12 ----------
   var ID_CODES = { wifi:"AP", outdoorwifi:"OAP", cctv:"CAM", cctvoutdoor:"CAM", viewport:"VP", network:"D", ipphone:"T", dtv:"DTV", tv:"TV", uplink:"UP",
@@ -5642,6 +5642,7 @@
   // ---------- the cover: Express Tech branding, the client's name in the middle. Five designs (A–E), chosen in Export PDF ----------
   var COVER_STYLES = [["A","Classic"],["B","Side band"],["C","Red diagonal"],["D","Dark premium"],["E","Blueprint"]];
   function coverStyle(){ var s = (project.cover && project.cover.style) || rptPrefs.cover || "A"; return /^[A-E]$/.test(s) ? s : "A"; }
+  function coverConsultant(){ var c = project.cover && project.cover.consultant; return (c != null ? c : (rptPrefs.consultant != null ? rptPrefs.consultant : "Husain Kazi")).trim(); }
   function coverType(){ return ((project.cover && project.cover.type) || "Villa Project").trim() || "Villa Project"; }
   function coverClient(){
     var n = quoteCustomer() || project.name || "Client";
@@ -5684,7 +5685,8 @@
     var fl = project.floors.map(function(f){ return f.name; }), floorsTxt = fl.join(", ");
     if (floorsTxt.length > 28) floorsTxt = fl.length + " floors · " + fl[0] + " – " + fl[fl.length - 1];
     var rev = project.revisions && project.revisions.length ? "Rev " + project.revisions[project.revisions.length - 1].rev : "";
-    var meta = [["Prepared by", "Express Tech"], ["Date", R.date], ["Floors", floorsTxt]]; if (rev) meta.push(["Revision", rev]);
+    var cons = coverConsultant();
+    var meta = [["Prepared by", "Express Tech"]]; if (cons) meta.push(["Consultant", cons]); meta.push(["Date", R.date], ["Floors", floorsTxt]); if (rev) meta.push(["Revision", rev]);
     var metaRow = function(x0, x1, y, lc, vc, center){
       var cw = (x1 - x0) / meta.length;
       meta.forEach(function(m, i){ var x = center ? x0 + cw*i + cw/2 : x0 + cw*i, al = center ? "center" : "left";
@@ -5772,7 +5774,7 @@
       var ye = nameBlock(ix, cy0 + 130*k, cw - 108*k, 44, {});
       txt("Low-voltage design:  " + coverServices(), ix, ye + 36*k, { size:13, color:[85,85,85] });
       draw([238,238,238]); d.setLineWidth(1*k); d.line(ix, cy0 + ch - 92*k, cx0 + cw - 54*k, cy0 + ch - 92*k);
-      var mm = meta.slice(); meta = [meta[0], meta[2], meta[1]]; metaRow(ix, cx0 + cw - 54*k, cy0 + ch - 64*k, GREY, INK); meta = mm;
+      var mm = meta.slice(); meta = mm.filter(function(m){ return m[0] !== "Revision"; }); metaRow(ix, cx0 + cw - 54*k, cy0 + ch - 64*k, GREY, INK); meta = mm;
       foot(1092*k, GREY); stripe(H - 10*k, 10*k);
     }
     // contents on their own page when the cover starts a longer report
@@ -6176,10 +6178,12 @@
       cards.push('<div class="rpt-cover"><h5>Cover design</h5><div class="cv-row">' + COVER_STYLES.map(function(c){
         return '<button type="button" class="cv-opt' + (cs === c[0] ? " on" : "") + '" data-cv="' + c[0] + '"><span class="cv-mini">' + mini(c[0]) + '</span><b>' + c[0] + '</b><small>' + c[1] + '</small></button>'; }).join("") +
         '</div><label class="cv-type">Project type <input type="text" class="select-input" id="cvType" maxlength="40" value="' + escapeHtml(coverType()) + '" placeholder="Villa Project"></label>' +
+        '<label class="cv-type">Consultant <input type="text" class="select-input" id="cvCons" maxlength="40" value="' + escapeHtml(coverConsultant()) + '" placeholder="Name on the cover (empty = none)"></label>' +
         '<button type="button" class="rpt-eye cv-prev" data-rpv="cover">' + EYE + 'Preview cover</button></div>');
     }
     box.innerHTML = '<div class="rpt-cards">' + cards.join("") + '</div>';
     box.querySelectorAll("[data-cv]").forEach(function(b){ b.onclick = function(){ project.cover = project.cover || {}; project.cover.style = b.dataset.cv; rptPrefs.cover = b.dataset.cv; saveRptPrefs(); if (typeof histSoon === "function") histSoon(); renderReportDialog(); }; });
+    var cvC = box.querySelector("#cvCons"); if (cvC) cvC.onchange = function(){ project.cover = project.cover || {}; project.cover.consultant = cvC.value.trim(); rptPrefs.consultant = cvC.value.trim(); saveRptPrefs(); if (typeof histSoon === "function") histSoon(); };
     var cvT = box.querySelector("#cvType"); if (cvT) cvT.onchange = function(){ project.cover = project.cover || {}; project.cover.type = cvT.value.trim() || "Villa Project"; if (typeof histSoon === "function") histSoon(); };
     box.querySelectorAll("[data-rs]").forEach(function(c){ c.onclick = function(e){ if (e.target.closest("[data-rmore],[data-rpv]")) return; var k = c.getAttribute("data-rs"); if (rptSel[k]) delete rptSel[k]; else rptSel[k] = true; renderReportDialog(); }; });
     box.querySelectorAll("[data-rpv]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); var k = b.getAttribute("data-rpv"); previewReport([k], singleReportName(k), { filter:drawingFilter() }); }; });
