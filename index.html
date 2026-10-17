@@ -1332,6 +1332,9 @@
   };
   var SHAPE_KEYS = Object.keys(SHAPES);
 
+  // letter code inside a shape: smaller in triangles, and sitting at the triangle's visual centre (lower than its box centre)
+  function iconTextSize(t){ var n = String(t.text || "").length, tri = t.shape === "triangle"; return n <= 1 ? (tri ? 11 : 12) : n === 2 ? (tri ? 10 : 12) : n <= 4 ? (tri ? 7.6 : 9.5) : 8; }
+  function iconTextY(t, h, fs){ return (t.shape === "triangle" ? h*0.12 : 0) + fs*0.36; }
   function shapeOutline(shape, w, h){
     if (shape === "circle") return { el:"circle", r:w/2 };
     if (shape === "diamond") return { el:"path", d:"M0,"+(-h/2)+" L"+(w/2)+",0 L0,"+(h/2)+" L"+(-w/2)+",0 Z" };
@@ -1502,8 +1505,8 @@
         parts.push('<path d="M-6,5 L0,11 L6,5" fill="none" stroke="'+typeDef.color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>');
       }
       if (typeDef.text){
-        var fs = typeDef.text.length <= 2 ? 12 : (typeDef.text.length <= 4 ? 9.5 : 8);
-        parts.push('<text x="0" y="'+(fs*0.35)+'" font-family="Arial, sans-serif" font-size="'+fs+'" font-weight="700" fill="'+typeDef.color+'" text-anchor="middle">'+escapeHtml(typeDef.text)+'</text>');
+        var fs = iconTextSize(typeDef), ty = iconTextY(typeDef, h, fs);
+        parts.push('<text x="0" y="'+ty+'" font-family="Arial, sans-serif" font-size="'+fs+'" font-weight="700" fill="'+typeDef.color+'" text-anchor="middle">'+escapeHtml(typeDef.text)+'</text>');
       }
     }
     var vb = 46, half = vb/2;
@@ -1540,10 +1543,13 @@
       ctx.beginPath(); ctx.moveTo(-6,5); ctx.lineTo(0,11); ctx.lineTo(6,5); ctx.stroke();
     }
     if (typeDef.text){
-      var fs = typeDef.text.length <= 2 ? 12 : (typeDef.text.length <= 4 ? 9.5 : 8);
+      // left-aligned on the alphabetic baseline with the width measured here: the PDF drawing context (jsPDF) shifts
+      // centred / "middle" text when the icon is rotated, which pushed "DTV" out of its triangle
+      var fs = iconTextSize(typeDef);
       ctx.fillStyle = typeDef.color; ctx.font = "bold " + fs + "px Arial, sans-serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(typeDef.text, 0, fs*0.05);
+      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      var tw = ctx.measureText(typeDef.text).width;
+      ctx.fillText(typeDef.text, -tw/2, iconTextY(typeDef, h, fs));
     }
     ctx.restore();
   }
@@ -5536,24 +5542,29 @@
     var n = rNewDocPage(R.W, R.H); d = R.doc;
     R.pages.push(n); R.title = title; R.sub = sub;
     d.setFillColor(255,255,255); d.rect(0, 0, R.W, R.H, "F");
-    var M = R.M, top = 40*k;
-    try { d.addImage(BRAND_IMG.mark, "PNG", M, top - 1*k, 31*k, 31*k, undefined, "FAST"); } catch(e){}
-    d.setTextColor(15,23,42); d.setFont("helvetica","bold"); d.setFontSize(16*k); d.text(title, M + 42*k, top + 13*k);
-    d.setFont("helvetica","normal"); d.setFontSize(9.5*k); d.setTextColor(100,116,139); d.text((project.name || "Project") + (sub ? "  ·  " + sub : ""), M + 42*k, top + 27*k);
-    d.setFontSize(9*k); d.text("Express Tech", R.W - M, top + 12*k, { align:"right" }); d.text(R.date, R.W - M, top + 25*k, { align:"right" });
-    d.setDrawColor(210,30,28); d.setLineWidth(1.6*k); d.line(M, top + 38*k, R.W - M, top + 38*k);
-    R.y = top + 62*k;
+    // Express Tech page: brand stripe, red-marked title, the client, the logo on the right, a dark rule
+    var M = R.M;
+    rStripe(0, 7*k);
+    d.setFillColor(210,30,28); d.rect(M, 46*k, 5*k, 21*k, "F");
+    d.setTextColor(43,43,43); d.setFont("helvetica","bold"); d.setFontSize(23*k); d.text(title, M + 14*k, 65*k);
+    d.setFont("helvetica","normal"); d.setFontSize(9.5*k); d.setTextColor(128,128,128);
+    d.text([coverClient(), sub || coverType(), R.date].filter(Boolean).join("  ·  "), M + 14*k, 83*k);
+    try { d.addImage(BRAND_IMG.logo, "PNG", R.W - M - 150*k, 42*k, 150*k, 150*k * 178/600, undefined, "FAST"); } catch(e){}
+    d.setDrawColor(43,43,43); d.setLineWidth(1.4*k); d.line(M, 96*k, R.W - M, 96*k);
+    R.y = 126*k;
   }
-  function rRoom(h){ if (R.y + h > R.H - 58*R.k){ rPage(R.title.replace(/ \(continued\)$/, "") + " (continued)", R.sub); return true; } return false; }
+  function rStripe(y, h){ var d = R.doc, W = R.W; d.setFillColor(210,30,28); d.rect(0, y, W*.64, h, "F"); d.setFillColor(128,128,128); d.rect(W*.64, y, W*.22, h, "F"); d.setFillColor(178,178,179); d.rect(W*.86, y, W*.14 + 1, h, "F"); }
+  function rRoom(h){ if (R.y + h > R.H - 66*R.k){ rPage(R.title.replace(/ \(continued\)$/, "") + " (continued)", R.sub); return true; } return false; }
   function rH(text, sub){
-    var d = R.doc, k = R.k; rRoom(46*k);
-    d.setFont("helvetica","bold"); d.setFontSize(12.5*k); d.setTextColor(15,23,42); d.text(text, R.M, R.y);
-    var tw0 = d.getTextWidth(text);
-    if (sub){ d.setFont("helvetica","normal"); d.setFontSize(9.5*k); d.setTextColor(100,116,139); d.text(sub, R.M + tw0 + 8*k, R.y); }
-    R.y += 14*k;
+    var d = R.doc, k = R.k; rRoom(52*k);
+    d.setFont("helvetica","bold"); d.setFontSize(11.5*k); d.setTextColor(43,43,43); d.text(text.toUpperCase(), R.M, R.y, { charSpace:1.1*k });
+    var tw0 = d.getTextWidth(text.toUpperCase()) + 1.1*k*(text.length - 1);
+    if (sub){ d.setFont("helvetica","normal"); d.setFontSize(9.5*k); d.setTextColor(128,128,128); d.text(sub, R.M + tw0 + 10*k, R.y); }
+    d.setFillColor(210,30,28); d.rect(R.M, R.y + 5*k, 24*k, 2*k, "F");
+    R.y += 24*k;
   }
   function rNote(text){
-    var d = R.doc, k = R.k; d.setFont("helvetica","normal"); d.setFontSize(8.8*k); d.setTextColor(100,116,139);
+    var d = R.doc, k = R.k; d.setFont("helvetica","normal"); d.setFontSize(8.8*k); d.setTextColor(128,128,128);
     var lines = d.splitTextToSize(text, R.W - 2*R.M); rRoom(lines.length * 11*k + 6*k);
     d.text(lines, R.M, R.y + 4*k); R.y += lines.length * 11*k + 10*k;
   }
@@ -5562,10 +5573,10 @@
     rRoom(h + 16*k);
     items.forEach(function(it, i){
       var x = R.M + i*(w + gap), hl = !!it.hl;
-      if (hl){ d.setFillColor(15,23,42); d.roundedRect(x, R.y, w, h, 6*k, 6*k, "F"); }
-      else { d.setDrawColor(226,232,240); d.setLineWidth(1*k); d.roundedRect(x, R.y, w, h, 6*k, 6*k, "S"); }
-      d.setFont("helvetica","normal"); d.setFontSize(8.8*k); d.setTextColor(hl?148:100, hl?163:116, hl?184:139); d.text(it.label, x + 10*k, R.y + 16*k);
-      d.setFont("helvetica","bold"); d.setFontSize((String(it.value).length > 9 ? 13 : 19)*k); d.setTextColor(hl?255:15, hl?255:23, hl?255:42); d.text(String(it.value), x + 10*k, R.y + 39*k);
+      if (hl){ d.setFillColor(210,30,28); d.roundedRect(x, R.y, w, h, 7*k, 7*k, "F"); }
+      else { d.setDrawColor(228,228,228); d.setLineWidth(1*k); d.roundedRect(x, R.y, w, h, 7*k, 7*k, "S"); }
+      d.setFont("helvetica","normal"); d.setFontSize(8.8*k); d.setTextColor(hl?255:110, hl?225:110, hl?225:110); d.text(it.label, x + 10*k, R.y + 16*k);
+      d.setFont("helvetica","bold"); d.setFontSize((String(it.value).length > 9 ? 13 : 19)*k); d.setTextColor(hl?255:43, hl?255:43, hl?255:43); d.text(String(it.value), x + 10*k, R.y + 39*k);
     });
     R.y += h + 18*k;
   }
@@ -5575,15 +5586,18 @@
     var d = R.doc, k = R.k, x0 = R.M, tw = R.W - 2*R.M, rh = 17*k, fs = 9.3*k;
     var xs = [], acc = 0; cols.forEach(function(c){ xs.push(x0 + acc*tw); acc += c.w; });
     function head(){
-      d.setFont("helvetica","bold"); d.setFontSize(7.8*k); d.setTextColor(100,116,139);
+      // dark header band with white capitals (Express Tech tables)
+      d.setFillColor(43,43,43); d.rect(x0, R.y - 11*k, tw, 17*k, "F");
+      d.setFont("helvetica","bold"); d.setFontSize(7.6*k); d.setTextColor(255,255,255);
       cols.forEach(function(c, i){ var cx = c.align === "right" ? xs[i] + c.w*tw - 5*k : xs[i] + 5*k; d.text(String(c.h).toUpperCase(), cx, R.y, { align:c.align === "right" ? "right" : "left" }); });
-      R.y += 5*k; d.setDrawColor(203,213,225); d.setLineWidth(1.1*k); d.line(x0, R.y, x0 + tw, R.y); R.y += 12*k;
+      R.y += 6*k + 14*k;
     }
     rRoom(rh*3 + 20*k); head();
     rows.forEach(function(row, ri){
       var isTot = opts.total && ri === rows.length - 1;
-      if (R.y + rh > R.H - 58*k){ rPage(R.title.replace(/ \(continued\)$/, "") + " (continued)", R.sub); head(); }
-      if (isTot){ d.setDrawColor(148,163,184); d.setLineWidth(1*k); d.line(x0, R.y - 11*k, x0 + tw, R.y - 11*k); }
+      if (R.y + rh > R.H - 66*k){ rPage(R.title.replace(/ \(continued\)$/, "") + " (continued)", R.sub); head(); }
+      if (isTot){ d.setDrawColor(43,43,43); d.setLineWidth(1.2*k); d.line(x0, R.y - 11*k, x0 + tw, R.y - 11*k); }
+      else if (ri % 2 === 1){ d.setFillColor(248,248,248); d.rect(x0, R.y - 11.5*k, tw, rh, "F"); }
       row.forEach(function(cell, i){
         var c = cols[i]; if (!c) return;
         var o = (cell && typeof cell === "object") ? cell : { t: cell == null ? "" : String(cell) };
@@ -5595,12 +5609,12 @@
           d.setTextColor(tc[0],tc[1],tc[2]); d.text(o.tag.t, cx + 3.5*k, R.y - 1*k); return;
         }
         d.setFont("helvetica", (o.bold || isTot) ? "bold" : "normal"); d.setFontSize(fs);
-        if (o.muted) d.setTextColor(148,163,184); else d.setTextColor(31,41,55);
+        if (o.muted) d.setTextColor(160,160,160); else d.setTextColor(43,43,43);
         var t = String(o.t); while (t.length > 3 && d.getTextWidth(t) > maxW) t = t.slice(0, -2);
         if (t !== String(o.t)) t = t.slice(0, -1) + "…";
         d.text(t, cx, R.y, { align: right ? "right" : "left" });
       });
-      if (!isTot){ d.setDrawColor(238,241,245); d.setLineWidth(0.8*k); d.line(x0, R.y + 5.5*k, x0 + tw, R.y + 5.5*k); }
+      if (!isTot){ d.setDrawColor(236,236,236); d.setLineWidth(0.8*k); d.line(x0, R.y + 5.5*k, x0 + tw, R.y + 5.5*k); }
       R.y += rh;
     });
     R.y += 12*k;
@@ -5609,10 +5623,13 @@
     var d = R.doc, k = R.k, total = d.internal.getNumberOfPages();
     R.pages.forEach(function(p){
       d.setPage(p);
-      d.setDrawColor(226,232,240); d.setLineWidth(0.8*k); d.line(R.M, R.H - 38*k, R.W - R.M, R.H - 38*k);
-      d.setFont("helvetica","normal"); d.setFontSize(8.3*k); d.setTextColor(148,163,184);
-      d.text("Express Tech · Villa LV Planner · " + reportName, R.M, R.H - 25*k);
-      d.text("Page " + p + " of " + total, R.W - R.M, R.H - 25*k, { align:"right" });
+      d.setDrawColor(230,230,230); d.setLineWidth(0.8*k); d.line(R.M, R.H - 44*k, R.W - R.M, R.H - 44*k);
+      d.setFontSize(8.5*k); d.setTextColor(128,128,128);
+      d.setFont("helvetica","bold"); d.text("Express Tech", R.M, R.H - 30*k); var ew = d.getTextWidth("Express Tech ");
+      d.setFont("helvetica","normal"); d.text("·  expresskw.com", R.M + ew, R.H - 30*k);
+      d.text(coverClient() + "  ·  " + reportName, R.W / 2, R.H - 30*k, { align:"center" });
+      d.text("Page " + p + " of " + total, R.W - R.M, R.H - 30*k, { align:"right" });
+      rStripe(R.H - 7*k, 7*k);
     });
   }
 
@@ -5777,10 +5794,7 @@
       var mm = meta.slice(); meta = mm.filter(function(m){ return m[0] !== "Revision"; }); metaRow(ix, cx0 + cw - 54*k, cy0 + ch - 64*k, GREY, INK); meta = mm;
       foot(1092*k, GREY); stripe(H - 10*k, 10*k);
     }
-    // contents on their own page when the cover starts a longer report
-    if (ctx.keys && ctx.keys.length > 1){
-      rPage("Contents", ""); R.tocY = R.y + 6*k; R.tocPage = R.doc.internal.getNumberOfPages();
-    }
+    // no separate contents page: the report runs straight on from the cover
   };
 
   SECTION.summary = function(){
@@ -5910,12 +5924,12 @@
       if (t2){ d.setFont("helvetica","normal"); d.setFontSize(8.3*k); d.setTextColor(fill ? 219 : 100, fill ? 234 : 116, fill ? 254 : 139); d.text(fitText(t2, w - 12*k), x + w/2, y + h/2 + 11*k, { align:"center" }); }
     }
     function fitText(t, w){ t = String(t); while (t.length > 3 && d.getTextWidth(t) > w) t = t.slice(0, -2); return t === arguments[0] ? t : t.slice(0, -1) + "…"; }
-    function vline(x, y1, y2, dash){ d.setDrawColor(148,163,184); d.setLineWidth(1.3*k); if (dash && d.setLineDashPattern) d.setLineDashPattern([5*k, 4*k], 0); d.line(x, y1, x, y2); if (dash && d.setLineDashPattern) d.setLineDashPattern([], 0); }
-    function hline(x1, x2, y){ d.setDrawColor(148,163,184); d.setLineWidth(1.3*k); d.line(x1, y, x2, y); }
+    function vline(x, y1, y2, dash){ d.setDrawColor(170,170,170); d.setLineWidth(1.3*k); if (dash && d.setLineDashPattern) d.setLineDashPattern([5*k, 4*k], 0); d.line(x, y1, x, y2); if (dash && d.setLineDashPattern) d.setLineDashPattern([], 0); }
+    function hline(x1, x2, y){ d.setDrawColor(170,170,170); d.setLineWidth(1.3*k); d.line(x1, y, x2, y); }
     var bw = 200*k, bh = 38*k, y = R.y;
-    box(cx - bw/2, y, bw, bh, "Internet", "ISP · fibre / 5G", "#94a3b8"); vline(cx, y + bh, y + bh + 22*k); y += bh + 22*k;
+    box(cx - bw/2, y, bw, bh, "Internet", "ISP · fibre / 5G", "#808080"); vline(cx, y + bh, y + bh + 22*k); y += bh + 22*k;
     var gw = rackGateway(mainRack());
-    box(cx - bw/2, y, bw, bh, gw ? equipName(gw) : "Gateway / router", mainRack().name, "#006fff", true); y += bh;
+    box(cx - bw/2, y, bw, bh, gw ? equipName(gw) : "Gateway / router", mainRack().name, "#D21E1C", true); y += bh;
     var spine = M + 14*k;   // trunk from the gateway down the left side to every switch
     vline(cx, y, y + 14*k); hline(spine, cx, y + 14*k); var trunkTop = y + 14*k; y += 34*k;
     var cols = 4, gap = 10*k, gx0 = M + 48*k, bx = M + 38*k, gwid = (R.W - M - gx0 - gap*(cols - 1)) / cols, gh = 44*k;
@@ -5933,7 +5947,7 @@
         var r = Math.floor(gi / cols), c = gi % cols, gx = gx0 + c*(gwid + gap), gy = busY + 13*k + r*(gh + 34*k);
         vline(gx + gwid/2, gy - 13*k, gy);
         box(gx, gy, gwid, gh, g.n + " " + g.cat, g.sub, g.color);
-        d.setFont("helvetica","bold"); d.setFontSize(7.5*k); d.setTextColor(100,116,139); d.text(String(g.floor).toUpperCase(), gx + gwid/2, gy + gh + 10*k, { align:"center" });
+        d.setFont("helvetica","bold"); d.setFontSize(7.5*k); d.setTextColor(128,128,128); d.text(String(g.floor).toUpperCase(), gx + gwid/2, gy + gh + 10*k, { align:"center" });
       });
       // horizontal bus for each row of groups
       for (var r2 = 0; r2 < rows; r2++){
@@ -5973,7 +5987,7 @@
   function rTableAt(x, w, cols, rows, title){
     var saveM = R.M, saveW = R.W, d = R.doc, k = R.k;
     R.M = x; R.W = w + 2*x;
-    d.setFont("helvetica","bold"); d.setFontSize(12*k); d.setTextColor(15,23,42); d.text(title, x, R.y); R.y += 14*k;
+    d.setFont("helvetica","bold"); d.setFontSize(12*k); d.setTextColor(43,43,43); d.text(title, x, R.y); R.y += 14*k;
     rTable(cols, rows);
     R.M = saveM; R.W = saveW;
   }
