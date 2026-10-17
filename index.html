@@ -827,7 +827,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-17.2</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-17.3</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1025,7 +1025,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-17.2</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-17.3</p>
     </section>
   </aside>
 
@@ -5469,7 +5469,7 @@
   // White A4 report pages with an Express Tech header and page numbers. Drawings stay at their native size.
   var REPORTS = [
     { key:"cover",     label:"Cover page",          sub:"Express Tech cover with the client's name",                 full:true,  single:true, icon:"◧", color:"#334155" },
-    { key:"summary",   label:"Summary",             sub:"Totals, points per floor, points by cable, PoE",  full:true,  single:true, icon:"Σ", color:"#0f172a" },
+    { key:"summary",   label:"Summary",             sub:"Points by type and floor, cabling and boxes",  full:true,  single:true, icon:"Σ", color:"#0f172a" },
     { key:"drawings",  label:"Drawings",            sub:"Each floor’s marked-up plan",                     full:true,  single:true, icon:"▦", color:"#0891b2", singleLabel:"Drawings only" },
     { key:"points",    label:"Point schedule",      sub:"Every point: ID, type, model, cable, switch port",full:true,  single:true, icon:"#", color:"#16a34a" },
     { key:"cables",    label:"Cable report",        sub:"Rolls to order, cable per point",                 full:true,  single:true, icon:"C", color:"#15803d" },
@@ -5480,8 +5480,8 @@
   ];
   var REPORT_BY_KEY = {}; REPORTS.forEach(function(r){ REPORT_BY_KEY[r.key] = r; });
   var rptPrefs = { mode:"full", single:"summary", off:{ checklist:true }, paper:"a4", floorsOff:{}, typesOff:{} };
-  try { var rp0 = JSON.parse(localStorage.getItem("lvplanner_reportprefs") || "null"); if (rp0){ rptPrefs.mode = rp0.mode || "full"; rptPrefs.single = rp0.single || "summary"; rptPrefs.off = rp0.off || rptPrefs.off; rptPrefs.paper = rp0.paper || "a4"; rptPrefs.cover = rp0.cover || "A"; if (rp0.consultant != null) rptPrefs.consultant = rp0.consultant; } } catch(e){}
-  function saveRptPrefs(){ try { localStorage.setItem("lvplanner_reportprefs", JSON.stringify({ mode:rptPrefs.mode, single:rptPrefs.single, off:rptPrefs.off, paper:rptPrefs.paper, cover:rptPrefs.cover, consultant:rptPrefs.consultant })); } catch(e){} }
+  try { var rp0 = JSON.parse(localStorage.getItem("lvplanner_reportprefs") || "null"); if (rp0){ rptPrefs.mode = rp0.mode || "full"; rptPrefs.single = rp0.single || "summary"; rptPrefs.off = rp0.off || rptPrefs.off; rptPrefs.paper = rp0.paper || "a4"; rptPrefs.cover = rp0.cover || "A"; rptPrefs.summary = rp0.summary || "A"; if (rp0.consultant != null) rptPrefs.consultant = rp0.consultant; } } catch(e){}
+  function saveRptPrefs(){ try { localStorage.setItem("lvplanner_reportprefs", JSON.stringify({ mode:rptPrefs.mode, single:rptPrefs.single, off:rptPrefs.off, paper:rptPrefs.paper, cover:rptPrefs.cover, summary:rptPrefs.summary, consultant:rptPrefs.consultant })); } catch(e){} }
 
   // ---------- point IDs: GF-AP01, FF-CAM03, GF-D12 ----------
   var ID_CODES = { wifi:"AP", outdoorwifi:"OAP", cctv:"CAM", cctvoutdoor:"CAM", viewport:"VP", network:"D", ipphone:"T", dtv:"DTV", tv:"TV", uplink:"UP",
@@ -5797,46 +5797,134 @@
     // no separate contents page: the report runs straight on from the cover
   };
 
+  // ---------- Summary: three designs (A Executive brief, B Specification matrix, C Floor by floor), chosen in Export PDF.
+  // Points by type and floor, and the cabling: runs, metres and boxes per cable category. No network equipment here.
+  var SUMMARY_STYLES = [["A","Executive brief"],["B","Matrix"],["C","Floor by floor"]];
+  function summaryStyle(){ var s = (project.cover && project.cover.summary) || rptPrefs.summary || "A"; return /^[A-C]$/.test(s) ? s : "A"; }
   SECTION.summary = function(){
-    rPage("Summary", "Whole villa");
+    rPage("Summary", "");
+    var d = R.doc, k = R.k, M = R.M, W = R.W, X1 = W - M, CW = X1 - M, top = R.y - 6*k;
+    var RED = [210,30,28], INK = [43,43,43], GREY = [128,128,128], LINE = [236,236,236];
+    var col = function(c){ d.setTextColor(c[0],c[1],c[2]); };
+    var txt = function(s, x, y, o){
+      o = o || {}; s = String(s); d.setFont("helvetica", o.bold ? "bold" : "normal"); d.setFontSize((o.size || 11)*k); col(o.color || INK);
+      var sp = (o.space || 0)*k, w = d.getTextWidth(s) + sp * Math.max(0, s.length - 1);
+      var xx = o.align === "center" ? x - w/2 : o.align === "right" ? x - w : x;
+      d.text(s, xx, y, sp ? { charSpace:sp } : undefined); return w;
+    };
+    var cap = function(s, x, y, o){ o = o || {}; return txt(String(s).toUpperCase(), x, y, { size:o.size || 8.5, bold:true, color:o.color || GREY, space:1.5, align:o.align }); };
+    var hl = function(x0, x1, y, c, w){ c = c || LINE; d.setDrawColor(c[0],c[1],c[2]); d.setLineWidth((w || 0.9)*k); d.line(x0, y, x1, y); };
+    var vl = function(x, y0, y1){ d.setDrawColor(LINE[0],LINE[1],LINE[2]); d.setLineWidth(0.9*k); d.line(x, y0, x, y1); };
+    var h2 = function(s, x, y){ cap(s, x, y, { size:9.5, color:INK }); d.setFillColor(RED[0],RED[1],RED[2]); d.rect(x, y + 6*k, 22*k, 2*k, "F"); };
+    var fmt = function(n){ return Math.round(n).toLocaleString("en-US"); };
+    // the numbers
+    var TYPES = [["ap","Wi-Fi access points","Wi-Fi","Wi-Fi"],["cam","Cameras","Cameras","cameras"],["phone","IP phones","Phones","phones"],["data","Data & TV points","Data & TV","data & TV"],["icom","Intercom","Intercom","intercom"]];
+    var floors = project.floors.map(function(f){ var c = villaCounts(f.markers); return { name:f.name, c:c, n:c.all }; });
     var all = []; project.floors.forEach(function(f){ all = all.concat(f.markers); });
-    var c = villaCounts(all);
-    rTiles([{ label:"Access points", value:c.ap }, { label:"Cameras", value:c.cam }, { label:"Data points", value:c.dataPts }, { label:"All points", value:c.all, hl:true }]);
-    rH("Points per floor");
-    var rows = project.floors.map(function(f){ var x = villaCounts(f.markers); return [f.name, x.ap, x.cam, x.phone, x.data, x.icom, { t:String(x.all), bold:true }]; });
-    rows.push(["Whole villa", c.ap, c.cam, c.phone, c.data, c.icom, c.all]);
-    rTable([{ h:"Floor", w:.28 }, { h:"Access points", w:.13, align:"right" }, { h:"Cameras", w:.11, align:"right" }, { h:"IP phones", w:.12, align:"right" },
-      { h:"Data", w:.1, align:"right" }, { h:"Intercom", w:.12, align:"right" }, { h:"All points", w:.14, align:"right" }], rows, { total:true });
-    var byCable = {}; all.filter(isCablePoint).forEach(function(m){ var k2 = cabledOf(m); byCable[k2] = (byCable[k2] || 0) + 1; });
-    var ks = Object.keys(CABLE_CATS).filter(function(k2){ return byCable[k2]; });
-    if (ks.length){
-      rH("Points by cable");
-      rTable([{ h:"Cable", w:.6 }, { h:"Points", w:.4, align:"right" }],
-        ks.map(function(k2){ return [{ t:CABLE_CATS[k2].label, dot:CABLE_CATS[k2].color }, byCable[k2]]; }).concat([["All points", c.all]]), { total:true });
-    }
-    var plan = buildNetworkPlan(), eq = [];
-    var gw = rackGateway(mainRack()); if (gw) eq.push(["Gateway", equipName(gw)]);
-    var sws = []; plan.racks.forEach(function(r){ r.switches.forEach(function(s){ sws.push(s); }); });
-    if (sws.length){
-      var names = {}; sws.forEach(function(s){ names[s.name] = (names[s.name] || 0) + 1; });
-      eq.push(["Switches", Object.keys(names).map(function(n){ return (names[n] > 1 ? names[n] + " × " : "") + n; }).join(", ")]);
-      var used = 0, tot = 0, w = 0, b = 0; sws.forEach(function(s){ s.ports.forEach(function(p){ tot++; if (p.dev) used++; }); w += s.usedW; b += s.budget || 0; });
-      eq.push(["Switch ports used", used + " of " + tot]);
-      if (b) eq.push(["PoE load (max.)", fmtW(w) + " of " + b + " W"]);
-    }
-    project.racks.filter(function(r){ return r.items.length; }).forEach(function(r){ var loc = rackLocation(r); eq.push([r.name + (r.main ? " (main)" : ""), r.height + "U · " + r.size + " cm" + (loc ? " · " + loc.f.name : "")]); });
-    if (eq.length){ rH("Equipment"); rTable([{ h:"Item", w:.35 }, { h:"", w:.65 }], eq); }
-    var cc = cableCalc();
-    if (cc.order.length){
-      rH("Cable to order", "average " + cc.perPoint + " m per point");
-      rTable([{ h:"Cable", w:.34 }, { h:"Points", w:.16, align:"right" }, { h:"Metres", w:.2, align:"right" }, { h:"Order", w:.3, align:"right" }],
-        cc.order.map(function(k2){ var x = cc.cats[k2]; return [{ t:CABLE_CATS[k2].label, dot:CABLE_CATS[k2].color }, x.n, Math.round(x.metres) + " m", { t: x.roll === 1 ? x.order + " m (by the metre)" : x.order + " × " + rollName(x.roll), bold:true }]; }));
-    }
-    var oth = Object.keys(c.other);
-    rNote("Data points = access points, IP phones, data, Data & TV, intercom. All points = data points + cameras." + (oth.length ? " Also on the drawings (not counted): " + oth.map(function(o){ return c.other[o] + " " + o; }).join(", ") + "." : ""));
-    if (project.revisions && project.revisions.length){
-      rH("Revision history");
-      rTable([{ h:"Rev", w:.1 }, { h:"Date", w:.2 }, { h:"Note", w:.7 }], project.revisions.map(function(r){ return [r.rev, r.date, r.note]; }));
+    var T = villaCounts(all), act = TYPES.filter(function(t){ return T[t[0]]; });
+    var nF = floors.length, maxF = Math.max.apply(null, floors.map(function(f){ return f.n; }).concat([1]));
+    var cc = cableCalc(), others = cablingByOthers();
+    var cables = cc.order.map(function(kk){ var x = cc.cats[kk]; return { label:CABLE_CATS[kk].label, n:x.n, m:x.metres, boxes:x.order, roll:x.roll }; });
+    var totM = cables.reduce(function(a, c){ return a + c.m; }, 0), totBoxes = cables.reduce(function(a, c){ return a + (c.roll === 1 ? 0 : c.boxes); }, 0);
+    var boxTxt = function(c){ return c.roll === 1 ? fmt(c.boxes) + " m by the metre" : c.boxes + (c.boxes === 1 ? " box" : " boxes") + " of " + c.roll + " m"; };
+    var floorWord = nF === 1 ? "1 floor" : nF + " floors";
+    var st = summaryStyle(), y;
+
+    // cabling block shared by A and B: one cell per cable category + the total
+    var cablingCells = function(x0, x1, y0, cellsPerRow){
+      var cells = cables.map(function(c){ return { k:c.label, b:c.n + (c.n === 1 ? " run" : " runs"), s:"about " + fmt(c.m) + " m" + (others ? "" : "  ·  " + boxTxt(c)) }; });
+      cells.push({ k:"Total cable", b:fmt(totM) + " m", s:others ? "Cabling by others" : (totBoxes ? totBoxes + " boxes  ·  about " + cc.perPoint + " m per point" : "about " + cc.perPoint + " m per point"), red:true });
+      var per = cellsPerRow || Math.min(4, cells.length), cw = (x1 - x0) / per, rh = 66*k;
+      hl(x0, x1, y0, INK, 1.2);
+      cells.forEach(function(c, i){
+        var r = Math.floor(i / per), ci = i % per, cx = x0 + ci*cw + (ci ? 14*k : 0), cy = y0 + r*rh;
+        if (ci) vl(x0 + ci*cw, cy + 8*k, cy + rh - 6*k);
+        cap(c.k, cx, cy + 22*k); txt(c.b, cx, cy + 42*k, { size:15, bold:true, color:c.red ? RED : INK }); txt(c.s, cx, cy + 57*k, { size:9.5, color:GREY });
+        if (ci === per - 1 || i === cells.length - 1) hl(x0, x1, cy + rh);
+      });
+      return y0 + Math.ceil(cells.length / per) * rh;
+    };
+
+    if (st === "A"){
+      var LW = 205*k, RX = M + LW + 40*k;
+      cap("Total points", M, top + 14*k);
+      txt(String(T.all), M - 3*k, top + 92*k, { size:78, bold:true, color:RED });
+      txt("designed across " + floorWord, M, top + 112*k, { size:11, color:[85,85,85] });
+      hl(M, M + LW, top + 128*k, INK, 1.2);
+      var ly = top + 128*k;
+      act.forEach(function(t){ txt(String(T[t[0]]), M, ly + 33*k, { size:23, bold:true }); txt(t[1], M + 50*k, ly + 31*k, { size:11, color:[85,85,85] }); ly += 44*k; hl(M, M + LW, ly); });
+      h2("Points by floor", RX, top + 14*k);
+      var rowH = Math.min(50*k, (560*k) / Math.max(1, nF)), fy = top + 36*k, bx0 = RX + 104*k, bx1 = X1 - 40*k;
+      floors.forEach(function(f){
+        txt(f.name, RX, fy + 20*k, { size:11.5, bold:true });
+        d.setFillColor(240,240,240); d.roundedRect(bx0, fy + 13*k, bx1 - bx0, 7*k, 3.5*k, 3.5*k, "F");
+        var bw = Math.max(7*k, (bx1 - bx0) * f.n / maxF), c2 = f.n === maxF ? RED : INK;
+        if (f.n){ d.setFillColor(c2[0],c2[1],c2[2]); d.roundedRect(bx0, fy + 13*k, bw, 7*k, 3.5*k, 3.5*k, "F"); }
+        txt(String(f.n), X1, fy + 21*k, { size:16, bold:true, align:"right" });
+        var br = act.filter(function(t){ return f.c[t[0]]; }).map(function(t){ return f.c[t[0]] + " " + t[3]; }).join("  ·  ");
+        if (rowH >= 40*k) txt(br || "No points", bx0, fy + 36*k, { size:9.3, color:GREY });
+        fy += rowH; hl(RX, X1, fy);
+      });
+      txt("The floor with the most points is shown in red.", RX, fy + 16*k, { size:8.5, color:[160,160,160] });
+      y = Math.max(ly, fy + 16*k) + 44*k;
+      if (cables.length){ h2("Cabling", M, y); cablingCells(M, X1, y + 22*k, 3); }
+    } else if (st === "B"){
+      txt(String(T.all), M - 3*k, top + 70*k, { size:66, bold:true, color:RED });
+      d.setFont("helvetica","bold"); d.setFontSize(66*k); var nw = d.getTextWidth(String(T.all));
+      txt("low-voltage points across " + floorWord, M + nw + 18*k, top + 40*k, { size:17 });
+      txt(act.map(function(t){ return T[t[0]] + " " + t[3]; }).join("   ·   "), M + nw + 18*k, top + 60*k, { size:10.5, color:[100,100,100] });
+      hl(M, X1, top + 92*k, INK, 1.2);
+      // floors × types; darker cells hold more points
+      var ty = top + 122*k, nameW = 118*k, totW = 64*k, gap = 3*k, cw2 = (CW - nameW - totW - gap*(act.length)) / act.length;
+      var rh2 = Math.min(50*k, (470*k) / Math.max(1, nF + 1)), maxC = 1;
+      floors.forEach(function(f){ act.forEach(function(t){ maxC = Math.max(maxC, f.c[t[0]]); }); });
+      act.forEach(function(t, i){ cap(t[2], M + nameW + i*(cw2 + gap) + cw2/2, ty, { align:"center" }); });
+      cap("Total", X1 - 6*k, ty, { align:"right" });
+      var ry = ty + 10*k;
+      floors.forEach(function(f){
+        txt(f.name, M, ry + rh2/2 + 4*k, { size:11.5, bold:true });
+        act.forEach(function(t, i){
+          var v = f.c[t[0]], cx = M + nameW + i*(cw2 + gap);
+          if (v){ var a = 0.08 + 0.42 * v / maxC; d.setFillColor(Math.round(255 - a*45), Math.round(255 - a*225), Math.round(255 - a*227)); d.roundedRect(cx, ry, cw2, rh2 - gap, 5*k, 5*k, "F"); }
+          txt(v ? String(v) : "–", cx + cw2/2, ry + rh2/2 + 5*k, { size:v ? 17 : 12, bold:!!v, color:v ? INK : [200,200,200], align:"center" });
+        });
+        txt(String(f.n), X1 - 6*k, ry + rh2/2 + 5*k, { size:18, bold:true, align:"right" });
+        ry += rh2;
+      });
+      hl(M, X1, ry + 4*k, INK, 1.6);
+      txt("Whole villa", M, ry + 30*k, { size:13, bold:true });
+      act.forEach(function(t, i){ txt(String(T[t[0]]), M + nameW + i*(cw2 + gap) + cw2/2, ry + 30*k, { size:15, bold:true, align:"center" }); });
+      txt(String(T.all), X1 - 6*k, ry + 31*k, { size:19, bold:true, color:RED, align:"right" });
+      txt("Darker cells hold more points.", M, ry + 54*k, { size:8.5, color:[160,160,160] });
+      y = ry + 86*k;
+      if (cables.length){ h2("Cabling", M, y); cablingCells(M, X1, y + 22*k, Math.min(4, cables.length + 1)); }
+    } else {
+      // C: totals strip, then each floor as a row with its count per type, then the cabling in plain words
+      var ccols = [["Total", T.all, true]].concat(act.map(function(t){ return [t[2], T[t[0]]]; })), sw = CW / (ccols.length + 0.3);
+      hl(M, X1, top, INK, 1.2);
+      ccols.forEach(function(c, i){ var x = M + (i ? (i + 0.3)*sw + 14*k : 0); if (i) vl(M + (i + 0.3)*sw, top + 10*k, top + 82*k);
+        cap(c[0], x, top + 24*k); txt(String(c[1]), x, top + (c[2] ? 70 : 64)*k, { size:c[2] ? 40 : 28, bold:true, color:c[2] ? RED : INK }); });
+      hl(M, X1, top + 92*k, INK, 1.2);
+      h2("Floor by floor", M, top + 128*k);
+      var fy2 = top + 150*k, rh3 = Math.min(76*k, (520*k) / Math.max(1, nF)), nameW2 = 132*k, tw2 = (CW - nameW2) / act.length;
+      hl(M, X1, fy2, INK, 1.2);
+      floors.forEach(function(f){
+        txt(f.name, M, fy2 + rh3/2 - 1*k, { size:12.5, bold:true }); txt(f.n + (f.n === 1 ? " point" : " points"), M, fy2 + rh3/2 + 14*k, { size:9.5, color:GREY });
+        act.forEach(function(t, i){ var x = M + nameW2 + i*tw2; vl(x, fy2 + 12*k, fy2 + rh3 - 12*k); var v = f.c[t[0]];
+          txt(v ? String(v) : "—", x + 12*k, fy2 + rh3/2 + 2*k, { size:20, bold:true, color:v ? INK : [190,190,190] }); cap(t[2], x + 12*k, fy2 + rh3/2 + 17*k, { size:7.5, color:[150,150,150] }); });
+        fy2 += rh3; hl(M, X1, fy2);
+      });
+      y = fy2 + 40*k;
+      if (cables.length){
+        h2("Cabling", M, y); y += 22*k;
+        hl(M, X1, y, INK, 1.2);
+        var paras = cables.map(function(c){ return [c.label, c.n + " cable " + (c.n === 1 ? "run" : "runs") + ", about " + fmt(c.m) + " m" + (others ? "." : ". To order: " + boxTxt(c) + ".")]; });
+        paras.push(["Total", "About " + fmt(totM) + " m of cable" + (others || !totBoxes ? "" : ", " + totBoxes + " boxes in all") + " (about " + cc.perPoint + " m per point)." + (others ? " Cabling by others." : "")]);
+        var per2 = Math.min(3, paras.length), pw = CW / per2;
+        paras.forEach(function(pp, i){ var r = Math.floor(i / per2), ci = i % per2, x = M + ci*pw + (ci ? 16*k : 0), yy = y + r*84*k;
+          if (ci) vl(M + ci*pw, yy + 10*k, yy + 74*k);
+          cap(pp[0], x, yy + 22*k); d.setFont("helvetica","normal"); d.setFontSize(10.5*k); col([68,68,68]); d.text(d.splitTextToSize(pp[1], pw - 28*k), x, yy + 40*k, { lineHeightFactor:1.45 }); });
+      }
     }
   };
   SECTION.points = function(){
@@ -6195,7 +6283,18 @@
         '<label class="cv-type">Consultant <input type="text" class="select-input" id="cvCons" maxlength="40" value="' + escapeHtml(coverConsultant()) + '" placeholder="Name on the cover (empty = none)"></label>' +
         '<button type="button" class="rpt-eye cv-prev" data-rpv="cover">' + EYE + 'Preview cover</button></div>');
     }
+    if (rptSel.summary){
+      var ss = summaryStyle(), smini = function(k2){
+        return { A:'<i style="top:9%;left:8%;width:30%;height:9%;background:#D21E1C"></i><i style="top:22%;left:8%;width:30%;height:40%;background:repeating-linear-gradient(#fff 0 6px,#ddd 6px 7px)"></i><i style="top:12%;left:46%;right:8%;height:4%;background:#2b2b2b"></i><i style="top:21%;left:46%;right:20%;height:4%;background:#D21E1C"></i><i style="top:30%;left:46%;right:14%;height:4%;background:#2b2b2b"></i><i style="top:39%;left:46%;right:26%;height:4%;background:#2b2b2b"></i><i style="top:72%;left:8%;right:8%;height:14%;border-top:2px solid #2b2b2b;background:repeating-linear-gradient(90deg,#fff 0 13px,#ddd 13px 14px)"></i>',
+          B:'<i style="top:9%;left:8%;width:24%;height:9%;background:#D21E1C"></i><i style="top:11%;left:36%;right:8%;height:4%;background:#2b2b2b"></i><i style="top:26%;left:8%;right:8%;height:42%;background:linear-gradient(90deg,#f5c9c8 25%,#fff 25% 27%,#ee9f9d 27% 50%,#fff 50% 52%,#f9dcdb 52% 75%,#fff 75% 77%,#f2b6b4 77%);"></i><i style="top:74%;left:8%;right:8%;height:12%;border-top:2px solid #2b2b2b;background:repeating-linear-gradient(90deg,#fff 0 10px,#ddd 10px 11px)"></i>',
+          C:'<i style="top:9%;left:8%;right:8%;height:13%;border-top:2px solid #2b2b2b;border-bottom:2px solid #2b2b2b;background:linear-gradient(90deg,#fff 4%,#D21E1C 4% 20%,#fff 20% 30%,#2b2b2b 30% 38%,#fff 38% 52%,#2b2b2b 52% 60%,#fff 60% 74%,#2b2b2b 74% 82%,#fff 82%)"></i><i style="top:30%;left:8%;right:8%;height:46%;background:repeating-linear-gradient(#fff 0 9px,#ddd 9px 10px)"></i><i style="top:80%;left:8%;right:8%;height:10%;border-top:2px solid #2b2b2b"></i>' }[k2];
+      };
+      cards.push('<div class="rpt-cover"><h5>Summary design</h5><div class="cv-row">' + SUMMARY_STYLES.map(function(c){
+        return '<button type="button" class="cv-opt' + (ss === c[0] ? " on" : "") + '" data-sv="' + c[0] + '"><span class="cv-mini">' + smini(c[0]) + '</span><b>' + c[0] + '</b><small>' + c[1] + '</small></button>'; }).join("") +
+        '</div><button type="button" class="rpt-eye cv-prev" data-rpv="summary">' + EYE + 'Preview summary</button></div>');
+    }
     box.innerHTML = '<div class="rpt-cards">' + cards.join("") + '</div>';
+    box.querySelectorAll("[data-sv]").forEach(function(b){ b.onclick = function(){ project.cover = project.cover || {}; project.cover.summary = b.dataset.sv; rptPrefs.summary = b.dataset.sv; saveRptPrefs(); if (typeof histSoon === "function") histSoon(); renderReportDialog(); }; });
     box.querySelectorAll("[data-cv]").forEach(function(b){ b.onclick = function(){ project.cover = project.cover || {}; project.cover.style = b.dataset.cv; rptPrefs.cover = b.dataset.cv; saveRptPrefs(); if (typeof histSoon === "function") histSoon(); renderReportDialog(); }; });
     var cvC = box.querySelector("#cvCons"); if (cvC) cvC.onchange = function(){ project.cover = project.cover || {}; project.cover.consultant = cvC.value.trim(); rptPrefs.consultant = cvC.value.trim(); saveRptPrefs(); if (typeof histSoon === "function") histSoon(); };
     var cvT = box.querySelector("#cvType"); if (cvT) cvT.onchange = function(){ project.cover = project.cover || {}; project.cover.type = cvT.value.trim() || "Villa Project"; if (typeof histSoon === "function") histSoon(); };
