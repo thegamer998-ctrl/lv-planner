@@ -132,7 +132,7 @@ async function handle(req, res, url, getUser, hooks) {
     if (!user) throw new HttpError(401, 'Please sign in.', { signIn: true });
     if (user.mustChangePassword) throw new HttpError(403, 'Please set your own password first.', { mustChangePassword: true });
     const p = user.perms;
-    const officeOnly = path === '/site/publish' || path === '/site/list' || path === '/site/staff';
+    const officeOnly = path === '/site/publish' || path === '/site/list' || path === '/site/staff' || path.startsWith('/site/zoho');
     if (/^\/site\/staff\/./.test(path) || (path === '/site/staff' && req.method === 'POST'))
       throw new HttpError(400, 'People are added in Admin → Logins & permissions now (each person has their own username and password).');
     if (path === '/zoho' && !(p.design || p.office)) throw new HttpError(403, 'Your login has no Design Center access.');

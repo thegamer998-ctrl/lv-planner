@@ -151,6 +151,31 @@ test('site report notifies the office; the answer notifies the technician', asyn
   assert.ok(k.data.items.some(x => x.kind === 'report_reply'), JSON.stringify(k.data));
 });
 
+test('project without a drawing: site survey, then installation; ticks stay when the list changes', async () => {
+  const list = (n) => ({ name: 'Old villa Salwa', status: 'survey', meta: { list: { rows: [{ id: 'r1', type: 'wifi', qty: n, area: 'a1' }] } },
+    floors: [{ id: 'a1', name: 'Ground floor' }], points: Array.from({ length: n }, (_, i) => ({ id: 'r1-' + (i + 1), floorId: 'a1', type: 'wifi', cat: 'ap', label: 'AP-0' + (i + 1), x: 0.5, y: 0.5 })) });
+  const r = await S.admin('POST', '/site/publish', list(2), { 'X-Admin-Key': 'session' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const lp = r.data.id;
+  let k = await S.kutubC('GET', '/site/me', undefined, { 'X-Key': 'session' });
+  assert.ok(!k.data.projects.some(p => p.id === lp), 'the team does not see a survey');
+  const blocked = await S.kutubC('GET', '/site/p/' + lp, undefined, { 'X-Key': 'session' });
+  assert.equal(blocked.status, 403);
+  const me = await S.admin('GET', '/site/me', undefined, { 'X-Key': 'session' });
+  assert.equal(me.data.office, true);
+  assert.equal((await S.admin('POST', `/site/p/${lp}/state`, { status: 'active' }, { 'X-Admin-Key': 'session' })).status, 200);
+  k = await S.kutubC('GET', '/site/me', undefined, { 'X-Key': 'session' });
+  assert.ok(k.data.projects.some(p => p.id === lp && p.list === 1));
+  await S.kutubC('POST', `/site/p/${lp}/pt/r1-1/status`, { step: 'installed', done: true }, { 'X-Key': 'session' });
+  const again = list(3); again.id = lp; delete again.status;
+  await S.admin('POST', '/site/publish', again, { 'X-Admin-Key': 'session' });
+  const d = await S.kutubC('GET', '/site/p/' + lp, undefined, { 'X-Key': 'session' });
+  assert.equal(d.data.points.length, 3);
+  assert.equal(d.data.points.find(p => p.point_id === 'r1-1').installed_by, 'Kutub');
+  const z = await S.tahirC('GET', '/site/zoho/estimates?q=x', undefined, { 'X-Admin-Key': 'session' });
+  assert.equal(z.status, 403);
+});
+
 test('Design Center: save with drawing, share, conflict, versions', async () => {
   const pdf = Buffer.from('%PDF-1.4\n% test drawing\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF');
   const h = crypto.createHash('sha256').update(pdf).digest('hex');

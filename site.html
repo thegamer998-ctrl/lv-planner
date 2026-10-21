@@ -387,6 +387,32 @@
   body.cust .bfoot{ display:flex; align-items:center; justify-content:center; gap:10px; margin:26px 12px 10px; color:#808080; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; }
   .bfoot img{ width:26px; height:26px; }
   .lmark{ width:46px; height:46px; display:block; margin:0 auto 14px; }
+  /* projects without a drawing: the device list editor */
+  #vEdit{ overflow-y:auto; padding-bottom:30px; }
+  .ed{ padding:4px 12px 0; }
+  .ed .in{ width:100%; height:46px; border-radius:12px; border:1px solid var(--line-2); background:var(--panel); padding:0 12px; font-size:15.5px; }
+  .ed .areas{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  .ed .areas span{ display:inline-flex; align-items:center; gap:4px; border:1px solid var(--line-2); background:var(--panel); border-radius:20px; padding:5px 6px 5px 12px; font-size:13.5px; font-weight:600; }
+  .ed .areas span button{ border:0; background:none; color:var(--muted); font-size:17px; line-height:1; padding:0 4px; }
+  .ed .areas .add{ border-style:dashed; color:var(--accent); padding:5px 12px; font-weight:700; background:none; border:1.5px dashed var(--line-2); border-radius:20px; font-size:13.5px; }
+  .ed .dev{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 10px 10px 12px; margin-bottom:8px; }
+  .ed .dev .r1{ display:flex; align-items:center; gap:10px; }
+  .ed .dev .r1 b{ flex:1; font-size:15px; } .ed .dev .r1 .x{ border:0; background:none; color:var(--muted); font-size:22px; padding:0 6px; }
+  .ed .dev .r2{ display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:8px; }
+  .ed .dev .r3{ display:flex; gap:8px; margin-top:8px; align-items:center; }
+  .ed .dev input, .ed .dev select{ height:40px; border-radius:10px; border:1px solid var(--line-2); background:var(--panel-2); padding:0 10px; font-size:14.5px; min-width:0; color:var(--text); }
+  .ed .dev select{ flex:1; }
+  .ed .qty{ display:flex; align-items:center; border:1px solid var(--line-2); border-radius:10px; overflow:hidden; height:40px; }
+  .ed .qty button{ width:40px; height:40px; border:0; background:var(--panel-2); font-size:20px; font-weight:600; }
+  .ed .qty input{ width:46px; border:0 !important; border-radius:0 !important; text-align:center; font-weight:700; background:var(--panel) !important; padding:0 !important; }
+  .ed .addtypes{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 14px; }
+  .ed .addtypes button{ border:1.5px solid var(--line-2); background:var(--panel); border-radius:20px; padding:7px 12px; font-size:13.5px; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
+  .ed .sum{ background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:13.5px; margin:6px 0 12px; }
+  .ed .imp{ display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid var(--line); }
+  .ed .imp:first-child{ border-top:0; } .ed .imp .t{ flex:1; min-width:0; } .ed .imp .t b{ display:block; font-size:14px; } .ed .imp .t small{ color:var(--muted); font-size:12px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ed .imp select{ height:36px; border-radius:9px; border:1px solid var(--line-2); background:var(--panel-2); font-size:13px; max-width:150px; color:var(--text); }
+  .survey-bar{ margin:10px 12px 0; padding:12px; border-radius:14px; background:var(--warn-soft); color:var(--warn); font-size:13.5px; font-weight:600; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .survey-bar span{ flex:1; min-width:180px; } .list-tools{ display:flex; gap:8px; margin:10px 12px 0; } .list-tools .btn{ flex:1; height:40px; font-size:13.5px; }
 </style>
 </head>
 <body class="brand">
@@ -428,6 +454,7 @@
   <section class="view" id="vProg"><div id="progBody"></div></section>
   <section class="view" id="vRep"><div id="repBody"></div></section>
   <section class="view" id="vAct"><div id="actBody"></div></section>
+  <section class="view" id="vEdit"><div id="editBody"></div></section>
 </main>
 
 <nav class="tabs" id="tabs">
@@ -481,7 +508,7 @@
   // person's own key (u=session). Customer and team links (k=…) work exactly as before.
   var HOSTED = !!(window.EXPRESS && window.EXPRESS.hosted);
   if (HOSTED){ var h0 = location.hash.slice(1); if (!/(^|&)(k|u)=/.test(h0) && !/(^|&)office(&|$)/.test(h0)){ var p0 = new URLSearchParams(h0).get("p");
-    history.replaceState(null, "", location.pathname + "#u=session&s=" + encodeURIComponent(location.origin) + (p0 ? "&p=" + encodeURIComponent(p0) : "")); } }
+    history.replaceState(null, "", location.pathname + "#u=session&s=" + encodeURIComponent(location.origin) + (p0 ? "&p=" + encodeURIComponent(p0) : "") + (/(^|&)new(=|&|$)/.test(h0) ? "&new=1" : "")); } }
   // the installed app (Android) always opens plain site.html: bring back the last link opened on this phone
   try {
     if (!location.hash.slice(1) && !location.search.slice(1)){
@@ -497,7 +524,8 @@
     else if (!S && !OFFICE && !P){ var me0 = JSON.parse(localStorage.getItem("et_me") || "null"); if (me0 && me0.u && me0.s){ U = me0.u; S = me0.s; history.replaceState(null, "", "#u=" + encodeURIComponent(U) + "&s=" + encodeURIComponent(S)); } }
   } catch(e){}
   var STAFF = !!U && !OFFICE; if (STAFF) K = U;
-  var TEAMJUMP = hp.has("team");   // opened from the planner's "+ Add people": go straight to the Team list
+  var TEAMJUMP = hp.has("team");
+  var NEWLIST = hp.has("new");   // opened from the Design Center's "New project without drawing"   // opened from the planner's "+ Add people": go straight to the Team list
   var ROLE_TAG = { office:"Office", manager:"Manager", engineer:"Site engineer", tech:"Technician", team:"Team", customer:"Customer view" };
   var STEP_L = { cabled:"Cabling", installed:"Installed", aligned:"Aligned", configured:"Configured" };
   var STEP_DO = { cabled:"Mark cabled", installed:"Mark installed", aligned:"Mark aligned", configured:"Mark configured" };
@@ -605,7 +633,7 @@
     }
     homeFetch(STAFF ? "/site/me" : "/site/list").then(function(j){
       if (STAFF){
-        st.me = j.person;
+        st.me = j.person; st.me.office = !!j.office;
         $("pName").textContent = "Hi " + j.person.name; $("pSub").textContent = "Your Express Tech projects";
         $("roleTag").textContent = ROLE_TAG[j.person.role] || ""; $("roleTag").className = "role" + (j.person.role === "manager" ? " office" : "");
       }
@@ -619,13 +647,13 @@
           if (dn.length) out += '<details class="donegrp"' + (act.length ? "" : " open") + '><summary>Completed · ' + dn.length + "</summary>" + dn.map(card).join("") + "</details>";
           return out;
         })() || "") + (j.projects.length ? "" : '<div class="empty">' + (STAFF ? "No projects yet. When the office starts a project you are on, it appears here by itself." : "No projects yet. Start one from the planner (Start button).") + "</div>") +
-        installTip() +
+        installTip() + (canCreateList() ? '<div class="list-tools" style="margin-top:14px"><button type="button" class="btn" id="newList">+ New project without drawing</button></div><p class="note" style="margin-top:6px">For villas without plans: a site survey and the device list (or the approved Zoho quotation) — the team then ticks every device, with photos, MAC addresses and the cabinet checklist.</p>' : "") +
         (manage ? '<div class="sec" style="margin-top:20px"><span>Team</span></div><div class="card staff" id="staffCard"><div class="rowi"><span class="t"><small>Loading…</small></span></div></div>' +
           '<p class="note">' + (HOSTED ? "Each person signs in with their own username." : "Each person gets their own link.") + ' Their name and role go on every tick, photo and note. Technicians install and align; the site engineer configures; managers see everything, approve reports and manage the team.</p>' : "") +
         '<div style="height:20px"></div>';
       function card(p){
           var pct = p.tasks_all ? Math.round(p.tasks_done / p.tasks_all * 100) : p.points ? Math.round(p.installed / p.points * 100) : 0;
-          return '<button type="button" class="pcard' + (p.paused ? " paused" : "") + '" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (p.paused ? '<span class="pill paused">⏸ Paused</span>' : "") + (manage && p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
+          return '<button type="button" class="pcard' + (p.paused ? " paused" : "") + '" data-p="' + esc(p.id) + '"><div class="h"><b>' + esc(p.name) + "</b>" + (p.state === "survey" ? '<span class="pill open">Site survey</span>' : "") + (p.list && p.state !== "survey" ? '<span class="pill">No drawing</span>' : "") + (p.paused ? '<span class="pill paused">⏸ Paused</span>' : "") + (manage && p.open_reports ? '<span class="pill open">' + p.open_reports + " report" + (p.open_reports > 1 ? "s" : "") + "</span>" : "") + '<span class="pill' + (pct === 100 ? " ok" : "") + '">' + pct + "%</span></div>" +
             '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
             '<div class="ft"><span class="pill">' + (p.tasks_all ? p.tasks_done + " / " + p.tasks_all + " tasks" : p.installed + " / " + p.points + " done") + "</span>" + (p.photos ? '<span class="pill">📷 ' + p.photos + "</span>" : "") +
             (p.asana ? '<span class="pill">Stages ' + p.stages_done + " / " + p.stages_all + "</span>" + (p.next_stage ? '<span class="pill approved">Next: ' + esc(p.next_stage) + "</span>" : "") : manage ? '<span class="pill">Asana not linked</span>' : "") +
@@ -633,6 +661,8 @@
       }
       $("homeBody").querySelectorAll("[data-p]").forEach(function(b){ b.onclick = function(){ openProject(b.dataset.p); }; });
       $("homeRef").onclick = showHome;
+      if ($("newList")) $("newList").onclick = function(){ openEditor(null); };
+      if (NEWLIST && canCreateList()){ NEWLIST = false; openEditor(null); }
       if ($("tipX")) $("tipX").onclick = function(){ try { localStorage.setItem("et_tip_off", "1"); } catch(e){} $("tip").remove(); };
       if (manage) renderStaff();
     }).catch(function(e){
@@ -775,10 +805,14 @@
       : (fin ? "Completed " + day(new Date(d.project.completed_at || Date.now()).toISOString().slice(0,10)) + " · " : "") + c.d + " of " + c.n + " tasks done" + (stTitle ? " · " + stTitle : "");
     $("barI").style.width = c.pct + "%";
     $("tabRep").classList.toggle("hidden", !canEdit());
-    $("reportBtn").classList.toggle("hidden", !canEdit());
+    $("reportBtn").classList.toggle("hidden", !canEdit() || isList());
     var n = openReports(); $("tabRep").querySelectorAll(".badge").forEach(function(b){ b.remove(); });
     if (n && canEdit()) $("tabRep").insertAdjacentHTML("beforeend", '<span class="badge">' + n + "</span>");
-    renderFloors(); renderPlanMarks(); renderList(); renderProgress(); renderReports(); renderActivity();
+    var lp = isList();
+    document.querySelector('.tabs [data-v="vPlan"]').classList.toggle("hidden", lp);
+    if (lp && st.view === "vPlan") switchView("vList");
+    if (!lp){ renderFloors(); renderPlanMarks(); }
+    renderList(); renderProgress(); renderReports(); renderActivity();
     // refresh the open panel; a label being typed is kept (labels are optional: ticking a step never waits for one)
     if (st.sel){
       var mi = $("macIn"), mFocus = mi && document.activeElement === mi;
@@ -1108,7 +1142,9 @@
     var d = draft, near = d.pointId ? pts().find(function(p){ return p.point_id === d.pointId; }) : null;
     $("shBadge").className = "badge"; $("shBadge").style.background = "var(--warn)"; $("shBadge").textContent = "!";
     $("shTitle").textContent = "New site report"; $("shSub").textContent = floorName(d.floorId) + " · sent to the Express Tech office";
-    var h = '<div class="seg">' + ["missing","extra","other"].map(function(k){ return '<button type="button" data-kind="' + k + '"' + (d.kind === k ? ' class="on"' : "") + ">" + { missing:"Extra point<br>found here", extra:"Point not<br>on site", other:"Other<br>issue" }[k] + "</button>"; }).join("") + "</div>";
+    var h = isList() ? '<div class="lbl">Where</div><select class="ta" id="drArea" style="min-height:0;height:46px;width:100%;font-size:15px;color:var(--text)">' + st.data.floors.map(function(f){ return '<option value="' + esc(f.id) + '"' + (f.id === d.floorId ? " selected" : "") + ">" + esc(f.name) + "</option>"; }).join("") + "</select>" +
+        '<div class="seg" style="grid-template-columns:1fr 1fr">' + ["missing","other"].map(function(k){ return '<button type="button" data-kind="' + k + '"' + (d.kind === k ? ' class="on"' : "") + ">" + { missing:"Extra device<br>needed", other:"Other<br>issue" }[k] + "</button>"; }).join("") + "</div>"
+      : '<div class="seg">' + ["missing","extra","other"].map(function(k){ return '<button type="button" data-kind="' + k + '"' + (d.kind === k ? ' class="on"' : "") + ">" + { missing:"Extra point<br>found here", extra:"Point not<br>on site", other:"Other<br>issue" }[k] + "</button>"; }).join("") + "</div>";
     if (d.kind === "missing") h += '<div class="lbl">What is here?</div><div class="types">' + SUGGEST.map(function(s){ return '<button type="button" data-sug="' + s[0] + '"' + (d.suggestType === s[0] ? ' class="on"' : "") + '><span class="dot" style="background:' + s[2] + '"></span>' + s[1] + "</button>"; }).join("") + "</div>";
     if (d.kind === "extra") h += near ? '<div class="status warn">' + miniIcon(near) + '<div>' + esc(near.label) + "<small>" + esc(near.model || CATS[catOf(near)].name) + " — this point is in the drawing but not on site</small></div></div>"
                                     : '<p class="muted">Tap “Cancel” and tap right on the point that isn’t on site, or describe it below.</p>';
@@ -1119,6 +1155,7 @@
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-kind]").forEach(function(b){ b.onclick = function(){ d.text = $("drText").value; d.kind = b.dataset.kind; if (d.kind === "extra" && !d.pointId){ var n = nearestPoint(d.x, d.y); if (n) d.pointId = n.point_id; } renderDraft(); }; });
     $("shBody").querySelectorAll("[data-sug]").forEach(function(b){ b.onclick = function(){ d.text = $("drText").value; d.suggestType = b.dataset.sug; renderDraft(); }; });
+    if ($("drArea")) $("drArea").onchange = function(){ d.floorId = this.value; d.text = $("drText").value; };
     $("drCam").onclick = function(){ d.text = $("drText").value; pickPhotos("cam", function(list){ d.photos = d.photos.concat(list); renderDraft(); }); };
     $("drGal").onclick = function(){ d.text = $("drText").value; pickPhotos("gal", function(list){ d.photos = d.photos.concat(list); renderDraft(); }); };
     $("drSend").onclick = function(){
@@ -1130,6 +1167,240 @@
       d.photos.forEach(function(p){ chain = chain.then(function(){ return enqueue({ kind:"photo", issue:local, blob:p.blob, w:p.w, h:p.h }); }); });
       draft = null; closeSheet(); toast("Report sent to the office"); chain.then(function(){ load(true); });
     };
+  }
+
+  // ================= projects without a drawing (old villas, AP / camera jobs): a device list instead of the plan =================
+  // The office makes the list on the phone during the site survey, or fills it from the approved Zoho quotation. Each device
+  // becomes a point (AP-01, CAM-03…) in its area (Ground floor, Outdoor…), with the same steps, photos, notes, MAC addresses,
+  // cabinet checklist, reports, Asana and client link as a project with a drawing. It can start as a "site survey" that the
+  // team doesn't see yet, and becomes an installation when the customer approves.
+  var LT = [   // [type, name, category, colour, label]
+    ["wifi","Access point","ap","#3b82f6","AP"], ["outdoorwifi","Outdoor access point","ap","#0ea5e9","AP"],
+    ["cctv","Camera — indoor","cam","#ef4444","CAM"], ["cctvoutdoor","Camera — outdoor","cam","#f97316","CAM"],
+    ["network","Data point","data","#22c55e","D"], ["ipphone","IP phone","phone","#a855f7","PH"],
+    ["intercom","Intercom — door","icom","#f59e0b","IC"], ["intercomscreen","Intercom screen","icom","#eab308","IS"],
+    ["viewport","Viewport","vp","#14b8a6","VP"], ["tv","TV point","other","#a16207","TV"], ["speaker","Speaker","other","#ec4899","SP"],
+    ["rack","Network cabinet","rack","#475569","RACK"], ["other","Other device","other","#64748b","X"]
+  ];
+  var KIT = { gw:"Gateway / UDM", sw:"Switch", nvr:"NVR", hdd:"Hard disk", ups:"UPS", pp:"Patch panel", pbx:"IP PBX", dac:"DAC cable" };
+  function LTof(t){ return LT.find(function(x){ return x[0] === t; }) || LT[LT.length - 1]; }
+  function isList(){ return !!(st.data && st.data.project && st.data.project.meta && st.data.project.meta.list); }
+  function isSurvey(){ return !!(st.data && st.data.project && st.data.project.status === "survey"); }
+  function canCreateList(){ return OFFICE || !!(st.me && st.me.office); }
+  function listTools(){
+    if (!isList() || role() === "customer") return "";
+    var office = role() === "office", h = "";
+    if (isSurvey()) h += '<div class="survey-bar"><span>Site survey — the team doesn’t see this project yet.</span>' + (office ? '<button type="button" class="btn ok" id="ltStart" style="height:38px;padding:0 14px">Start installation</button>' : "") + "</div>";
+    if (office) h += '<div class="list-tools"><button type="button" class="btn" id="ltEdit">' + EDIT_SVG + "Edit devices</button></div>";
+    return h;
+  }
+  function bindListTools(){
+    if ($("ltEdit")) $("ltEdit").onclick = function(){ openEditor(st.data); };
+    if ($("ltStart")) $("ltStart").onclick = function(){ startInstall(P); };
+  }
+  function startInstall(pid){
+    if (!confirm("Start the installation? The team sees the project in their site app from now on.")) return Promise.resolve();
+    return homeFetch("/site/p/" + pid + "/state", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ status:"active" }) })
+      .then(function(){ toast("Installation started — the team sees it now"); return load(); }).catch(function(e){ toast(e.message); });
+  }
+
+  var ed = null;
+  function rid(){ return "r" + Math.random().toString(36).slice(2, 8); }
+  function openEditor(d){
+    var m = d && d.project.meta && d.project.meta.list;
+    ed = d ? { id:d.project.id, name:d.project.name, status:d.project.status, areas:d.floors.map(function(f){ return { id:f.id, name:f.name }; }),
+               rows:JSON.parse(JSON.stringify((m && m.rows) || [])), kit:JSON.parse(JSON.stringify((m && m.kit) || {})), from:(m && m.from) || null, cabling:!!d.project.cabling, mode:"list" }
+           : { id:null, name:"", status:null, areas:[{ id:"a1", name:"Villa" }], rows:[], kit:{}, from:null, cabling:false, mode:"list", team:null, staff:null };
+    closeSheet();
+    document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on", v.id === "vEdit"); });
+    ["tabs","progBar"].forEach(function(id){ $(id).classList.add("hidden"); });
+    $("backBtn").classList.remove("hidden"); $("backBtn").onclick = closeEditor;
+    $("pName").textContent = ed.id ? ed.name : "New project without drawing"; $("pSub").textContent = ed.id ? "Devices" : "Site survey · device list";
+    if (!ed.id) homeFetch("/site/staff").then(function(j){ if (!ed) return; ed.staff = j.staff.filter(function(x){ return x.active && x.role !== "manager"; }); renderEditor(); }).catch(function(){});
+    renderEditor();
+    $("vEdit").scrollTop = 0;
+  }
+  function closeEditor(){
+    $("backBtn").onclick = showHome;
+    var back = ed && ed.id && P; ed = null;
+    if (back){ ["tabs","progBar"].forEach(function(id){ $(id).classList.remove("hidden"); }); switchView("vList"); render(); }
+    else showHome();
+  }
+  function areaName(id){ var a = ed.areas.find(function(x){ return x.id === id; }); return a ? a.name : ""; }
+  function edCount(){ var n = 0, by = {}; ed.rows.forEach(function(r){ var q = Math.max(0, parseInt(r.qty, 10) || 0); n += q; var t = LTof(r.type)[1]; by[t] = (by[t] || 0) + q; }); return { n:n, by:by }; }
+  function edSummary(){
+    var c = edCount(), k = Object.keys(ed.kit).filter(function(x){ return ed.kit[x] > 0; });
+    return "<b>" + c.n + " device" + (c.n === 1 ? "" : "s") + "</b>" + (c.n ? " — " + Object.keys(c.by).filter(function(x){ return c.by[x]; }).map(function(x){ return c.by[x] + " × " + esc(x.toLowerCase()); }).join(", ") : "") +
+      (k.length ? "<br><span class=\"muted\">In the cabinet: " + k.map(function(x){ return ed.kit[x] + " × " + KIT[x]; }).join(", ") + "</span>" : "");
+  }
+  function renderEditor(){
+    if (!ed) return;
+    if (ed.mode === "zoho") return renderZoho();
+    var areaOpts = function(sel){ return ed.areas.map(function(a){ return '<option value="' + esc(a.id) + '"' + (a.id === sel ? " selected" : "") + ">" + esc(a.name) + "</option>"; }).join(""); };
+    var typeOpts = function(sel){ return LT.map(function(t){ return '<option value="' + t[0] + '"' + (t[0] === sel ? " selected" : "") + ">" + esc(t[1]) + "</option>"; }).join(""); };
+    var rows = "";
+    ed.areas.forEach(function(a){
+      var mine = ed.rows.filter(function(r){ return r.area === a.id; });
+      if (!mine.length) return;
+      rows += '<div class="lbl" style="margin-top:10px">' + esc(a.name) + "</div>" + mine.map(function(r){ var t = LTof(r.type);
+        return '<div class="dev" data-r="' + r.id + '"><div class="r1"><span class="dot" style="background:' + t[3] + '"></span><b>' + esc(t[1]) + '</b><button type="button" class="x" data-del aria-label="Remove">×</button></div>' +
+          '<div class="r2"><input data-model placeholder="Model (e.g. U7 Pro, G6 Dome)" value="' + esc(r.model || "") + '"><div class="qty"><button type="button" data-m>−</button><input data-q inputmode="numeric" value="' + (parseInt(r.qty, 10) || 0) + '"><button type="button" data-p>+</button></div></div>' +
+          '<div class="r3"><select data-area>' + areaOpts(r.area) + '</select><select data-type>' + typeOpts(r.type) + "</select></div></div>"; }).join("");
+    });
+    var h = '<div class="ed">' +
+      '<div class="lbl" style="margin-top:12px">Customer / project</div><input class="in" id="edName" placeholder="e.g. Al Mutawa old villa — Salwa" value="' + esc(ed.name) + '">' +
+      '<div class="lbl" style="margin-top:14px">Areas</div><div class="areas">' + ed.areas.map(function(a){ return "<span>" + esc(a.name) + (ed.areas.length > 1 ? '<button type="button" data-rmarea="' + esc(a.id) + '" aria-label="Remove">×</button>' : '<button type="button" data-renarea="' + esc(a.id) + '" aria-label="Rename">✎</button>') + "</span>"; }).join("") +
+        '<button type="button" class="add" id="edArea">+ Area</button></div><p class="note" style="margin:0 2px 8px">Floors or places the team works in — Ground floor, First floor, Outdoor, Majlis… Devices are listed by area.</p>' +
+      '<button type="button" class="btn" id="edZoho" style="width:100%;margin:8px 0 4px">Fill from the Zoho quotation</button>' +
+      (ed.from ? '<p class="note" style="margin:2px 2px 6px">From quotation <b>' + esc(ed.from.number) + "</b>" + (ed.from.date ? " · " + esc(ed.from.date) : "") + "</p>" : "") +
+      '<div class="lbl" style="margin-top:14px">Devices</div>' + (rows || '<p class="note" style="margin:0 2px 8px">No devices yet — add them below or fill them from the Zoho quotation.</p>') +
+      '<div class="lbl" style="margin-top:14px">Add a device</div><div class="addtypes">' + LT.map(function(t){ return '<button type="button" data-add="' + t[0] + '"><span class="dot" style="background:' + t[3] + '"></span>' + esc(t[1]) + "</button>"; }).join("") + "</div>" +
+      (Object.keys(KIT).some(function(k){ return ed.kit[k] > 0; }) || ed.rows.some(function(r){ return r.type === "rack"; }) ? '<div class="lbl">In the cabinet</div><div class="addtypes">' + Object.keys(KIT).map(function(k){ return '<span class="dev" style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;margin:0">' + KIT[k] + '<span class="qty" style="height:32px"><button type="button" data-km="' + k + '" style="height:32px;width:32px">−</button><input data-kq="' + k + '" inputmode="numeric" value="' + (ed.kit[k] || 0) + '" style="width:34px;height:32px"><button type="button" data-kp="' + k + '" style="height:32px;width:32px">+</button></span></span>'; }).join("") + '</div><p class="note" style="margin:0 2px 10px">The cabinet checklist shows the steps for this hardware.</p>' : "") +
+      '<label style="display:flex;gap:10px;align-items:flex-start;margin:6px 2px 12px;font-size:14px"><input type="checkbox" id="edCab"' + (ed.cabling ? " checked" : "") + ' style="width:20px;height:20px;margin-top:1px"><span>Express Tech pulls the cables — add a <b>Cabling</b> step before Installed</span></label>' +
+      (!ed.id && ed.staff && ed.staff.length ? '<div class="lbl">Team</div><div class="card" style="margin:0 0 6px">' + ed.staff.map(function(x){ var on = !ed.team || ed.team.indexOf(x.id) >= 0;
+          return '<label class="rowi" style="cursor:pointer"><input type="checkbox" data-tm="' + esc(x.id) + '"' + (on ? " checked" : "") + ' style="width:20px;height:20px"><span class="t"><b>' + esc(x.name) + "</b><small>" + esc(ROLE_TAG[x.role] || x.role) + "</small></span></label>"; }).join("") + '</div><p class="note" style="margin:0 2px 12px">Managers see every project.</p>' : "") +
+      '<div class="sum" id="edSum">' + edSummary() + "</div>" +
+      (ed.id ? '<button type="button" class="big pri" id="edSave">Save changes</button>' + (ed.status === "survey" ? '<button type="button" class="big ok" id="edStart" style="margin-top:8px">Save and start installation</button>' : "")
+             : '<button type="button" class="big undo" id="edSurvey">Save as site survey</button><p class="note" style="margin:6px 2px 10px">Only the office sees it until the customer approves. Then press Start installation.</p><button type="button" class="big ok" id="edStart">Start installation now</button>') +
+      (ed.id ? '<p class="note" style="margin:8px 2px">Ticks, photos and notes already made stay with their device. Lowering a quantity takes the last devices of that line off the list.</p>' : "") + "</div>";
+    $("editBody").innerHTML = h;
+    var B = $("editBody");
+    $("edName").oninput = function(){ ed.name = this.value; };
+    $("edCab").onchange = function(){ ed.cabling = this.checked; };
+    $("edArea").onclick = function(){ var n = prompt("Name of the area (e.g. First floor, Outdoor, Majlis)"); if (!n || !n.trim()) return; var id = "a" + Date.now().toString(36); ed.areas.push({ id:id, name:n.trim().slice(0, 40) }); ed.lastArea = id; renderEditor(); };
+    B.querySelectorAll("[data-renarea]").forEach(function(b){ b.onclick = function(){ var a = ed.areas.find(function(x){ return x.id === b.dataset.renarea; }); var n = prompt("Area name", a.name); if (n && n.trim()){ a.name = n.trim().slice(0, 40); renderEditor(); } }; });
+    B.querySelectorAll("[data-rmarea]").forEach(function(b){ b.onclick = function(){
+      var id = b.dataset.rmarea, used = ed.rows.filter(function(r){ return r.area === id; }).length;
+      if (used && !confirm("Remove “" + areaName(id) + "”? Its " + used + " line" + (used > 1 ? "s" : "") + " move to " + ed.areas.find(function(a){ return a.id !== id; }).name + ".")) return;
+      ed.areas = ed.areas.filter(function(a){ return a.id !== id; }); ed.rows.forEach(function(r){ if (r.area === id) r.area = ed.areas[0].id; }); renderEditor(); }; });
+    $("edZoho").onclick = function(){ ed.mode = "zoho"; ed.zq = ed.zq || ed.name; ed.zres = null; ed.zest = null; renderEditor(); };
+    B.querySelectorAll("[data-add]").forEach(function(b){ b.onclick = function(){
+      var area = ed.lastArea && ed.areas.some(function(a){ return a.id === ed.lastArea; }) ? ed.lastArea : ed.areas[0].id, r = { id:rid(), type:b.dataset.add, model:"", qty:1, area:area };
+      ed.rows.push(r); renderEditor(); var el = B.querySelector('[data-r="' + r.id + '"]'); if (el){ el.scrollIntoView({ block:"center" }); el.querySelector("[data-q]").select(); } }; });
+    B.querySelectorAll(".dev[data-r]").forEach(function(el){
+      var r = ed.rows.find(function(x){ return x.id === el.dataset.r; }), q = el.querySelector("[data-q]");
+      var setQ = function(v){ r.qty = Math.max(0, Math.min(200, v)); q.value = r.qty; $("edSum").innerHTML = edSummary(); };
+      el.querySelector("[data-del]").onclick = function(){ ed.rows = ed.rows.filter(function(x){ return x !== r; }); renderEditor(); };
+      el.querySelector("[data-model]").oninput = function(){ r.model = this.value.slice(0, 60); };
+      q.oninput = function(){ setQ(parseInt(q.value, 10) || 0); };
+      el.querySelector("[data-m]").onclick = function(){ setQ((parseInt(r.qty, 10) || 0) - 1); };
+      el.querySelector("[data-p]").onclick = function(){ setQ((parseInt(r.qty, 10) || 0) + 1); };
+      el.querySelector("[data-area]").onchange = function(){ r.area = this.value; ed.lastArea = r.area; renderEditor(); };
+      el.querySelector("[data-type]").onchange = function(){ r.type = this.value; renderEditor(); };
+    });
+    B.querySelectorAll("[data-kq]").forEach(function(i){ var k = i.dataset.kq; var setK = function(v){ ed.kit[k] = Math.max(0, Math.min(50, v)); i.value = ed.kit[k]; $("edSum").innerHTML = edSummary(); };
+      i.oninput = function(){ setK(parseInt(i.value, 10) || 0); };
+      B.querySelector('[data-km="' + k + '"]').onclick = function(){ setK((ed.kit[k] || 0) - 1); };
+      B.querySelector('[data-kp="' + k + '"]').onclick = function(){ setK((ed.kit[k] || 0) + 1); }; });
+    B.querySelectorAll("[data-tm]").forEach(function(c){ c.onchange = function(){ ed.team = Array.prototype.filter.call(B.querySelectorAll("[data-tm]"), function(x){ return x.checked; }).map(function(x){ return x.dataset.tm; }); }; });
+    if ($("edSave")) $("edSave").onclick = function(){ saveList(false); };
+    if ($("edSurvey")) $("edSurvey").onclick = function(){ saveList("survey"); };
+    if ($("edStart")) $("edStart").onclick = function(){ saveList("start"); };
+  }
+  // the points the list makes: AP-01, AP-02… CAM-01… numbered in the list's order; a cabinet's hardware goes on its checklist
+  function listPayload(){
+    var pts = [], n = {}, racks = [], types = {}, nrack = ed.rows.filter(function(r){ return r.type === "rack"; }).reduce(function(a, r){ return a + (parseInt(r.qty, 10) || 0); }, 0);
+    LT.forEach(function(t){ types[t[0]] = t[1]; });
+    ed.rows.forEach(function(r){
+      var t = LTof(r.type), q = Math.max(0, Math.min(200, parseInt(r.qty, 10) || 0));
+      for (var i = 1; i <= q; i++){
+        n[t[4]] = (n[t[4]] || 0) + 1;
+        var pid = r.id + "-" + i, label = t[0] === "rack" ? (nrack > 1 ? "Cabinet " + n[t[4]] : "Cabinet") : t[4] + "-" + ("0" + n[t[4]]).slice(-2);
+        pts.push({ id:pid, floorId:r.area, type:r.type, cat:t[2], label:label, model:r.model || "", color:t[3], x:0.5, y:0.5 });
+        if (t[0] === "rack") racks.push({ id:pid, point:pid, name:label, main:!racks.length, floor:areaName(r.area) });
+      }
+    });
+    if (racks.length) racks[0].kit = ed.kit;
+    return { id:ed.id || undefined, name:ed.name.trim(), by:name() || undefined, cabling:ed.cabling, points:pts, floors:ed.areas.map(function(a){ return { id:a.id, name:a.name }; }),
+      meta:{ list:{ rows:ed.rows.map(function(r){ return { id:r.id, type:r.type, model:r.model || "", qty:Math.max(0, parseInt(r.qty, 10) || 0), area:r.area }; }), kit:ed.kit, from:ed.from }, types:types, racks:racks, planner:"site app (no drawing)" } };
+  }
+  function saveList(how){
+    if (!ed.name.trim()){ toast("Type the customer / project name"); $("edName").focus(); return; }
+    var body = listPayload();
+    if (!body.points.length && how === "start"){ toast("Add the devices first"); return; }
+    if (!ed.id){ body.status = how === "survey" ? "survey" : undefined; var all = (ed.staff || []).map(function(x){ return x.id; }); body.team = !ed.team || ed.team.length === all.length ? [] : ed.team; }
+    var btns = $("editBody").querySelectorAll(".big"); btns.forEach(function(b){ b.disabled = true; });
+    homeFetch("/site/publish", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(function(r){
+      if (ed.id && ed.status === "survey" && how === "start") return homeFetch("/site/p/" + r.id + "/state", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ status:"active" }) }).then(function(){ return r; });
+      return r;
+    }).then(function(r){
+      var wasNew = !ed.id;
+      toast(how === "survey" ? "Site survey saved — only the office sees it" : how === "start" ? "Installation started — the team sees it now" : "Saved — the team sees the new list");
+      $("backBtn").onclick = showHome; ed = null;
+      if (wasNew) openProject(r.id);
+      else { ["tabs","progBar"].forEach(function(id){ $(id).classList.remove("hidden"); }); switchView("vList"); load(); }
+    }).catch(function(e){ btns.forEach(function(b){ b.disabled = false; }); toast(e.message); });
+  }
+
+  // ---- fill from the approved Zoho quotation: each line is matched to a device type (or the cabinet's hardware); check it, then add
+  function zohoKind(l){
+    var s = (l.name + " " + l.sku + " " + l.description).toLowerCase();
+    if (/labou?r|installation (charge|fee|work)|professional services?|service charge|support|warranty|delivery|configuration|programming|termination|testing/.test(s)) return "";
+    if (/\budm\b|dream machine|dream router|gateway|firewall|\bucg\b|router/.test(s)) return "kit:gw";
+    if (/\bu?nvr\b|recorder/.test(s)) return "kit:nvr";
+    if (/\bhdd\b|hard ?dis[kc]|surveillance (disk|drive)/.test(s)) return "kit:hdd";
+    if (/switch|\busw\b/.test(s)) return "kit:sw";
+    if (/\bups\b/.test(s)) return "kit:ups";
+    if (/patch ?panel/.test(s)) return "kit:pp";
+    if (/\bpbx\b|yeastar p\d/.test(s)) return "kit:pbx";
+    if (/\bdac\b|sfp/.test(s)) return "kit:dac";
+    if (/cabinet|\brack\b|\b\d{1,2} ?u\b/.test(s)) return "rack";
+    var ap = /\bu[67]\b|\bu[67][+-]|\bu[67] |access point|\buap\b|wi-?fi|nanohd|\be7\b|in-?wall/.test(s), cam = /camera|cctv|\bg[3-6]\b|\bg[3-6][ -]|dome|bullet|turret|\bptz\b|\bai (pro|360|bullet|theta|dome)/.test(s);
+    if (/doorbell|door ?station|intercom|door ?phone/.test(s)) return /screen|monitor|viewer|indoor station|display/.test(s) ? "intercomscreen" : "intercom";
+    if (/viewport/.test(s)) return "viewport";
+    if (ap) return /outdoor|mesh|\bpro max outdoor|ultra/.test(s) ? "outdoorwifi" : "wifi";
+    if (cam) return /bullet|turret|ptz|outdoor/.test(s) ? "cctvoutdoor" : "cctv";
+    if (/ip ?phone|yealink|fanvil|\bt[3-5]\d[a-z]?\b|desk ?phone|dect|\bgxp/.test(s)) return "ipphone";
+    if (/data point|network point|lan point|data outlet/.test(s)) return "network";
+    if (/tv point|satellite|\bcoax/.test(s)) return "tv";
+    if (/speaker/.test(s)) return "speaker";
+    if (/cable|cat ?[5-8]|fib(er|re)|connector|rj ?45|patch cord|bracket|mount|box|trunking|conduit|clip|screw|faceplate|keystone|adapter|injector/.test(s)) return "";
+    return "?";
+  }
+  function renderZoho(){
+    var h = '<div class="ed"><div class="lbl" style="margin-top:12px">Zoho quotation</div>' +
+      '<div style="display:flex;gap:8px"><input class="in" id="zq" placeholder="Customer name or quotation number" value="' + esc(ed.zq || "") + '"><button type="button" class="btn pri" id="zGo" style="padding:0 16px">Search</button></div>';
+    if (ed.zest){
+      var e = ed.zest;
+      h += '<p class="note" style="margin:10px 2px">' + esc(e.number) + " · " + esc(e.customer) + " · " + esc(e.date) + ' — tick what is installed on site, check the type, then add.</p><div class="card" style="margin:0 0 10px;padding:4px 12px">' +
+        e.lines.map(function(l, i){ var k = l.kind;
+          return '<div class="imp"><input type="checkbox" data-zc="' + i + '"' + (l.on ? " checked" : "") + ' style="width:20px;height:20px"><div class="t"><b>' + esc(l.name) + "</b><small>" + esc(l.description || l.header || "") + '</small></div><input data-zn="' + i + '" inputmode="numeric" value="' + l.quantity + '" style="width:48px;height:36px;border-radius:9px;border:1px solid var(--line-2);text-align:center;background:var(--panel-2);color:var(--text)">' +
+            '<select data-zt="' + i + '"><option value="">Not a device</option>' + LT.map(function(t){ return '<option value="' + t[0] + '"' + (k === t[0] ? " selected" : "") + ">" + esc(t[1]) + "</option>"; }).join("") +
+            Object.keys(KIT).map(function(x){ return '<option value="kit:' + x + '"' + (k === "kit:" + x ? " selected" : "") + ">Cabinet: " + KIT[x] + "</option>"; }).join("") + "</select></div>"; }).join("") + "</div>" +
+        '<div class="lbl">Put the devices in</div><select class="in" id="zArea" style="margin-bottom:12px">' + ed.areas.map(function(a){ return '<option value="' + esc(a.id) + '">' + esc(a.name) + "</option>"; }).join("") + '</select><p class="note" style="margin:-4px 2px 12px">You can move each line to its own area afterwards.</p>' +
+        '<button type="button" class="big pri" id="zAdd">Add to the device list</button><button type="button" class="big undo" id="zBack" style="margin-top:8px">Back</button>';
+    } else if (ed.zres){
+      h += ed.zres.length ? '<div class="card" style="margin:12px 0">' + ed.zres.map(function(e){ return '<button type="button" class="rowi" data-ze="' + esc(e.id) + '"><span class="t"><b>' + esc(e.number) + " · " + esc(e.customer) + "</b><small>" + esc(e.date) + " · " + esc(e.currency || "") + " " + esc(String(e.total)) + " · " + esc(e.status) + (e.reference ? " · " + esc(e.reference) : "") + "</small></span></button>"; }).join("") + "</div>"
+        : '<div class="empty">No quotation found. Try the customer’s name as it is in Zoho, or the quotation number.</div>';
+      h += '<button type="button" class="big undo" id="zBack">Back</button>';
+    } else h += '<p class="note" style="margin:10px 2px">Search Zoho Books for the approved quotation; its devices fill the list (cables, labour and services are left out).</p><button type="button" class="big undo" id="zBack">Back</button>';
+    $("editBody").innerHTML = h + "</div>";
+    var go = function(){ ed.zq = $("zq").value.trim(); $("zGo").disabled = true;
+      homeFetch("/site/zoho/estimates?q=" + encodeURIComponent(ed.zq)).then(function(j){ ed.zres = j.estimates; ed.zest = null; renderEditor(); }).catch(function(e){ $("zGo").disabled = false; toast(e.message); }); };
+    $("zGo").onclick = go; $("zq").onkeydown = function(e){ if (e.key === "Enter") go(); };
+    $("zBack").onclick = function(){ if (ed.zest){ ed.zest = null; } else ed.mode = "list"; renderEditor(); };
+    $("editBody").querySelectorAll("[data-ze]").forEach(function(b){ b.onclick = function(){
+      homeFetch("/site/zoho/estimates/" + b.dataset.ze).then(function(j){ var e = j.estimate;
+        e.lines.forEach(function(l){ l.kind = zohoKind(l); if (l.kind === "?") l.kind = ""; l.on = !!l.kind && l.quantity > 0; });
+        ed.zest = e; renderEditor(); }).catch(function(e){ toast(e.message); }); }; });
+    if (ed.zest){
+      var B = $("editBody"), e2 = ed.zest;
+      B.querySelectorAll("[data-zc]").forEach(function(c){ c.onchange = function(){ e2.lines[+c.dataset.zc].on = c.checked; }; });
+      B.querySelectorAll("[data-zn]").forEach(function(c){ c.oninput = function(){ e2.lines[+c.dataset.zn].quantity = Math.max(0, parseInt(c.value, 10) || 0); }; });
+      B.querySelectorAll("[data-zt]").forEach(function(c){ c.onchange = function(){ var l = e2.lines[+c.dataset.zt]; l.kind = c.value; l.on = !!c.value; B.querySelector('[data-zc="' + c.dataset.zt + '"]').checked = l.on; }; });
+      $("zAdd").onclick = function(){
+        var area = $("zArea").value, added = 0, needRack = false;
+        e2.lines.forEach(function(l){
+          if (!l.on || !l.kind || !l.quantity) return;
+          if (l.kind.indexOf("kit:") === 0){ var k = l.kind.slice(4); ed.kit[k] = (ed.kit[k] || 0) + l.quantity; needRack = true; return; }
+          ed.rows.push({ id:rid(), type:l.kind, model:l.name.slice(0, 60), qty:l.quantity, area:area }); added += l.quantity;
+        });
+        if (needRack && !ed.rows.some(function(r){ return r.type === "rack"; })) ed.rows.push({ id:rid(), type:"rack", model:"", qty:1, area:area });
+        if (!ed.name.trim()) ed.name = e2.customer;
+        ed.from = { id:e2.id, number:e2.number, date:e2.date };
+        ed.mode = "list"; ed.zest = null; renderEditor(); toast(added + " device" + (added === 1 ? "" : "s") + " added from " + e2.number);
+      };
+    }
   }
 
   // ---- checklist
@@ -1163,7 +1434,8 @@
           '<span class="cks">' + boxes + "</span></div>";
       }).join("") + "</div>";
     });
-    $("listBody").innerHTML = html || '<div class="empty">' + (st.listFilter === "todo" ? "Everything here is done. 🎉" : "Nothing to show.") + "</div>";
+    $("listBody").innerHTML = listTools() + (html || '<div class="empty">' + (st.listFilter === "todo" ? "Everything here is done. 🎉" : "Nothing to show.") + "</div>");
+    bindListTools();
     $("listBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(e){ if (e.target.closest("[data-tick]")) return; openPoint(r.dataset.open); }; });
     $("listBody").querySelectorAll("[data-tick]").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); var p = pts().find(function(x){ return x.point_id === b.dataset.tick; }); setStep(p, b.dataset.step, !state(p)[b.dataset.step]); }; });
   }
@@ -1301,21 +1573,23 @@
     if (!canEdit()){ $("repBody").innerHTML = ""; return; }
     var list = issues().slice().sort(function(a,b){ var o = { open:0, approved:1, done:2, rejected:3 }; return (o[a.status] - o[b.status]) || (b.at - a.at); });
     var pend = st.pending.report || [];
-    $("repBody").innerHTML = '<p class="note" style="margin:12px 14px 4px">Found an extra point on site, or a point that isn’t there? On the <b>Plan</b>, tap <b>Report</b> and tap the spot. The office replies here.</p>' +
+    $("repBody").innerHTML = (isList() ? '<div class="list-tools"><button type="button" class="btn pri" id="newRep">+ New site report</button></div><p class="note" style="margin:10px 14px 4px">Something extra needed, or a problem on site? Send it to the office — they reply here.</p>'
+      : '<p class="note" style="margin:12px 14px 4px">Found an extra point on site, or a point that isn’t there? On the <b>Plan</b>, tap <b>Report</b> and tap the spot. The office replies here.</p>') +
       (list.length || pend.length ? '<div class="card" style="margin-top:8px">' + pend.map(function(r){ return '<div class="rowi"><span class="dot" style="background:#ea580c"></span><span class="t"><b>' + KIND[r.body.kind] + "</b><small>" + esc(r.body.text || "") + " · waiting for signal</small></span></div>"; }).join("") +
         list.map(function(i){
           var p = i.point_id ? pts().find(function(x){ return x.point_id === i.point_id; }) : null, sug = SUGGEST.find(function(s){ return s[0] === i.suggest_type; });
           return '<div class="rowi" data-issue="' + esc(i.id) + '"><span class="dot" style="background:' + issueColor(i) + '"></span><span class="t"><b>' + KIND[i.kind] + (i.kind === "missing" && sug ? " · " + sug[1] : "") + (p ? " · " + esc(p.label) : "") + "</b><small>" + esc(floorName(i.floor_id)) + " · " + esc(i.by) + " · " + when(i.at) + (i.text ? " — " + esc(i.text.slice(0, 60)) : "") + "</small></span>" +
             '<span class="pill ' + i.status + '">' + (i.status === "rejected" && i.kind === "extra" ? "Point stays" : { open:"Open", approved:"Approved", rejected:"Not needed", done:"Done" }[i.status]) + "</span>" + (i.notes.length ? '<span class="pc">💬 ' + i.notes.length + "</span>" : "") + "</div>";
         }).join("") + "</div>" : '<div class="empty">No reports yet.</div>') + '<div style="height:16px"></div>';
-    $("repBody").querySelectorAll("[data-issue]").forEach(function(r){ r.onclick = function(){ var i = issues().find(function(x){ return x.id === r.dataset.issue; }); if (i && i.floor_id !== st.floor){ st.floor = i.floor_id; view.fitNext = true; renderFloors(); } openIssue(r.dataset.issue); }; });
+    $("repBody").querySelectorAll("[data-issue]").forEach(function(r){ r.onclick = function(){ var i = issues().find(function(x){ return x.id === r.dataset.issue; }); if (i && i.floor_id !== st.floor && !isList()){ st.floor = i.floor_id; view.fitNext = true; renderFloors(); } openIssue(r.dataset.issue); }; });
+    if ($("newRep")) $("newRep").onclick = function(){ needName(function(){ draft = { floorId:st.data.floors[0].id, x:0.5, y:0.5, kind:"missing", pointId:null, suggestType:"wifi", text:"", photos:[] }; st.sel = "draft"; renderSheet(); openSheet(); }); };
   }
 
   // ---- activity (site + Asana)
   var ACT = { cabled:"cabled", uncabled:"un-ticked the cabling of", "bulk-cabled":"cabled", "bulk-uncabled":"un-ticked the cabling of", installed:"installed", uninstalled:"un-ticked", aligned:"aligned", unaligned:"un-ticked the alignment of", configured:"configured", unconfigured:"un-ticked the configuration of",
     "bulk-configured":"configured", "bulk-unconfigured":"un-ticked the configuration of", "bulk-installed":"installed", "bulk-uninstalled":"un-ticked", "bulk-aligned":"aligned", "bulk-unaligned":"un-ticked the alignment of", photo:"added a photo to", "photo-removed":"removed a photo from", note:"added a note to",
     report:"sent a site report", "report-approved":"approved a site report", "report-rejected":"marked a site report not needed", "report-done":"updated the drawing for a site report", "report-open":"reopened a site report",
-    "project-started":"started the project", "project-done":"marked the project complete", "project-reopened":"reopened the project",
+    "project-started":"started the project", "survey-started":"started the site survey", "project-done":"marked the project complete", "project-reopened":"reopened the project",
     "stage-done":"completed the stage", "stage-reopened":"reopened the stage", "stage-comment":"commented on", published:"updated the drawing", label:"changed the label of", "cable-dest":"changed the cable destination of", mac:"saved the MAC address of", "cabinet-done":"ticked the cabinet step", "cabinet-undone":"reopened the cabinet step" };
   function renderActivity(){
     var d = st.data, byId = {}; pts().forEach(function(p){ byId[p.point_id] = p; });
@@ -1740,7 +2014,7 @@
     }
     h += '<div class="lbl">Conversation</div>' + notesHtml(i.notes, pendN) + (!i.notes.length && !pendN.length ? '<p class="muted" style="margin:0 0 6px">No replies yet.</p>' : "");
     if (canEdit()) h += '<div class="addnote"><textarea id="noteIn" rows="1" placeholder="Reply…"></textarea><button type="button" id="noteAdd">Send</button></div>' +
-      '<div class="two"><button type="button" class="btn" id="shCam">' + CAM_SVG + 'Add photo</button><button type="button" class="btn" id="shShow">Show on plan</button></div>';
+      '<div class="two"><button type="button" class="btn" id="shCam">' + CAM_SVG + 'Add photo</button>' + (isList() ? "" : '<button type="button" class="btn" id="shShow">Show on plan</button>') + "</div>";
     $("shBody").innerHTML = h;
     $("shBody").querySelectorAll("[data-open]").forEach(function(r){ r.onclick = function(){ openPoint(r.dataset.open); }; });
     $("shBody").querySelectorAll("[data-ist]").forEach(function(b){ b.onclick = function(){
@@ -1850,6 +2124,7 @@
 
   // ---- tabs
   function switchView(id){
+    if (id === "vPlan" && isList()) id = "vList";
     document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.toggle("on", x.dataset.v === id); });
     document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on", v.id === id); });
     st.view = id; if (id === "vPlan") setTimeout(function(){ if (view.fitNext) fit(); else scheduleTile(); }, 30);
@@ -1875,7 +2150,7 @@
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
   if (!S){ askLink(); return; }
   if (OFFICE){ if (P && okey()) openProject(P); else showHome(); }
-  else if (STAFF){ homeFetch("/site/me").then(function(j){ st.me = j.person; }).catch(function(){}).then(function(){ if (P) openProject(P); else showHome(); }); }
+  else if (STAFF){ homeFetch("/site/me").then(function(j){ st.me = j.person; st.me.office = !!j.office; }).catch(function(){}).then(function(){ if (P) openProject(P); else showHome(); }); }
   else if (!P || !K){ askLink(); return; }
   else load().then(function(){ updateQueue(); flush(); });
   // every 20 s a tiny "anything new?" check; the whole project is reloaded only when something changed (keeps the server light)
@@ -1888,7 +2163,7 @@
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && P){ load(true); flush(); } if (!document.hidden) checkUpdate(); });
   // a phone that keeps the app open for days still gets every update: when a newer site app is published it reloads itself
   // (at once if nothing is open, otherwise when the sheet is closed); the version shows in the header menu for checking
-  var SITE_VER = "2026-10-21.1", updWaiting = false;
+  var SITE_VER = "2026-10-21.2", updWaiting = false;
   function checkUpdate(){
     fetch("version.json?t=" + Date.now(), { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){
       if (!j || !j.site || j.site <= SITE_VER || updWaiting) return;

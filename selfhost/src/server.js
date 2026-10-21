@@ -175,7 +175,7 @@ route('GET', '/api/live', async (req, res, c) => {
   if (!P.liveAccess(p)) return send(res, 200, { projects: [] });
   const j = p.office ? await bridge.call('/site/list') : await bridge.callAs(c.user, '/site/me');
   send(res, 200, { projects: j.projects.map(x => ({ id: x.id, name: x.name, state: x.state, paused: !!x.paused, pct: x.tasks_all ? Math.round(100 * x.tasks_done / x.tasks_all) : 0,
-    points: x.points, openReports: x.open_reports || 0, nextStage: x.next_stage || null, updatedAt: x.updated_at, startedAt: x.started_at, viewKey: p.office ? x.view_key : undefined })) });
+    points: x.points, openReports: x.open_reports || 0, nextStage: x.next_stage || null, updatedAt: x.updated_at, startedAt: x.started_at, viewKey: p.office ? x.view_key : undefined, list: !!x.list })) });
 });
 
 /* ---------- notifications ---------- */

@@ -262,7 +262,7 @@ export default {
       const isManager = adminOk() || (person && person.role === "manager");
       if (path === "/site/me" && req.method === "GET") {
         if (!person) return json({ error: "This link is not valid any more — ask the ExpressTech office for a new one" }, 403);
-        return json({ person: { id: person.id, name: person.name, role: person.role }, projects: await projectList(db, person.role === "manager", person) });
+        return json({ person: { id: person.id, name: person.name, role: person.role }, office: adminOk(), projects: await projectList(db, person.role === "manager", person) });
       }
       // staff: office and managers add people (technician / engineer / manager) and get their personal links
       if (path === "/site/staff" && req.method === "GET") {
@@ -291,6 +291,16 @@ export default {
         return json({ ok: true, person: { id: cur.id, name: nm, role: rl, key: k, active: act } });
       }
 
+      // projects without a drawing are filled from the approved Zoho Books quotation (office only)
+      if (path === "/site/zoho/estimates" && req.method === "GET") {
+        if (!adminOk()) return json({ error: "Office only" }, 403);
+        return json({ estimates: await zohoEstimates(env, url.searchParams.get("q") || "") });
+      }
+      if ((mm0 = path.match(/^\/site\/zoho\/estimates\/(\d+)$/)) && req.method === "GET") {
+        if (!adminOk()) return json({ error: "Office only" }, 403);
+        return json({ estimate: await zohoEstimateLines(env, mm0[1]) });
+      }
+
       const m = path.match(/^\/site\/p\/([A-Za-z0-9]+)(?:\/(.*))?$/);
       if (!m) return json({ error: "Not found" }, 404);
       const pid = m[1], rest = m[2] || "";
@@ -301,6 +311,8 @@ export default {
       if (!role) return json({ error: "This link is not valid any more — ask ExpressTech for a new one" }, 403);
       if (person && !onTeam(proj, person)) return json({ error: "You are not on this project's team — ask the ExpressTech office" }, 403);
       const officeLike = role === "office" || role === "manager";
+      // a site survey (project without a drawing, not approved yet) is for the office and managers only
+      if (proj.status === "survey" && !officeLike) return json({ error: "This project is still a site survey — it opens for the team when the office starts the installation" }, 403);
       // a project the office paused (planner → Settings → Live projects) is view-only for everyone but the office and managers
       if (proj.paused && !officeLike && req.method !== "GET") return json({ error: "This project is paused by the ExpressTech office — nothing can be changed for now" }, 423);
       const canEdit = role !== "customer";
@@ -594,9 +606,11 @@ export default {
       // project status: in progress → completed (the client link keeps working, read-only) → reopened
       if (rest === "state" && req.method === "POST") {
         if (!officeLike) return json({ error: "Office only" }, 403);
-        const b = await req.json(), st = b.status === "done" ? "done" : "active", t = now();
+        const b = await req.json(), st = b.status === "done" ? "done" : b.status === "survey" ? "survey" : "active", t = now();
         await db.prepare("UPDATE projects SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?").bind(st, st === "done" ? t : null, t, pid).run();
-        await log(st === "done" ? "project-done" : "project-reopened", "", "");
+        // a site survey that the customer approved: the installation starts now (the team sees it from here on)
+        if (proj.status === "survey" && st === "active") { await db.prepare("UPDATE projects SET started_at = ? WHERE id = ?").bind(t, pid).run(); await log("project-started", "", ""); }
+        else if (st !== "survey") await log(st === "done" ? "project-done" : "project-reopened", "", "");
         return json({ ok: true, status: st });
       }
       // pause / resume (office and managers): the team sees it greyed out and can't change anything
@@ -752,9 +766,11 @@ async function publish(db, b) {
   if (!proj) {
     // "Start project" in the planner: the project appears in its team's apps and the client link is made
     proj = { id: rid(12), team_key: rid(), view_key: rid() };
-    await db.prepare("INSERT INTO projects (id, name, team_key, view_key, meta, created_at, updated_at, status, started_at, team) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
-      .bind(proj.id, b.name, proj.team_key, proj.view_key, JSON.stringify(b.meta || {}), t, t, t, team || null).run();
-    await addLog(db, proj.id, "ExpressTech office", "project-started", "", "", "Office");
+    // a project without a drawing can start as a site survey (status "survey"): the team sees it when the installation starts
+    const survey = b.status === "survey";
+    await db.prepare("INSERT INTO projects (id, name, team_key, view_key, meta, created_at, updated_at, status, started_at, team) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(proj.id, b.name, proj.team_key, proj.view_key, JSON.stringify(b.meta || {}), t, t, survey ? "survey" : "active", t, team || null).run();
+    await addLog(db, proj.id, b.by || "ExpressTech office", survey ? "survey-started" : "project-started", "", "", "Office");
   } else {
     await db.prepare("UPDATE projects SET name = ?, meta = ?, updated_at = ? WHERE id = ?").bind(b.name, JSON.stringify(b.meta || {}), t, proj.id).run();
     if (team !== undefined) await db.prepare("UPDATE projects SET team = ? WHERE id = ?").bind(team, proj.id).run();
@@ -845,7 +861,7 @@ async function projectView(db, proj, role) {
 
 async function projectList(db, withKeys, person) {
   const all = await db.prepare("SELECT id, name, team_key, view_key, asana_gid, asana_cache, asana_at, updated_at, status, started_at, completed_at, created_at, team, paused, cabling, meta, pfile_parts, pfile_at, pfile_by FROM projects ORDER BY updated_at DESC").all();
-  const ps = { results: all.results.filter(p => !person || onTeam(p, person)) };
+  const ps = { results: all.results.filter(p => (!person || onTeam(p, person)) && (p.status !== "survey" || withKeys || (person && person.role === "manager"))) };
   // done = every installation step ticked (cameras: installed and aligned)
   const cnt = await db.prepare(`SELECT pt.project_id, COUNT(*) AS n, SUM(CASE WHEN pt.installed = 1 AND (pt.cat <> 'cam' OR pt.aligned = 1)
       AND (COALESCE(pr.cabling, 0) = 0 OR pt.cabled = 1 OR pt.cat NOT IN ('ap','cam','data','phone','icom','vp')) THEN 1 ELSE 0 END) AS done
@@ -870,7 +886,7 @@ async function projectList(db, withKeys, person) {
       open_reports: (I[p.id] || {}).n || 0, photos: (H[p.id] || {}).n || 0, asana: !!p.asana_gid, asana_at: p.asana_at, stages_done: tDone, stages_all: tAll, next_stage: next,
       status: c.project && c.project.status ? c.project.status : null,
       state: p.status || "active", started_at: p.started_at || p.created_at, completed_at: p.completed_at || null, team: withKeys ? safeJsonArr(p.team) : undefined,
-      paused: p.paused ? 1 : 0, cabling: p.cabling ? 1 : 0, asana_gid: withKeys ? p.asana_gid : undefined, tasks_all: wAll, tasks_done: wDone,
+      paused: p.paused ? 1 : 0, cabling: p.cabling ? 1 : 0, asana_gid: withKeys ? p.asana_gid : undefined, tasks_all: wAll, tasks_done: wDone, list: safeJson(p.meta).list ? 1 : 0,
       file_at: withKeys && p.pfile_parts ? p.pfile_at : undefined, file_by: withKeys && p.pfile_parts ? p.pfile_by : undefined };
   });
 }
@@ -1021,6 +1037,41 @@ async function asanaPush(db, env, proj, step, by) {
 }
 
 // ------------------------------------------------------------------ Zoho Books (Draft estimates from the planner's quote)
+// Zoho Books: sign in once (the token is kept until it expires) and call the API
+async function zohoApi(env, path, opts = {}) {
+  if (!env.ZOHO_REFRESH_TOKEN || !env.ORG_ID) throw new Error("Zoho Books is not connected yet");
+  const dc = env.ZOHO_DC || "com";
+  if (!zohoToken || now() > zohoExpiry || zohoFor !== env.ZOHO_REFRESH_TOKEN) {
+    zohoFor = env.ZOHO_REFRESH_TOKEN;
+    const accounts = dc === "com" ? "accounts.zoho.com" : `accounts.zoho.${dc}`;
+    const r = await fetch(`https://${accounts}/oauth/v2/token?refresh_token=${encodeURIComponent(env.ZOHO_REFRESH_TOKEN)}&client_id=${encodeURIComponent(env.ZOHO_CLIENT_ID)}&client_secret=${encodeURIComponent(env.ZOHO_CLIENT_SECRET)}&grant_type=refresh_token`, { method: "POST" });
+    const j = await r.json();
+    if (!j.access_token) throw new Error("Zoho login failed: " + (j.error || "no token"));
+    zohoToken = j.access_token; zohoExpiry = now() + ((j.expires_in || 3600) - 120) * 1000;
+  }
+  const r = await fetch(`https://www.zohoapis.${dc}/books/v3${path}${path.includes("?") ? "&" : "?"}organization_id=${env.ORG_ID}`, { ...opts, headers: { "Authorization": `Zoho-oauthtoken ${zohoToken}`, "Content-Type": "application/json" } });
+  const j = await r.json();
+  if (j.code !== 0) throw new Error(j.message || `Zoho error ${j.code}`);
+  return j;
+}
+// quotations by customer name or number (newest first)
+async function zohoEstimates(env, q) {
+  q = String(q || "").trim();
+  const base = "/estimates?sort_column=date&sort_order=D&per_page=25";
+  const lists = q ? await Promise.all([zohoApi(env, base + "&customer_name_contains=" + encodeURIComponent(q)), zohoApi(env, base + "&estimate_number_contains=" + encodeURIComponent(q))])
+    : [await zohoApi(env, base)];
+  const seen = {}, out = [];
+  for (const l of lists) for (const e of (l.estimates || [])) if (!seen[e.estimate_id]) { seen[e.estimate_id] = 1;
+    out.push({ id: e.estimate_id, number: e.estimate_number, customer: e.customer_name, date: e.date, total: e.total, currency: e.currency_code, status: e.status, reference: e.reference_number || "" }); }
+  return out.slice(0, 25);
+}
+// one quotation's lines (item, description, quantity) — the device list is made from them
+async function zohoEstimateLines(env, id) {
+  const e = (await zohoApi(env, `/estimates/${id}`)).estimate;
+  return { id: e.estimate_id, number: e.estimate_number, customer: e.customer_name, date: e.date, status: e.status,
+    lines: (e.line_items || []).map(l => ({ name: l.name || "", sku: l.sku || "", description: (l.description || "").slice(0, 300), quantity: +l.quantity || 0, header: l.header_name || "" })) };
+}
+
 let zohoToken = null, zohoExpiry = 0, zohoFor = "";
 async function zohoEstimate(q, env) {
   if (!q.customer_name || !Array.isArray(q.line_items) || !q.line_items.length) throw new Error("Customer and lines are required");

@@ -181,16 +181,19 @@
 
   /* ---------- Live projects ---------- */
   function live(page){
-    page.innerHTML = '<div class="hello"><div><h1>Live projects</h1><p>Installations on site. Tap one to open it in the site app.</p></div><div class="acts"><a class="btn" href="/app/site.html">' + SVG.phone + "Open the site app</a></div></div><div class=\"card list\" id=\"ll\"><div class=\"empty\">Loading…</div></div>";
+    page.innerHTML = '<div class="hello"><div><h1>Live projects</h1><p>Installations on site. Tap one to open it in the site app.</p></div><div class="acts">' +
+      (me.perms.office ? '<a class="btn pri" href="/app/site.html#new">' + SVG.plus + "Project without drawing</a>" : "") + '<a class="btn" href="/app/site.html">' + SVG.phone + "Open the site app</a></div></div>" +
+      (me.perms.office ? '<p class="muted small" style="margin:-8px 2px 14px">No plan (old villa, access points or cameras only)? Make the device list on site during the survey, or fill it from the approved Zoho quotation — the team then works from the list.</p>' : "") +
+      "<div class=\"card list\" id=\"ll\"><div class=\"empty\">Loading…</div></div>";
     api("GET", "/api/live").then(function(j){
       var el = document.getElementById("ll");
       if (!j.projects.length){ el.innerHTML = '<div class="empty">No live projects yet. They start from the planner (Start, after the customer approves).</div>'; return; }
       var act = j.projects.filter(function(x){ return x.state !== "done"; }), done = j.projects.filter(function(x){ return x.state === "done"; });
       el.innerHTML = act.concat(done).map(function(p){
-        return '<div class="row"><div class="t"><b>' + esc(p.name) + (p.paused ? '<span class="pill amber">paused</span>' : p.state === "done" ? '<span class="pill green">completed</span>' : "") + (p.openReports ? '<span class="pill red">' + p.openReports + " open report" + (p.openReports > 1 ? "s" : "") + "</span>" : "") + "</b><small>" +
+        return '<div class="row"><div class="t"><b>' + esc(p.name) + (p.state === "survey" ? '<span class="pill amber">site survey</span>' : "") + (p.list ? '<span class="pill">no drawing</span>' : "") + (p.paused ? '<span class="pill amber">paused</span>' : p.state === "done" ? '<span class="pill green">completed</span>' : "") + (p.openReports ? '<span class="pill red">' + p.openReports + " open report" + (p.openReports > 1 ? "s" : "") + "</span>" : "") + "</b><small>" +
           (p.nextStage ? "Next: " + esc(p.nextStage) + " · " : "") + p.points + " points · started " + esc(ago(p.startedAt)) + '</small></div><div class="bar' + (p.pct === 100 ? " ok" : "") + '"><i style="width:' + p.pct + '%"></i></div><div class="r" style="min-width:38px">' + p.pct + '%</div><div class="acts">' +
           (p.viewKey ? '<button type="button" class="btn sm" data-client="' + p.id + "-" + p.viewKey + '">Client link</button>' : "") +
-          (me.perms.design ? '<a class="btn sm" href="/app/?site=' + p.id + '">Planner</a>' : "") + '<a class="btn sm pri" href="/app/site.html#p=' + p.id + '">Open</a></div></div>';
+          (me.perms.design && !p.list ? '<a class="btn sm" href="/app/?site=' + p.id + '">Planner</a>' : "") + '<a class="btn sm pri" href="/app/site.html#p=' + p.id + '">Open</a></div></div>';
       }).join("");
       el.querySelectorAll("[data-client]").forEach(function(b){ b.onclick = function(){ copy(location.origin + "/#" + b.dataset.client, "Client link copied — the customer sees progress and photos, view only"); }; });
     }).catch(function(e){ err(document.getElementById("ll"), e); });
