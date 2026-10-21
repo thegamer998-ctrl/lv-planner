@@ -1870,7 +1870,20 @@
       .then(function(j){ if (j && j.v !== lastV) load(true); }).catch(function(){});
   }, 20000);
   setInterval(function(){ if (P && !document.hidden && !st.placing && st.sel !== "draft") load(true); }, 180000);
-  document.addEventListener("visibilitychange", function(){ if (!document.hidden && P){ load(true); flush(); } });
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden && P){ load(true); flush(); } if (!document.hidden) checkUpdate(); });
+  // a phone that keeps the app open for days still gets every update: when a newer site app is published it reloads itself
+  // (at once if nothing is open, otherwise when the sheet is closed); the version shows in the header menu for checking
+  var SITE_VER = "2026-10-12.3", updWaiting = false;
+  function checkUpdate(){
+    fetch("version.json?t=" + Date.now(), { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){
+      if (!j || !j.site || j.site <= SITE_VER || updWaiting) return;
+      updWaiting = true;
+      (function tryReload(){ var busy = st.sel || $("macIn") || $("lbIn") || document.querySelector(".scanov") || flushing;
+        if (busy){ setTimeout(tryReload, 4000); return; }
+        toast("Updating the app…"); setTimeout(function(){ location.reload(); }, 700); })();
+    }).catch(function(){});
+  }
+  setTimeout(checkUpdate, 3000); setInterval(checkUpdate, 10 * 60 * 1000);
 })();
 </script>
 </body>
