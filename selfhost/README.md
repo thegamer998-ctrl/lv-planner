@@ -45,6 +45,9 @@ packages, SQLite (`node:sqlite`), Caddy for HTTPS, Docker.
 - **Notifications** (`src/notify.js`): shares, edits by others, new site reports, answers to reports, added to a team,
   project paused/completed, cable destination/label changed on site, integration problems. Live on open pages (Server-Sent
   Events) and as web push (VAPID, `src/push.js`) per kind as each person chooses.
+- **Projects without a drawing**: a device list instead of the plan — made in the site app during the survey, filled from
+  the approved Zoho quotation, or started from a won lead in **LeadzIN** (`src/connect.js`, `src/quote-map.js`; LeadzIN
+  calls `/api/connect/leadzin/…` with the key from Admin → Integrations → LeadzIN).
 - **Integrations** (`src/integrations/`): Asana token and Zoho Books connection (encrypted with `data/secret.key`) are
   handed to the worker; Claude (MCP + OAuth 2.1 with PKCE, `src/mcp.js`, `src/oauth.js`) — each person connects their own.
 

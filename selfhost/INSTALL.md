@@ -125,6 +125,8 @@ The old Cloudflare server and the GitHub Pages planner keep running until you sw
 - **Asana** — paste a Personal access token (Asana → My settings → Apps → Developer apps), Save, Switch on, Test.
 - **Zoho Books** — follow the steps in the dialog (Zoho API Console; you can add our Redirect URI to the LeadzIN client),
   then **Connect with Zoho**. Pick the estimate template and the salesperson if you want.
+- **LeadzIN** — Make a new key, paste it into LeadzIN → Admin → Integrations → Express Tech Design Center. A won lead's
+  **Start project** then starts its installation here from the approved Zoho quotation (no drawing needed).
 - **Claude** — Switch on. Each person then opens **their name → Connect Claude** and adds the address shown there in
   their own Claude app (Settings → Connectors → Add custom connector).
 

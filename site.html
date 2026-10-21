@@ -1189,7 +1189,10 @@
   function canCreateList(){ return OFFICE || !!(st.me && st.me.office); }
   function listTools(){
     if (!isList() || role() === "customer") return "";
-    var office = role() === "office", h = "";
+    var office = role() === "office", h = "", cu = st.data.project.meta.customer, fr = st.data.project.meta.list.from;
+    // the customer's contact and where the list came from (a project started from LeadzIN / a Zoho quotation)
+    if (cu && (cu.name || cu.phone || cu.area)) h += '<div class="list-tools" style="display:block;font-size:13.5px;color:var(--muted)"><b style="color:var(--text)">' + esc(cu.name || cu.company) + "</b>" + (cu.area ? " · " + esc(cu.area) : "") +
+      (cu.phone ? ' · <a href="tel:' + esc(cu.phone.replace(/[^\d+]/g, "")) + '" style="color:var(--accent);font-weight:600">' + esc(cu.phone) + "</a>" : "") + (fr && fr.number ? " · quotation " + esc(fr.number) : "") + "</div>";
     if (isSurvey()) h += '<div class="survey-bar"><span>Site survey — the team doesn’t see this project yet.</span>' + (office ? '<button type="button" class="btn ok" id="ltStart" style="height:38px;padding:0 14px">Start installation</button>' : "") + "</div>";
     if (office) h += '<div class="list-tools"><button type="button" class="btn" id="ltEdit">' + EDIT_SVG + "Edit devices</button></div>";
     return h;

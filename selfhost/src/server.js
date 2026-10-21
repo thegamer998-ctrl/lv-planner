@@ -25,6 +25,7 @@ const oauth = require('./oauth');
 const mcp = require('./mcp');
 const backup = require('./backup');
 const importcf = require('./importcf');
+const connect = require('./connect');
 
 const VERSION = require('../package.json').version;
 const need = (cond, msg) => { if (!cond) throw new HttpError(403, msg || 'You do not have permission to do that.'); };
@@ -203,7 +204,7 @@ route('DELETE', '/api/me/claude/:id', async (req, res, c) => { oauth.disconnect(
 route('GET', '/api/admin/integrations', async (req, res, c) => { need(isAdmin(c.user)); send(res, 200, { integrations: integrations.list() }); });
 route('PUT', '/api/admin/integrations/:id', async (req, res, c) => { need(isAdmin(c.user)); const r = integrations.save(c.params.id, await readJson(req), c.user); audit(c.user, 'integration', c.params.id); send(res, 200, { integration: r }); });
 route('POST', '/api/admin/integrations/:id/test', async (req, res, c) => { need(isAdmin(c.user)); send(res, 200, { message: await integrations.test(c.params.id) }); });
-route('POST', '/api/admin/integrations/:id/actions/:action', async (req, res, c) => { need(isAdmin(c.user)); send(res, 200, { result: await integrations.action(c.params.id, c.params.action) }); });
+route('POST', '/api/admin/integrations/:id/actions/:action', async (req, res, c) => { need(isAdmin(c.user)); send(res, 200, { result: await integrations.action(c.params.id, c.params.action, c.user) }); });
 route('DELETE', '/api/admin/integrations/:id', async (req, res, c) => { need(isAdmin(c.user)); integrations.disconnect(c.params.id, c.user); audit(c.user, 'integration-off', c.params.id); send(res, 200, { ok: true }); });
 route('POST', '/api/admin/integrations/zoho_books/authorize', async (req, res, c) => { need(isAdmin(c.user)); send(res, 200, { url: integrations.zoho.authorizeUrl(c.user) }); });
 route('GET', '/api/integrations/zoho_books/callback', async (req, res, c) => {
@@ -302,6 +303,8 @@ const server = http.createServer(async (req, res) => {
     }
     // Claude connector (MCP) and its sign-in (OAuth)
     if (pathname === '/mcp') return await mcp.handle(req, res);
+    // LeadzIN starts projects here (server to server, its own key)
+    if (pathname.startsWith('/api/connect/')) { H.securityHeaders(res, 'strict'); return await connect.handle(req, res, url); }
     if (pathname.startsWith('/.well-known/oauth-protected-resource')) return send(res, 200, oauth.metadataPR(), { 'Access-Control-Allow-Origin': '*' });
     if (pathname.startsWith('/.well-known/oauth-authorization-server') || pathname.startsWith('/.well-known/openid-configuration')) return send(res, 200, oauth.metadataAS(), { 'Access-Control-Allow-Origin': '*' });
     if (pathname.startsWith('/oauth/')) {

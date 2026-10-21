@@ -66,6 +66,8 @@ const MIGRATIONS = [
    CREATE INDEX oauth_tokens_grant ON oauth_tokens(grant_id);
 
    CREATE TABLE audit (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, user_id TEXT, by_name TEXT NOT NULL DEFAULT '', action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');`,
+  // 2 — projects started from LeadzIN (one per lead)
+  `CREATE TABLE leadzin_projects (lead_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, estimate_id TEXT, estimate_number TEXT, lead_name TEXT, by_name TEXT, created_at TEXT NOT NULL);`,
 ];
 
 (function migrate() {

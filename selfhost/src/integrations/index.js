@@ -6,8 +6,9 @@ const store = require('./store');
 const zoho = require('./zoho');
 const asana = require('./asana');
 const claude = require('./claude');
+const leadzin = require('./leadzin');
 
-const PROVIDERS = [asana.def, zoho.def, claude.def];
+const PROVIDERS = [asana.def, zoho.def, leadzin.def, claude.def];
 const byId = id => { const p = PROVIDERS.find(x => x.id === id); if (!p) throw new HttpError(404, 'Unknown integration.'); return p; };
 
 function describe(p) {
@@ -21,7 +22,7 @@ function describe(p) {
   const configured = p.configured();
   return {
     id: p.id, name: p.name, vendor: p.vendor, category: p.category, color: p.color, initials: p.initials, description: p.description, docsUrl: p.docsUrl || '',
-    setup: p.setup || [], fields: p.fields, oauth: !!p.oauth, actions: Object.keys(p.actions || {}),
+    setup: p.setup || [], fields: p.fields, oauth: !!p.oauth, actions: Object.keys(p.actions || {}), buttons: p.buttons || [],
     enabled: !!r.enabled, configured, status: !r.enabled ? (configured ? 'off' : 'not_set_up') : r.status === 'error' ? 'error' : 'connected',
     lastError: r.last_error || '', lastOkAt: r.last_ok_at || null, updatedAt: r.updated_at || null,
     info: p.info ? p.info() : null, values, secretsSet, log: store.recent(p.id, 15),
@@ -61,15 +62,15 @@ async function test(id) {
   try { const msg = await p.test(); store.setStatus(id, true); store.log(id, 'info', 'Test: ' + msg); return msg; }
   catch (e) { store.setStatus(id, false, e.message); store.log(id, 'error', 'Test failed: ' + e.message); throw new HttpError(400, e.message); }
 }
-async function action(id, name) {
+async function action(id, name, user) {
   const p = byId(id), fn = p.actions && p.actions[name];
   if (!fn) throw new HttpError(404, 'Unknown action.');
-  try { return await fn(); } catch (e) { throw new HttpError(400, e.message); }
+  try { return await fn.call(p, user); } catch (e) { throw new HttpError(400, e.message); }
 }
 function disconnect(id, user) { byId(id); store.reset(id, user); if (id === 'claude') require('../oauth').disconnectAll(); store.log(id, 'info', `Disconnected by ${user.name}`); events.publish({ type: 'config' }); }
 
 function init() { zoho.seedFromEnv(); asana.seedFromEnv(); }
 const workerEnv = () => ({ ...asana.workerEnv(), ...zoho.workerEnv() });
-const status = () => ({ asana: !!asana.workerEnv().ASANA_TOKEN, zoho: zoho.settings().enabled, claude: store.enabled('claude') });
+const status = () => ({ asana: !!asana.workerEnv().ASANA_TOKEN, zoho: zoho.settings().enabled, claude: store.enabled('claude'), leadzin: store.enabled('leadzin') });
 
-module.exports = { list, save, test, action, disconnect, init, workerEnv, status, zoho, store };
+module.exports = { list, save, test, action, disconnect, init, workerEnv, status, zoho, store, leadzin };

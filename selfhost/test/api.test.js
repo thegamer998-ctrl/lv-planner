@@ -176,6 +176,38 @@ test('project without a drawing: site survey, then installation; ticks stay when
   assert.equal(z.status, 403);
 });
 
+test('LeadzIN starts a project from a won lead’s quotation', async () => {
+  const k = await S.admin('POST', '/api/admin/integrations/leadzin/actions/newKey');
+  assert.equal(k.status, 200, JSON.stringify(k.data));
+  const key = k.data.result.secret;
+  const call = (method, p, body, auth = key) => fetch(BASE + p, { method, headers: { Authorization: 'Bearer ' + auth, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+    .then(async r => ({ status: r.status, data: await r.json() }));
+  assert.equal((await call('GET', '/api/connect/leadzin/ping', null, 'wrong')).status, 401);
+  assert.equal((await call('GET', '/api/connect/leadzin/ping')).status, 200);
+  const lead = { id: 'lead-77', name: 'Mr. Fahad', company: 'Al Fahad villa', phone: '+965 5555 1234', area: 'Mishref' };
+  const estimate = { id: '9001', number: 'EST-000412', date: '2026-10-20', status: 'accepted', lines: [
+    { name: 'U7 Pro', quantity: 5 }, { name: 'G6 Bullet', quantity: 3 }, { name: 'Dream Machine Pro Max', quantity: 1 }, { name: 'USW Pro 24 PoE', quantity: 2 },
+    { name: 'Cat6 cable box 305m', quantity: 3 }, { name: 'Express Tech Professional Services', quantity: 1 }] };
+  const r = await call('POST', '/api/connect/leadzin/projects', { lead, estimate, by: 'Tahir' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.devices, 9);                       // 5 APs, 3 cameras, the cabinet
+  assert.equal(r.data.project.state, 'survey');
+  assert.deepEqual(r.data.skipped, ['Cat6 cable box 305m', 'Express Tech Professional Services']);
+  const pid = r.data.project.id;
+  const view = await S.admin('GET', '/site/p/' + pid, undefined, { 'X-Admin-Key': 'session' });
+  assert.equal(view.data.project.meta.customer.phone, '+965 5555 1234');
+  assert.equal(view.data.project.meta.racks[0].kit.sw, 2);
+  assert.ok(view.data.cabinets[Object.keys(view.data.cabinets)[0]].some(x => /switch/i.test(x.name)));
+  const again = await call('POST', '/api/connect/leadzin/projects', { lead, estimate });
+  assert.equal(again.data.existing, true);
+  assert.equal(again.data.project.id, pid);
+  const st = await call('GET', '/api/connect/leadzin/projects/lead-77');
+  assert.equal(st.data.project.pct, 0);
+  await new Promise(res => setTimeout(res, 300));
+  const n = await S.admin('GET', '/api/notifications');
+  assert.ok(n.data.items.some(x => /New project from LeadzIN: Al Fahad villa/.test(x.title)));
+});
+
 test('Design Center: save with drawing, share, conflict, versions', async () => {
   const pdf = Buffer.from('%PDF-1.4\n% test drawing\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF');
   const h = crypto.createHash('sha256').update(pdf).digest('hex');
