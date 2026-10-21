@@ -1,0 +1,20 @@
+{
+  "name": "expresstech-design-center",
+  "version": "1.0.0",
+  "description": "Express Tech Design Center — the LV Planner, live projects (site app), client view, logins, sharing, notifications and integrations on Express Tech's own server",
+  "private": true,
+  "license": "UNLICENSED",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "user": "node --disable-warning=ExperimentalWarning scripts/user.js",
+    "import-cloudflare": "node --disable-warning=ExperimentalWarning scripts/import-cloudflare.js",
+    "backup": "node --disable-warning=ExperimentalWarning scripts/backup.js",
+    "restore": "node --disable-warning=ExperimentalWarning scripts/restore.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/api.test.js test/import.test.js"
+  }
+}

@@ -1,0 +1,8 @@
+# for the Express Tech server image (selfhost/Dockerfile, built from here)
+.git
+.github
+selfhost/data
+selfhost/.env
+selfhost/node_modules
+selfhost/test
+**/*.log

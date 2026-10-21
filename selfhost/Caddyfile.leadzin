@@ -1,0 +1,11 @@
+# Add this block at the end of LeadzIN's Caddyfile (next to the leads.expresskw.com block), then reload LeadzIN's Caddy:
+#   docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile        (run in the LeadzIN folder)
+design.expresskw.com {
+	encode gzip
+	request_body {
+		max_size 80MB
+	}
+	reverse_proxy designcenter:3000 {
+		flush_interval -1
+	}
+}

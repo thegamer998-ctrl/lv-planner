@@ -1,0 +1,10 @@
+# HTTPS reverse proxy for the Express Tech Design Center. DOMAIN comes from .env (design.expresskw.com).
+{$DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 80MB
+	}
+	reverse_proxy designcenter:3000 {
+		flush_interval -1   # live updates (Server-Sent Events) arrive instantly
+	}
+}

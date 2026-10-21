@@ -1,0 +1,25 @@
+# Express Tech Design Center on the same server as LeadzIN: no second Caddy. The app joins LeadzIN's Docker network and
+# LeadzIN's Caddy serves design.expresskw.com too (add the block from Caddyfile.leadzin to LeadzIN's Caddyfile).
+# Start / update:   docker compose -f docker-compose.with-leadzin.yml up -d --build
+# PROXY_NETWORK (in .env) is LeadzIN's network — see it with:  docker network ls   (usually leadzin_default)
+services:
+  designcenter:
+    build:
+      context: ..
+      dockerfile: selfhost/Dockerfile
+    container_name: designcenter
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      PORT: "3000"
+    volumes:
+      - ./data:/data
+    expose:
+      - "3000"
+    networks: [proxy]
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:-leadzin_default}
+    external: true

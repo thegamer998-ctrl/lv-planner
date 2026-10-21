@@ -1,0 +1,36 @@
+# Express Tech Design Center with its own HTTPS (Caddy gets and renews the certificate for DOMAIN by itself).
+# Start / update:   docker compose up -d --build
+# On a server that already runs LeadzIN (whose Caddy uses ports 80/443), use docker-compose.with-leadzin.yml instead.
+services:
+  designcenter:
+    build:
+      context: ..
+      dockerfile: selfhost/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      PORT: "3000"
+    volumes:
+      - ./data:/data          # database, floor drawings and nightly backups — back this folder up
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [designcenter]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

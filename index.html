@@ -827,7 +827,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-17.3</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-21.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -1305,6 +1305,9 @@
 <script>
 (function(){
   "use strict";
+  // On Express Tech's own server (design.expresskw.com) /hosted.js is loaded first: sign-in instead of the server address and
+  // office key, projects saved under your login, sharing, notifications. Everything below works the same without it.
+  var HOSTED = !!(window.EXPRESS && window.EXPRESS.hosted), HOSTED_API = null;
   pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   // Some browsers block a cross-origin script from being used as a Worker when the page itself
   // was opened from a local file:// address. Fetching the worker code and re-hosting it as a
@@ -2562,6 +2565,7 @@
   function closeSaveMenu(){ el.saveMenu.classList.remove("visible"); }
   el.saveProjectBtn.addEventListener("click", function(e){
     e.stopPropagation();
+    if (HOSTED && HOSTED_API){ HOSTED_API.save(true); return; }
     if (!FS_SUPPORTED){ saveProjectAs(); return; }   // iPad / Safari: straight to share sheet or download
     if (el.saveMenu.classList.contains("visible")){ closeSaveMenu(); return; }
     var fh = fsState.projectFile;
@@ -2578,7 +2582,7 @@
   document.addEventListener("click", function(e){ if (!el.saveMenu.contains(e.target)) closeSaveMenu(); });
   document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeSaveMenu(); });
 
-  el.loadProjectBtn.addEventListener("click", function(){ guardUnsaved(openProjectPicker, "opening another project"); });
+  el.loadProjectBtn.addEventListener("click", function(){ if (HOSTED && HOSTED_API){ HOSTED_API.openPicker(); return; } guardUnsaved(openProjectPicker, "opening another project"); });
   function openProjectPicker(){
     if (typeof window.showOpenFilePicker !== "function"){ el.projectFileInput.click(); return; }
     var opts = pickerOpts({ types:[{ description:"LV Planner project", accept:{ "application/json":[".json"] } }] });
@@ -2687,12 +2691,14 @@
         if (fromAutosave){ AUTOSAVE.savedSig = null; showStatus("Unsaved work restored \u2014 press Save to keep it"); }
         else { markSaved(); showStatus("Project loaded"); }
         updateDirtyDot();
+        if (HOSTED && window.EXPRESS.loaded) window.EXPRESS.loaded(parsed, fromAutosave);
       });
   }
 
   /* ============== New project / unsaved-changes guard ============== */
   function saveCurrentProject(){
     if (!requireCustomerName()) return Promise.resolve(false);
+    if (HOSTED && HOSTED_API) return HOSTED_API.save(true);
     if (FS_SUPPORTED && fsState.projectFile) return saveProjectReplace();
     return saveProjectAs();
   }
@@ -6786,8 +6792,8 @@
   }
 
   /* ---------- Site app: publish the project for the installation team and the customer ---------- */
-  var SITE_PAGE = "https://thegamer998-ctrl.github.io/lv-planner/site.html";
-  var PLANNER_LIVE = "https://thegamer998-ctrl.github.io/lv-planner/index.html";
+  var SITE_PAGE = HOSTED ? location.origin + "/app/site.html" : "https://thegamer998-ctrl.github.io/lv-planner/site.html";
+  var PLANNER_LIVE = HOSTED ? location.origin + "/app/index.html" : "https://thegamer998-ctrl.github.io/lv-planner/index.html";
   var PLANNER_VER = ((document.querySelector(".ver") || {}).textContent || "").trim();
   function verNum(v){ var m = /v?(\d{4})-(\d{2})-(\d{2})\.(\d+)/.exec(v || ""); return m ? +(m[1] + m[2] + m[3]) * 1000 + +m[4] : 0; }
   var siteUi = { status:null, show:true, busy:false, data:null };
@@ -6863,7 +6869,7 @@
   function siteLink(key){ var r = zRelay(); return SITE_PAGE + "#p=" + project.site.id + "&k=" + key + "&s=" + encodeURIComponent(r.url); }
   // the client's link on Express Tech's own domain (Express Tech Design Center); it serves the same customer view
   var CLIENT_SITE = "https://design.expresskw.com/", CLIENT_SERVER = "https://expresstech.hussaink-060.workers.dev";
-  function clientLink(key){ var r = zRelay(); return (r.url || "").replace(/\/+$/, "") === CLIENT_SERVER ? CLIENT_SITE + "#" + project.site.id + "-" + key : siteLink(key); }
+  function clientLink(key){ if (HOSTED) return location.origin + "/#" + project.site.id + "-" + key; var r = zRelay(); return (r.url || "").replace(/\/+$/, "") === CLIENT_SERVER ? CLIENT_SITE + "#" + project.site.id + "-" + key : siteLink(key); }
   function siteFetch(path, opts){
     var r = zRelay(); opts = opts || {};
     opts.headers = Object.assign({ "X-Admin-Key":r.key }, opts.headers || {});
@@ -7017,7 +7023,7 @@
       siteUi.busy = false; if (btn) btn.disabled = false;
       if (typeof autosaveTick === "function") autosaveTick();
       updateDirtyDot();
-      showStatus(opts.start ? "Project started — press Save so this file keeps the link to it" : opts.auto ? "Saved · live site updated" : "Site updated");
+      showStatus(opts.start ? (HOSTED ? "Project started — the team sees it in their site app" : "Project started — press Save so this file keeps the link to it") : opts.auto ? "Saved · live site updated" : "Site updated");
       return (opts.asana ? linkAsana(opts.asana).catch(function(){}) : Promise.resolve()).then(function(){ return loadSite(true, opts.start); });
     }).catch(function(e){ siteUi.busy = false; if (btn) btn.disabled = false; msg.textContent = "Couldn't publish: " + e.message; if (opts.auto) showStatus("Saved — but the live site couldn't be updated: " + e.message); });
   }
@@ -7029,7 +7035,7 @@
       var lc = syncSiteLabels(d.points), rc = syncSiteRacks(d.points);
       if (!afterPublish) checkNewerFile(d);
       if ((lc || rc) && typeof autosaveTick === "function") autosaveTick();
-      renderSiteDialog(started ? "Started. Send the client link, and their own link to anyone who doesn't have it yet." : afterPublish ? "Site updated." : "");
+      renderSiteDialog(started ? (HOSTED ? "Started. The team sees it in their site app now — send the client link to the customer." : "Started. Send the client link, and their own link to anyone who doesn't have it yet.") : afterPublish ? "Site updated." : "");
       if (typeof renderMarkers === "function") renderMarkers();
     }).catch(function(e){
       // deleted on site (Settings → Live projects): this file is no longer linked
@@ -7049,15 +7055,15 @@
         var pct = p.tasks_all ? Math.round(p.tasks_done / p.tasks_all * 100) : p.points ? Math.round(p.installed / p.points * 100) : 0;
         return '<div class="lp-row' + (p.paused ? " off" : "") + '"><b>' + escapeHtml(p.name) + (p.id === mine ? '<span class="lp-chip">open here</span>' : "") + '</b>' +
           '<small>' + (p.tasks_all ? p.tasks_done + ' / ' + p.tasks_all + ' tasks' : p.installed + ' / ' + p.points + ' done') + ' · ' + pct + '% · ' + (p.paused ? "⏸ Disabled" : p.state === "done" ? "Completed" : "In progress") + (p.asana ? " · Asana" : "") + '</small>' +
-          '<div class="lp-btns">' + (p.file_at ? '<button type="button" class="tbtn primary" data-lp-plan="' + escapeHtml(p.id) + '" title="Saved on ' + escapeHtml(p.file_by || "") + ' ' + escapeHtml(new Date(p.file_at).toLocaleString()) + '">Open in planner</button>' : '') +
-          '<button type="button" class="tbtn" data-lp-open="' + escapeHtml(p.id) + '">' + (p.file_at ? 'Site view' : 'Open') + '</button>' +
+          '<div class="lp-btns">' + (p.file_at || HOSTED ? '<button type="button" class="tbtn primary" data-lp-plan="' + escapeHtml(p.id) + '" title="Saved on ' + escapeHtml(p.file_by || "") + ' ' + escapeHtml(new Date(p.file_at).toLocaleString()) + '">Open in planner</button>' : '') +
+          '<button type="button" class="tbtn" data-lp-open="' + escapeHtml(p.id) + '">' + (p.file_at || HOSTED ? 'Site view' : 'Open') + '</button>' +
           '<button type="button" class="tbtn" data-lp-pause="' + escapeHtml(p.id) + '" data-v="' + (p.paused ? "0" : "1") + '">' + (p.paused ? "Enable" : "Disable") + '</button>' +
           '<button type="button" class="tbtn lp-del" data-lp-del="' + escapeHtml(p.id) + '" data-name="' + escapeHtml(p.name) + '">Delete</button></div></div>';
       }).join("");
       box.querySelectorAll("[data-lp-plan]").forEach(function(b){ b.onclick = function(){
         guardUnsaved(function(){ fsState.projectFile = null; siteOpenFile(b.dataset.lpPlan, function(){ updateSaveHint(); showStatus("Opened the latest version — Save keeps it in sync on every device"); }); }, "opening this project");
       }; });
-      box.querySelectorAll("[data-lp-open]").forEach(function(b){ b.onclick = function(){ window.open(SITE_PAGE + "#office&s=" + encodeURIComponent(r.url) + "&p=" + b.dataset.lpOpen, "_blank"); }; });
+      box.querySelectorAll("[data-lp-open]").forEach(function(b){ b.onclick = function(){ window.open(SITE_PAGE + (HOSTED ? "#p=" : "#office&s=" + encodeURIComponent(r.url) + "&p=") + b.dataset.lpOpen, "_blank"); }; });
       box.querySelectorAll("[data-lp-pause]").forEach(function(b){ b.onclick = function(){
         var on = b.dataset.v === "1"; b.disabled = true;
         siteFetch("/site/p/" + b.dataset.lpPause + "/pause", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ paused:on }) })
@@ -7100,6 +7106,7 @@
   // Open in planner, or "newer version saved on iPad" when an older copy is opened). Needs the server + office key once per device.
   function deviceName(){ var u = navigator.userAgent; return IS_IOS ? (/iPhone/.test(u) ? "iPhone" : "iPad") : /Macintosh/.test(u) ? "Mac" : /Windows/.test(u) ? "Windows PC" : "laptop"; }
   function siteSaveSync(){
+    if (HOSTED) return;   // the hosted planner saves the project under your login and updates the live site itself
     var r = zRelay(); if (!project.site || !project.site.id || !r.url || !r.key) return;
     var id = project.site.id, at = Date.now();
     project.site.fileAt = at; project.site.fileBy = deviceName();
@@ -7113,6 +7120,7 @@
       .catch(function(e){ showStatus("Saved — but couldn't reach the Express Tech server (" + e.message + "). Save again when online."); });
   }
   function siteOpenFile(id, then){
+    if (HOSTED && HOSTED_API){ HOSTED_API.openBySite(id); return; }
     showStatus("Opening the latest version from the server…");
     siteFetch("/site/p/" + id + "/file").then(function(parsed){
       if (!parsed || !parsed.floors){ showStatus("No saved file for this project yet — save it once from the device that has it"); return; }
@@ -7121,6 +7129,7 @@
   }
   // a copy older than the one on the server (saved on the other device): offer the newer one
   function checkNewerFile(d){
+    if (HOSTED) return;   // one copy on the server, kept up to date by itself
     var at = d.project.file_at || 0, mine = (project.site && project.site.fileAt) || 0;
     if (!at || at <= mine + 1000 || siteUi.offeredFor === project.site.id + ":" + at) return;
     siteUi.offeredFor = project.site.id + ":" + at;
@@ -7160,7 +7169,7 @@
   var ROLE_NAMES = { tech:"Technician", engineer:"Site engineer", manager:"Manager" };
   function personLink(k){ return SITE_PAGE + "#u=" + encodeURIComponent(k) + "&s=" + encodeURIComponent(zRelay().url); }
   function teamPicker(staff, chosen){
-    if (!staff.length) return '<p class="st-msg">No team yet. Add Kutbuddin, Idris… once in the <b>office view → Team</b>; they then get one link for all their projects.</p>';
+    if (!staff.length) return '<p class="st-msg">' + (HOSTED ? "No team yet. Give Kutbuddin, Idris… a site app role in <b>Admin → Logins &amp; permissions</b>; they sign in with their own username." : "No team yet. Add Kutbuddin, Idris… once in the <b>office view → Team</b>; they then get one link for all their projects.") + '</p>';
     return '<div class="st-team">' + staff.map(function(x){ var on = !chosen || !chosen.length || chosen.indexOf(x.id) >= 0;
       return '<label><input type="checkbox" data-staff="' + escapeHtml(x.id) + '"' + (on ? " checked" : "") + (x.role === "manager" ? " disabled" : "") + '><b>' + escapeHtml(x.name) + '</b><small>' + (ROLE_NAMES[x.role] || x.role) + (x.role === "manager" ? " · sees all projects" : "") + '</small></label>'; }).join("") + '</div>';
   }
@@ -7235,8 +7244,9 @@
       else if (siteUi.editTeam) h += teamPicker(staff, team);
       else {
         var on = staff.filter(function(x){ return x.role === "manager" || !team.length || team.indexOf(x.id) >= 0; });
-        h += on.length ? on.map(function(x){ return linkRow(x.name + " · " + (ROLE_NAMES[x.role] || x.role), "Their own link — the same for every project. Send it once.", personLink(x.key), "staff", x.name); }).join("")
-                       : '<p class="st-msg">No team yet — add people in the office view → Team.</p>';
+        h += on.length ? on.map(function(x){ return HOSTED ? '<div class="st-link"><div class="t"><b>' + escapeHtml(x.name + " · " + (ROLE_NAMES[x.role] || x.role)) + '</b><small>Signs in to the site app with their own username</small></div></div>'
+                                                           : linkRow(x.name + " · " + (ROLE_NAMES[x.role] || x.role), "Their own link — the same for every project. Send it once.", personLink(x.key), "staff", x.name); }).join("")
+                       : '<p class="st-msg">' + (HOSTED ? "No team yet — give people a site app role in Admin → Logins &amp; permissions." : "No team yet — add people in the office view → Team.") + '</p>';
       }
       var openR = siteOpenIssues(), pendR = (project.site.resolved || []).length;
       if (openR.length || pendR){
@@ -7281,7 +7291,7 @@
     body.querySelectorAll("[data-open]").forEach(function(b){ b.onclick = function(){ window.open(b.dataset.open, "_blank"); }; });
     body.querySelectorAll("[data-wa]").forEach(function(b){ b.onclick = function(){ window.open("https://wa.me/?text=" + encodeURIComponent(waText(b.dataset.kind, b.dataset.wa, b.dataset.who)), "_blank"); }; });
     // add technicians / engineers / managers: the Team list in the office view (the dialog reloads the team when opened again)
-    body.querySelectorAll("[data-addpeople]").forEach(function(b){ b.onclick = function(){ siteUi.staff = null; window.open(SITE_PAGE + "#office&s=" + encodeURIComponent(zRelay().url) + "&team", "_blank"); }; });
+    body.querySelectorAll("[data-addpeople]").forEach(function(b){ b.onclick = function(){ siteUi.staff = null; window.open(HOSTED ? "/#admin/users" : SITE_PAGE + "#office&s=" + encodeURIComponent(zRelay().url) + "&team", "_blank"); }; });
     var et = document.getElementById("stEditTeam");
     if (et) et.onclick = function(){
       if (!siteUi.editTeam){ siteUi.editTeam = true; renderSiteDialog(""); return; }
@@ -7304,7 +7314,7 @@
       if (fi >= 0 && fi !== project.activeFloorIndex) switchFloor(fi);
       setTimeout(function(){ renderMarkers(); var pins = el.markerLayer.querySelectorAll(".site-pin"); pins.forEach(function(pn){ pn.animate && pn.animate([{ transform:"scale(1)" }, { transform:"scale(1.8)" }, { transform:"scale(1)" }], { duration:700, iterations:2 }); }); }, 400);
     }; });
-    var ob = document.getElementById("stOffice"); if (ob) ob.onclick = function(){ window.open(SITE_PAGE + "#office&s=" + encodeURIComponent(zRelay().url) + "&p=" + project.site.id, "_blank"); };
+    var ob = document.getElementById("stOffice"); if (ob) ob.onclick = function(){ window.open(SITE_PAGE + (HOSTED ? "#p=" : "#office&s=" + encodeURIComponent(zRelay().url) + "&p=") + project.site.id, "_blank"); };
     var ab = document.getElementById("stAsanaBtn");
     if (ab) ab.onclick = function(){
       var v = document.getElementById("stAsana").value, m = v.match(/project\/(\d{6,})/) || v.match(/(\d{10,})/);
@@ -7934,7 +7944,7 @@
   }
   var ZRELAY_KEY = "lvplanner_zoho_relay", ZRELAY_SECRET = "lvplanner_zoho_secret";
   // One Express Tech server (Cloudflare Worker) for direct Zoho quotes and the site app; saved on this device only
-  function zRelay(){ try { return { url:(localStorage.getItem(ZRELAY_KEY) || "").trim().replace(/\/+$/, "").replace(/\/zoho$/, ""), key:localStorage.getItem(ZRELAY_SECRET) || "" }; } catch(e){ return { url:"", key:"" }; } }
+  function zRelay(){ if (HOSTED) return { url:location.origin, key:"session" }; try { return { url:(localStorage.getItem(ZRELAY_KEY) || "").trim().replace(/\/+$/, "").replace(/\/zoho$/, ""), key:localStorage.getItem(ZRELAY_SECRET) || "" }; } catch(e){ return { url:"", key:"" }; } }
   function setServer(url, key){ try { localStorage.setItem(ZRELAY_KEY, (url || "").trim().replace(/\/+$/, "")); localStorage.setItem(ZRELAY_SECRET, key || ""); } catch(e){} }
   function kwd(n){ return (Math.round(n * 1000) / 1000).toLocaleString("en-US", { minimumFractionDigits:3, maximumFractionDigits:3 }); }
   function openQuote(){
@@ -8790,7 +8800,7 @@
     var mod = e.metaKey || e.ctrlKey;
     if (mod && (e.key === "s" || e.key === "S")){
       e.preventDefault();
-      if (FS_SUPPORTED && fsState.projectFile) saveProjectReplace(); else saveProjectAs();
+      if (HOSTED && HOSTED_API) HOSTED_API.save(true); else if (FS_SUPPORTED && fsState.projectFile) saveProjectReplace(); else saveProjectAs();
       return;
     }
     // Cmd/Ctrl + plus / minus / 0 zoom the drawing itself (browser zoom would only stretch the pixels and blur it)
@@ -8834,6 +8844,16 @@
   updateSaveHint();
   applyFeatures();
   setTimeout(function(){ histReset(); markSaved(); offerRestore(); }, 600);
+  // hosted (Express Tech server): what /hosted.js needs from the planner to save and open projects under your login
+  if (HOSTED && typeof window.EXPRESS.planner === "function") HOSTED_API = window.EXPRESS.planner({
+    projectObject:function(){ return projectObject(true); }, hasContent:hasContent, isDirty:isDirty, stateSig:stateSig,
+    markSaved:function(sig){ markSaved(sig); }, hasName:hasCustomerName, requireName:requireCustomerName, status:showStatus,
+    ask:askChoice, load:function(data){ fsState.projectFile = null; return loadProjectObject(data, false); },
+    setFloor:function(i){ if (i >= 0 && i < project.floors.length && i !== project.activeFloorIndex) switchFloor(i); }, floorIndex:function(){ return project.activeFloorIndex; },
+    startNew:function(){ startNewProject(); }, openFile:function(){ guardUnsaved(openProjectPicker, "opening another project"); }, guard:guardUnsaved,
+    siteId:function(){ return project.site && project.site.id; }, publishSite:function(){ if (project.site && project.site.id && !siteUi.busy) publishSite({ auto:true }); },
+    name:function(){ return project.name; }, renameTo:function(n){ project.name = n; el.projectNameInput.value = n; }
+  });
   if ("serviceWorker" in navigator && location.protocol === "https:"){
     navigator.serviceWorker.register("sw.js", { updateViaCache:"none" })
       .then(function(reg){ reg.update(); }).catch(function(){});

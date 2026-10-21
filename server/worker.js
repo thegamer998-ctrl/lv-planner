@@ -236,6 +236,26 @@ export default {
         if (!adminOk()) return json({ error: "Wrong office key" }, 401);
         return json({ projects: await projectList(db, true) });
       }
+      // moving to Express Tech's own server (selfhost/): every table, page by page, office key only. Pictures and drawings
+      // are listed by size and fetched one by one from …/blob (raw bytes), so no request gets large.
+      if ((mm0 = path.match(/^\/site\/export\/([a-z_]+)(\/blob)?$/)) && req.method === "GET") {
+        if (!adminOk()) return json({ error: "Wrong office key" }, 401);
+        const BLOBS = { projects: [], floors: ["img"], floor_pdf: ["data"], points: [], photos: ["img"], notes: [], issues: [], log: [], checks: [], staff: [], pfile: ["data"] };
+        const t = mm0[1], q = url.searchParams;
+        if (!(t in BLOBS)) return json({ error: "Unknown table" }, 404);
+        if (mm0[2]) {
+          const col = q.get("col") || "";
+          if (!BLOBS[t].includes(col)) return json({ error: "Not a picture column" }, 400);
+          const r = await db.prepare(`SELECT ${col} AS v FROM ${t} WHERE rowid = ?`).bind(+q.get("rid") || 0).first();
+          if (!r || r.v == null) return json({ error: "Empty" }, 404);
+          return new Response(toBytes(r.v), { headers: { ...cors, "Content-Type": "application/octet-stream", "Cache-Control": "no-store" } });
+        }
+        const info = (await db.prepare(`PRAGMA table_info(${t})`).all()).results.map(c => c.name);
+        const sel = info.map(c => BLOBS[t].includes(c) ? `LENGTH(${c}) AS ${c}` : c).join(", ");
+        const lim = Math.max(1, Math.min(500, +q.get("limit") || 200));
+        const rows = (await db.prepare(`SELECT rowid AS _rid, ${sel} FROM ${t} WHERE rowid > ? ORDER BY rowid LIMIT ?`).bind(+q.get("after") || 0, lim).all()).results;
+        return json({ table: t, columns: info, blobs: BLOBS[t], rows, more: rows.length === lim });
+      }
       // a staff member's own link: who they are and the projects they can open
       const staffKey = req.headers.get("X-Key") || url.searchParams.get("k") || "";
       const person = staffKey ? await db.prepare("SELECT * FROM staff WHERE key = ? AND active = 1").bind(staffKey).first() : null;
@@ -1001,12 +1021,14 @@ async function asanaPush(db, env, proj, step, by) {
 }
 
 // ------------------------------------------------------------------ Zoho Books (Draft estimates from the planner's quote)
-let zohoToken = null, zohoExpiry = 0;
+let zohoToken = null, zohoExpiry = 0, zohoFor = "";
 async function zohoEstimate(q, env) {
   if (!q.customer_name || !Array.isArray(q.line_items) || !q.line_items.length) throw new Error("Customer and lines are required");
   const dc = env.ZOHO_DC || "com", org = env.ORG_ID;
   const api = `https://www.zohoapis.${dc}/books/v3`;
-  if (!zohoToken || now() > zohoExpiry) {
+  // (the self-hosted server can reconnect Zoho without a restart: a new refresh token means a new sign-in)
+  if (!zohoToken || now() > zohoExpiry || zohoFor !== env.ZOHO_REFRESH_TOKEN) {
+    zohoFor = env.ZOHO_REFRESH_TOKEN;
     const accounts = dc === "com" ? "accounts.zoho.com" : `accounts.zoho.${dc}`;
     const r = await fetch(`https://${accounts}/oauth/v2/token?refresh_token=${encodeURIComponent(env.ZOHO_REFRESH_TOKEN)}&client_id=${encodeURIComponent(env.ZOHO_CLIENT_ID)}&client_secret=${encodeURIComponent(env.ZOHO_CLIENT_SECRET)}&grant_type=refresh_token`, { method: "POST" });
     const j = await r.json();

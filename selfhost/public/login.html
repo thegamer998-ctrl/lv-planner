@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sign in · Express Tech Design Center</title>
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/app/icon-192.png">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<link rel="stylesheet" href="/portal.css">
+</head>
+<body class="auth-page">
+<main class="auth">
+  <div class="auth-card">
+    <div class="auth-brand"><img src="/brand-logo.png" alt="Express Tech — We help you grow"><small>Design Center</small></div>
+    <form id="signIn" autocomplete="on">
+      <h2>Sign in</h2>
+      <label>Username<input class="in" id="u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus></label>
+      <label>Password<input class="in" id="p" name="password" type="password" autocomplete="current-password" required></label>
+      <p class="err" id="err" role="alert"></p>
+      <button class="btn pri wide" type="submit" id="go">Sign in</button>
+      <p class="muted small">Forgot your password? Ask Husain or Aziz to reset it.</p>
+    </form>
+    <form id="change" hidden>
+      <h2>Choose your own password</h2>
+      <p class="muted">This is your first sign-in (or your password was reset). Choose a password only you know — at least 8 characters.</p>
+      <label>New password<input class="in" id="n1" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label>Type it again<input class="in" id="n2" type="password" autocomplete="new-password" minlength="8" required></label>
+      <p class="err" id="err2" role="alert"></p>
+      <button class="btn pri wide" type="submit">Save and continue</button>
+    </form>
+  </div>
+</main>
+<div class="brand-stripe"></div>
+<script src="/login.js"></script>
+</body>
+</html>
