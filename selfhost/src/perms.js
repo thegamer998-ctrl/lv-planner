@@ -34,6 +34,8 @@ function permsOf(row) {
   if (typeof p === 'string') { try { p = JSON.parse(p || '{}'); } catch (e) { p = {}; } }
   return clean(p);
 }
+// Two-step sign-in is required for admins (as in LeadzIN); everyone else can switch it on for themselves.
+const twoFactorRequired = row => !!row && permsOf(row).admin;
 // someone who uses the live-project side at all (the site app): office people and anyone with a site role
 const liveAccess = p => !!(p.office || p.site);
 // the role their personal record in the site app has (the "staff" table of the live projects)
@@ -47,4 +49,4 @@ function describe(p) {
   return bits.join(' + ') || 'No access';
 }
 
-module.exports = { SITE_ROLES, SITE_ROLE_NAME, FLAGS, PRESETS, clean, permsOf, liveAccess, staffRole, describe };
+module.exports = { twoFactorRequired, SITE_ROLES, SITE_ROLE_NAME, FLAGS, PRESETS, clean, permsOf, liveAccess, staffRole, describe };

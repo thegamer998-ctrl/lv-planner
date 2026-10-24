@@ -19,6 +19,10 @@ COPY server/worker.js ./worker/worker.mjs
 # the planner and the site app (the same files GitHub Pages serves)
 COPY index.html site.html sw.js version.json manifest.webmanifest site.webmanifest ./public/app/
 COPY *.png ./public/app/
+# the browser libraries (pdf.js, jsPDF, pdf-lib, the barcode reader) are fetched once here and served by this server,
+# so browsers load nothing from outside sites (see vendor/libs.json)
+COPY selfhost/vendor ./vendor
+RUN node scripts/vendor-libs.js /app/public/app-vendor
 
 RUN mkdir -p /data && chown -R node:node /data
 USER node

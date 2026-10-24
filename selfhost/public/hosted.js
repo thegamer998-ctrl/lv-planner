@@ -164,7 +164,9 @@
   E.me = null;
   E.ready = fetch("/api/me", { credentials:"same-origin", cache:"no-store" }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }).then(function(j){
     E.me = j ? j.user : null; E.config = j ? j.config : null; E.unread = j ? j.unread : 0;
-    if (E.me && !E.me.mustChangePassword) connect();
+    // a new password or two-step sign-in is still due: finish that on the sign-in page first
+    if (E.me && (E.me.mustChangePassword || E.me.mustSetup2fa)) { location.replace("/login?next=" + encodeURIComponent(location.pathname + location.search + location.hash)); return new Promise(function(){}); }
+    if (E.me) connect();
     return E.me;
   });
   var es = null;

@@ -3,3 +3,4 @@ data/
 node_modules/
 public/app/
 *.log
+public/app-vendor/

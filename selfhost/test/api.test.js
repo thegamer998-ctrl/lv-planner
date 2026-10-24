@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const totp = require('../src/totp');
 
 const PORT = 39000 + Math.floor(Math.random() * 900);
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -34,8 +35,19 @@ async function signIn(username, password, next) {
   const c = client();
   const r = await c('POST', '/api/auth/login', { username, password });
   assert.equal(r.status, 200, JSON.stringify(r.data));
-  if (r.data.mustChangePassword) { const r2 = await c('POST', '/api/me/password', { current: password, next: next || 'GoodPassw0rd!' }); assert.equal(r2.status, 200, JSON.stringify(r2.data)); }
+  if (r.data.mustChangePassword) { const r2 = await c('POST', '/api/me/password', { current: password, next: next || 'GoodPassw0rd!' }); assert.equal(r2.status, 200, JSON.stringify(r2.data)); r.data.mustSetup2fa = r2.data.mustSetup2fa; }
+  if (r.data.mustSetup2fa) c.secret = await setup2fa(c);
   return c;
+}
+// Admins must turn on two-step sign-in before anything else works.
+async function setup2fa(c) {
+  const s = await c('POST', '/api/me/2fa/setup');
+  assert.equal(s.status, 200, JSON.stringify(s.data));
+  assert.match(s.data.qr, /^data:image\/svg\+xml;base64,/);
+  const secret = s.data.secret.replace(/ /g, '');
+  const e = await c('POST', '/api/me/2fa/enable', { code: totp.codeAt(secret, totp.stepNow()) });
+  assert.equal(e.status, 200, JSON.stringify(e.data));
+  return secret;
 }
 
 const S = {};
@@ -56,7 +68,12 @@ test('admin signs in and must choose a password', async () => {
   assert.equal(r.data.mustChangePassword, true);
   const blocked = await c('GET', '/api/dc/projects');
   assert.equal(blocked.status, 403);
-  await c('POST', '/api/me/password', { current: 'FirstPass123', next: 'HusainPass1' });
+  const pw = await c('POST', '/api/me/password', { current: 'FirstPass123', next: 'HusainPass1' });
+  assert.equal(pw.data.mustSetup2fa, true);
+  const notYet = await c('GET', '/api/dc/projects');
+  assert.equal(notYet.status, 403); assert.equal(notYet.data.mustSetup2fa, true);
+  assert.equal((await c('GET', '/site/list', undefined, { 'X-Admin-Key': 'session' })).status, 403);
+  S.adminSecret = await setup2fa(c);
   S.admin = c;
   const me = await c('GET', '/api/me');
   assert.equal(me.data.user.perms.admin, true);

@@ -67,10 +67,11 @@ function encrypt(payload, p256dh, authSecret, opts = {}) {
 }
 
 async function sendOne(sub, data, opts = {}) {
+  if (!pushHostAllowed(sub.endpoint)) { db.prepare('DELETE FROM push_subscriptions WHERE endpoint=?').run(sub.endpoint); return 'gone'; }
   const endpoint = new URL(sub.endpoint);
   const body = encrypt(JSON.stringify(data), sub.p256dh, sub.auth);
   const r = await fetch(sub.endpoint, {
-    method: 'POST', body, signal: AbortSignal.timeout(15000),
+    method: 'POST', body, signal: AbortSignal.timeout(15000), redirect: 'error',
     headers: {
       'Content-Type': 'application/octet-stream', 'Content-Encoding': 'aes128gcm', TTL: String(opts.ttl || 24 * 3600), Urgency: opts.urgency || 'high',
       ...(opts.topic ? { Topic: opts.topic } : {}),
@@ -81,7 +82,7 @@ async function sendOne(sub, data, opts = {}) {
   if (!r.ok) {
     db.prepare('UPDATE push_subscriptions SET fails = fails + 1 WHERE endpoint=?').run(sub.endpoint);
     db.prepare('DELETE FROM push_subscriptions WHERE endpoint=? AND fails >= 10').run(sub.endpoint);
-    throw new Error(`push service answered ${r.status} ${(await r.text().catch(() => '')).slice(0, 120)}`);
+    throw new Error(`push service answered ${r.status}`);
   }
   db.prepare('UPDATE push_subscriptions SET fails = 0, last_ok_at = ? WHERE endpoint=?').run(now(), sub.endpoint);
   return 'ok';
@@ -95,8 +96,17 @@ async function sendToUser(userId, data, opts) {
   return { devices: subs.length, delivered: results.filter(r => r.status === 'fulfilled' && r.value === 'ok').length, errors: results.filter(r => r.status === 'rejected').map(r => r.reason.message) };
 }
 
+// Browsers only ever hand out endpoints on these push services. Anything else is refused, so the server can't be pointed at
+// an arbitrary (or internal) address.
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.apple\.com$/,
+  /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/];
+function pushHostAllowed(endpoint) {
+  let u; try { u = new URL(endpoint); } catch (e) { return false; }
+  return u.protocol === 'https:' && !u.port && !u.username && !u.password && PUSH_HOSTS.some(re => re.test(u.hostname));
+}
+
 function subscribe(userId, sub, ua) {
-  const ok = sub && typeof sub.endpoint === 'string' && /^https:\/\//.test(sub.endpoint) && sub.keys && sub.keys.p256dh && sub.keys.auth;
+  const ok = sub && typeof sub.endpoint === 'string' && sub.endpoint.length < 1000 && pushHostAllowed(sub.endpoint) && sub.keys && sub.keys.p256dh && sub.keys.auth;
   if (!ok) return false;
   if (fromB64u(sub.keys.p256dh).length !== 65 || fromB64u(sub.keys.auth).length < 16) return false;
   db.prepare(`INSERT INTO push_subscriptions(endpoint,user_id,p256dh,auth,user_agent,created_at) VALUES(?,?,?,?,?,?)
@@ -107,4 +117,4 @@ function subscribe(userId, sub, ua) {
 function unsubscribe(userId, endpoint) { db.prepare('DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?').run(String(endpoint || ''), userId); }
 const devices = userId => db.prepare('SELECT endpoint, user_agent, created_at, last_ok_at FROM push_subscriptions WHERE user_id=? ORDER BY created_at').all(userId);
 
-module.exports = { publicKey, sendToUser, subscribe, unsubscribe, devices, encrypt };
+module.exports = { pushHostAllowed, publicKey, sendToUser, subscribe, unsubscribe, devices, encrypt };

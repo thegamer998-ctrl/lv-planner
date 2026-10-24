@@ -1,0 +1,10 @@
+{
+  "about": "The planner's and site app's browser libraries, fetched once when the Docker image is built and then served from this server (/app/vendor/…), so browsers load nothing from outside sites. Pinned versions; add a sha256 to a line to have the build refuse anything else.",
+  "libs": [
+    { "url": "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", "expect": "3.11.174" },
+    { "url": "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js", "expect": "3.11.174" },
+    { "url": "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", "expect": "jsPDF" },
+    { "url": "https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js", "expect": "PDFDocument" },
+    { "url": "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js", "expect": "BrowserMultiFormatReader" }
+  ]
+}

@@ -26,19 +26,21 @@ const mcp = require('./mcp');
 const backup = require('./backup');
 const importcf = require('./importcf');
 const connect = require('./connect');
+const totp = require('./totp');
+const secrets = require('./secrets');
 
 const VERSION = require('../package.json').version;
 const need = (cond, msg) => { if (!cond) throw new HttpError(403, msg || 'You do not have permission to do that.'); };
 const isAdmin = u => u.perms.admin;
 const staffOf = sid => sid ? db.prepare('SELECT id, name, role, active FROM staff WHERE id=?').get(sid) || null : null;
 const adminUser = u => ({ id: u.id, name: u.name, username: u.username, email: u.email, phone: u.phone, active: !!u.active, perms: P.permsOf(u), access: P.describe(P.permsOf(u)),
-  staff: staffOf(u.staff_id), mustChangePassword: !!u.must_change_password, createdAt: u.created_at, lastLoginAt: u.last_login_at });
+  staff: staffOf(u.staff_id), mustChangePassword: !!u.must_change_password, twoFactor: !!u.totp_enabled, twoFactorRequired: P.twoFactorRequired(u), createdAt: u.created_at, lastLoginAt: u.last_login_at });
 
 /* ---------- sign in ---------- */
 route('POST', '/api/auth/login', async (req, res) => {
   const b = await readJson(req);
-  const u = auth.login(req, res, b.username || b.email, b.password);
-  send(res, 200, { ok: true, mustChangePassword: !!u.must_change_password });
+  const u = auth.login(req, res, b.username || b.email, b.password, b.code);
+  send(res, 200, { ok: true, mustChangePassword: !!u.must_change_password, mustSetup2fa: P.twoFactorRequired(u) && !u.totp_enabled });
 });
 route('POST', '/api/auth/logout', async (req, res) => { auth.destroySession(req, res); send(res, 200, { ok: true }); });
 route('GET', '/api/me', async (req, res, c) => send(res, 200, {
@@ -53,7 +55,45 @@ route('POST', '/api/me/password', async (req, res, c) => {
   if (b.next === b.current) throw new HttpError(400, 'Choose a new password that is different from the current one.');
   db.prepare('UPDATE users SET password_hash=?, must_change_password=0 WHERE id=?').run(auth.hashPassword(b.next), c.user.id);
   db.prepare('DELETE FROM sessions WHERE user_id=?').run(c.user.id);   // sign out other devices
+  events.kick(c.user.id);
+  oauth.disconnectUser(c.user.id);                                     // and every connected Claude
   auth.createSession(res, req, c.user.id);
+  audit(c.user, 'password-changed', c.user.name);
+  send(res, 200, { ok: true, mustSetup2fa: c.user.mustSetup2fa });
+});
+
+/* ---------- two-step sign-in (authenticator app) ---------- */
+route('GET', '/api/me/2fa', async (req, res, c) => send(res, 200, { enabled: c.user.twoFactor, required: P.twoFactorRequired({ perms: c.user.perms }) }));
+route('POST', '/api/me/2fa/setup', async (req, res, c) => {
+  need(!c.user.twoFactor, 'Two-step sign-in is already on. Switch it off first to move it to another phone.');
+  const secret = totp.newSecret();
+  db.prepare('UPDATE users SET totp_pending=? WHERE id=?').run(secrets.encrypt({ s: secret }), c.user.id);
+  const uri = totp.uri(secret, c.user.username);
+  send(res, 200, { qr: totp.qrSvg(uri), secret: totp.group(secret), uri });
+});
+route('POST', '/api/me/2fa/enable', async (req, res, c) => {
+  const b = await readJson(req);
+  const row = db.prepare('SELECT totp_pending FROM users WHERE id=?').get(c.user.id);
+  const secret = auth.totpSecret(row && row.totp_pending);
+  if (!secret) throw new HttpError(400, 'Start again: press Set up two-step sign-in.');
+  const step = totp.verify(secret, b.code);
+  if (!step) throw new HttpError(400, 'That code is not right. Type the 6-digit code your authenticator app shows now.');
+  db.prepare('UPDATE users SET totp_secret=totp_pending, totp_pending=NULL, totp_enabled=1, totp_last_step=? WHERE id=?').run(step, c.user.id);
+  db.prepare('DELETE FROM sessions WHERE user_id=?').run(c.user.id);   // other devices sign in again, now with a code
+  events.kick(c.user.id);
+  auth.createSession(res, req, c.user.id);
+  audit(c.user, '2fa-on', c.user.name);
+  send(res, 200, { ok: true });
+});
+route('POST', '/api/me/2fa/disable', async (req, res, c) => {
+  need(!P.twoFactorRequired({ perms: c.user.perms }), 'Admins must keep two-step sign-in on.');
+  const b = await readJson(req);
+  const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
+  if (!u.totp_enabled) return send(res, 200, { ok: true });
+  const step = totp.verify(auth.totpSecret(u.totp_secret), b.code, u.totp_last_step);
+  if (!auth.verifyPassword(b.password || '', u.password_hash) || !step) throw new HttpError(400, 'Your password or code is not right.');
+  db.prepare('UPDATE users SET totp_secret=NULL, totp_pending=NULL, totp_enabled=0, totp_last_step=0 WHERE id=?').run(u.id);
+  audit(c.user, '2fa-off', c.user.name);
   send(res, 200, { ok: true });
 });
 route('PATCH', '/api/me', async (req, res, c) => {
@@ -114,7 +154,8 @@ route('PATCH', '/api/admin/users/:id', async (req, res, c) => {
   if (keys.length) db.prepare(`UPDATE users SET ${keys.map(k => k + '=?').join(',')} WHERE id=?`).run(...keys.map(k => upd[k]), u.id);
   linkStaff(u.id, b.staffId);
   bridge.syncStaff(u.id);
-  if (upd.active === 0) { db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); events.kick(u.id); }
+  if (upd.active === 0) { db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); events.kick(u.id); oauth.disconnectUser(u.id); }
+  else events.recheck(u.id);   // permissions changed: their open screens follow at once
   const nu = db.prepare('SELECT * FROM users WHERE id=?').get(u.id);
   audit(c.user, 'login-changed', `${nu.name}: ${P.describe(P.permsOf(nu))}${nu.active ? '' : ' (switched off)'}`);
   events.publish({ type: 'users' });
@@ -127,9 +168,20 @@ route('POST', '/api/admin/users/:id/reset-password', async (req, res, c) => {
   if (!u) throw new HttpError(404, 'Login not found.');
   const password = auth.tempPassword();
   db.prepare('UPDATE users SET password_hash=?, must_change_password=1 WHERE id=?').run(auth.hashPassword(password), u.id);
-  db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); events.kick(u.id);
+  db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); events.kick(u.id); oauth.disconnectUser(u.id);
   audit(c.user, 'password-reset', u.name);
   send(res, 200, { password });
+});
+// Lost phone: the person sets two-step sign-in up again at their next sign-in (admins must; others may).
+route('POST', '/api/admin/users/:id/reset-2fa', async (req, res, c) => {
+  need(isAdmin(c.user), "Only an admin can reset someone's two-step sign-in.");
+  const u = db.prepare('SELECT id, name FROM users WHERE id=?').get(c.params.id);
+  if (!u) throw new HttpError(404, 'Login not found.');
+  db.prepare('UPDATE users SET totp_secret=NULL, totp_pending=NULL, totp_enabled=0, totp_last_step=0 WHERE id=?').run(u.id);
+  db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id); events.kick(u.id); oauth.disconnectUser(u.id);
+  audit(c.user, '2fa-reset', u.name);
+  events.publish({ type: 'users' }, x => x.perms.admin);
+  send(res, 200, { ok: true });
 });
 route('GET', '/api/admin/audit', async (req, res, c) => { need(isAdmin(c.user)); send(res, 200, { items: db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 200').all() }); });
 
@@ -240,7 +292,7 @@ route('POST', '/api/admin/import', async (req, res, c) => {
 });
 route('GET', '/api/admin/import', async (req, res, c) => { need(isAdmin(c.user)); send(res, 200, importcf.status()); });
 
-route('GET', '/api/events', async (req, res, c) => { events.subscribe(req, res, c.user); });
+route('GET', '/api/events', async (req, res, c) => { events.subscribe(req, res, c.user, () => auth.recheck(req)); });
 route('GET', '/api/health', async (req, res) => send(res, 200, { ok: true, time: now(), clients: events.count() }));
 
 /* ---------- the live-project server: after-change hooks (who was added to a team → notification) ---------- */
@@ -272,23 +324,34 @@ const siteHooks = {
 // The planner and the site app get one extra line: /hosted.js, which switches on what this server adds
 // (sign-in instead of keys, projects saved under your login, sharing, notifications). Nothing else in them changes.
 const HOSTED_TAG = '<script src="/hosted.js?v=' + VERSION + '"></script>';
-const plugHosted = html => html.replace(/<head([^>]*)>/i, m => m + '\n' + HOSTED_TAG);
+// When the libraries were fetched (vendor-libs.js), the pages and the offline cache load them from here instead of the CDNs.
+const vendored = () => fs.existsSync(path.join(config.vendorDir, 'SHA256SUMS'));
+const localLibs = t => vendored() ? t.split('https://cdnjs.cloudflare.com/').join('/app/vendor/cdnjs/').split('https://cdn.jsdelivr.net/').join('/app/vendor/jsdelivr/') : t;
+const plugHosted = (html, rel) => rel === 'sw.js' ? localLibs(html) : /\.js$/.test(rel) ? html : localLibs(html.replace(/<head([^>]*)>/i, m => m + '\n' + HOSTED_TAG));
 const APP_EXT = ['.html', '.png', '.js', '.json', '.webmanifest', '.ico', '.svg', '.jpg'];
 function serveApp(req, res, url, getUser) {
+  if (url.pathname.startsWith('/app/vendor/')) {   // the libraries: the same for everyone, never change (versioned paths)
+    H.securityHeaders(res, 'strict');
+    const rel = url.pathname.slice('/app/vendor/'.length);
+    if (!/^(cdnjs|jsdelivr)\/[A-Za-z0-9@._\/-]+\.js$/.test(rel) || rel.includes('..')) return false;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return H.serveFile(req, res, config.vendorDir, rel, { allow: ['.js'], immutable: true });
+  }
   let rel = url.pathname.slice('/app/'.length) || 'index.html';
   if (rel.includes('/') || rel.startsWith('.') || /^(package|package-lock|wrangler)\./.test(rel)) return false;
   if (rel === 'index.html') {
     const u = getUser();
     if (!u) { redirect(res, '/login?next=' + encodeURIComponent(url.pathname + url.search)); return true; }
-    if (u.mustChangePassword) { redirect(res, '/login?next=' + encodeURIComponent(url.pathname + url.search)); return true; }
+    if (u.mustChangePassword || u.mustSetup2fa) { redirect(res, '/login?next=' + encodeURIComponent(url.pathname + url.search)); return true; }
     if (!u.perms.design) { redirect(res, '/?no=design'); return true; }
   }
-  H.securityHeaders(res, 'app');
-  return H.serveFile(req, res, config.appDir, rel, { allow: APP_EXT, transform: plugHosted });
+  H.securityHeaders(res, vendored() ? 'app-local' : 'app');
+  return H.serveFile(req, res, config.appDir, rel, { allow: APP_EXT, transform: plugHosted, transformJs: rel === 'sw.js' });
 }
 
 const OPEN_ROUTES = new Set(['/api/auth/login', '/api/health']);
-const PASSWORD_ROUTES = new Set(['/api/me', '/api/me/password', '/api/auth/logout', '/api/events']);
+const PASSWORD_ROUTES = new Set(['/api/me', '/api/me/password', '/api/auth/logout']);
+const TWOFA_ROUTES = new Set(['/api/me', '/api/auth/logout', '/api/me/2fa', '/api/me/2fa/setup', '/api/me/2fa/enable']);
 
 const server = http.createServer(async (req, res) => {
   let url;
@@ -338,6 +401,7 @@ const server = http.createServer(async (req, res) => {
       ctx.user = getUser();
       if (!ctx.user) throw new HttpError(401, 'Please sign in.', { signIn: true });
       if (ctx.user.mustChangePassword && !PASSWORD_ROUTES.has(pathname)) throw new HttpError(403, 'Please set your own password first.', { mustChangePassword: true });
+      if (!ctx.user.mustChangePassword && ctx.user.mustSetup2fa && !TWOFA_ROUTES.has(pathname)) throw new HttpError(403, 'Please set up two-step sign-in first.', { mustSetup2fa: true });
     }
     await m.handler(req, res, ctx);
   } catch (e) {
@@ -347,7 +411,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 server.requestTimeout = 0;   // long uploads and the live-update stream
-server.headersTimeout = 60e3;
+server.headersTimeout = 30e3;
 
 async function start() {
   auth.ensureAdmin();

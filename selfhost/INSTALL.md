@@ -67,6 +67,12 @@ docker compose up -d --build
 docker compose logs -f designcenter        # Ctrl+C to stop watching
 ```
 
+The build fetches the planner's libraries (pdf.js, jsPDF, pdf-lib, the barcode reader) once from cdnjs and jsDelivr, so
+the server needs internet access while building; after that browsers load nothing from outside sites.
+
+```bash
+```
+
 **Option B — LeadzIN already runs here:**
 
 ```bash
@@ -83,6 +89,9 @@ You should see `listening on http://0.0.0.0:3000 (public address https://design.
 ## 5. First sign-in
 
 Open https://design.expresskw.com, sign in with `ADMIN_USERNAME` / `ADMIN_PASSWORD` and choose your own password.
+Then set up **two-step sign-in** (required for admins): scan the QR code with an authenticator app on your phone
+(Google Authenticator, Microsoft Authenticator, 1Password, Apple Passwords…) and type the code it shows. From then on
+you sign in with your password and the current code from that app. Aziz does the same at his first sign-in.
 
 Then **Admin → Logins & permissions → Add login** for each person. Quick choices:
 
@@ -94,6 +103,7 @@ Then **Admin → Logins & permissions → Add login** for each person. Quick cho
 | Kutub | Technician |
 
 Each new login shows a temporary password once (Copy message / WhatsApp). They choose their own at the first sign-in.
+Lost or new phone: **the person → Reset two-step**; they set it up again at their next sign-in.
 If someone already used a personal site-app link, pick their name under **Site app person** so their projects and
 history carry on (the import in step 6 also links people by name).
 
@@ -158,6 +168,7 @@ docker compose logs --tail 100 designcenter           # what did it say?
 docker compose restart designcenter
 docker compose exec designcenter npm run user -- list
 docker compose exec designcenter npm run user -- reset husain     # forgot the admin password
+docker compose exec designcenter npm run user -- reset-2fa husain # lost the phone with the authenticator app
 docker compose exec designcenter npm run user -- add "Aziz" aziz --admin
 ```
 

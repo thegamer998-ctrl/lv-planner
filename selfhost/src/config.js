@@ -36,8 +36,12 @@ const config = {
   appDir: path.resolve(env('APP_DIR', fs.existsSync(path.join(root, 'public', 'app', 'index.html')) ? path.join(root, 'public', 'app') : path.join(root, '..'))),
   workerFile: path.resolve(env('WORKER_FILE', first(path.join(root, 'worker', 'worker.mjs'), path.join(root, '..', 'server', 'worker.js')))),
   publicDir: path.join(root, 'public'),
+  // the planner's browser libraries, fetched by scripts/vendor-libs.js (the Docker build does it)
+  vendorDir: path.resolve(env('VENDOR_DIR', path.join(root, 'public', 'app-vendor'))),
   cookieSecure: env('COOKIE_SECURE', appUrl.startsWith('https://') ? 'true' : 'false') === 'true',
   trustProxy: env('TRUST_PROXY', 'true') === 'true',
+  // Only when the site is reached through a Cloudflare tunnel (then the visitor's address comes in CF-Connecting-IP).
+  trustCloudflare: env('TRUST_CLOUDFLARE', 'false') === 'true',
   sessionDays: int('SESSION_DAYS', 60),
   maxUploadMb: int('MAX_UPLOAD_MB', 60),
   backupHour: int('BACKUP_HOUR', 2),

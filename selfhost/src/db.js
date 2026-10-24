@@ -68,6 +68,11 @@ const MIGRATIONS = [
    CREATE TABLE audit (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, user_id TEXT, by_name TEXT NOT NULL DEFAULT '', action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');`,
   // 2 — projects started from LeadzIN (one per lead)
   `CREATE TABLE leadzin_projects (lead_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, estimate_id TEXT, estimate_number TEXT, lead_name TEXT, by_name TEXT, created_at TEXT NOT NULL);`,
+  // 3 — two-step sign-in (authenticator app codes); the secrets are stored encrypted (secrets.js)
+  `ALTER TABLE users ADD COLUMN totp_secret TEXT;
+   ALTER TABLE users ADD COLUMN totp_pending TEXT;
+   ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE users ADD COLUMN totp_last_step INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 (function migrate() {

@@ -48,6 +48,8 @@ packages, SQLite (`node:sqlite`), Caddy for HTTPS, Docker.
 - **Projects without a drawing**: a device list instead of the plan — made in the site app during the survey, filled from
   the approved Zoho quotation, or started from a won lead in **LeadzIN** (`src/connect.js`, `src/quote-map.js`; LeadzIN
   calls `/api/connect/leadzin/…` with the key from Admin → Integrations → LeadzIN).
+- **Security** — the same strategy as LeadzIN: two-step sign-in (required for admins), sign-in throttling, cut-off on
+  password change, no outside scripts, hardened Claude connector and push. Details: HANDOVER.md → Security notes.
 - **Integrations** (`src/integrations/`): Asana token and Zoho Books connection (encrypted with `data/secret.key`) are
   handed to the worker; Claude (MCP + OAuth 2.1 with PKCE, `src/mcp.js`, `src/oauth.js`) — each person connects their own.
 
@@ -56,12 +58,14 @@ packages, SQLite (`node:sqlite`), Caddy for HTTPS, Docker.
 ```
 selfhost/
   Dockerfile, docker-compose.yml, docker-compose.with-leadzin.yml, Caddyfile, Caddyfile.leadzin, .env.example
-  src/        server.js (routes) · config · db (schema) · http · auth · perms · worker-bridge · dc · notify · push · events
+  src/        server.js (routes) · config · db (schema) · http · auth · totp (two-step sign-in) · perms · worker-bridge · dc · notify · push · events
               integrations/ (asana, zoho, claude, store) · mcp · oauth · importcf (move from Cloudflare) · backup · secrets
   public/     index.html + portal.js + portal.css (home, projects, live, notifications, account, Connect Claude, admin)
               login.html/js · hosted.js (planner & site app additions: saving, sharing, bell) · push-sw.js · manifest
+  vendor/     libs.json — the browser libraries the Docker build fetches (scripts/vendor-libs.js)
   scripts/    user.js (logins from the command line) · import-cloudflare.js · backup.js · restore.js
   test/       api.test.js (logins, permissions, live projects, notifications, projects, sharing, conflicts, Claude)
+              security.test.js (throttling, two-step sign-in, push hosts, Claude connector, live updates, libraries)
               import.test.js (move from Cloudflare against a stand-in old server)
 ../index.html, ../site.html, ../*.png …   the planner and the site app
 ../server/worker.js                       the live-project server

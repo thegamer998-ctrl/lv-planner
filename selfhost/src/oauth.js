@@ -4,7 +4,8 @@
 const crypto = require('node:crypto');
 const { db, now, id } = require('./db');
 const config = require('./config');
-const { HttpError, readBody, send } = require('./http');
+const { HttpError, readBody, send, clientIp } = require('./http');
+const P = require('./perms');
 const auth = require('./auth');
 const store = require('./integrations/store');
 
@@ -21,8 +22,10 @@ function redirectAllowed(u) {
   if (x.hash) return false;
   if (x.protocol === 'https:' && ['claude.ai', 'claude.com', 'www.claude.ai', 'www.claude.com'].includes(x.hostname) && x.pathname.startsWith('/api/mcp/auth_callback')) return true;
   if (x.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(x.hostname)) return true;
-  return EXTRA.some(p => u.startsWith(p));
+  return EXTRA.some(p => { let e; try { e = new URL(p); } catch (err) { return false; } return x.origin === e.origin && x.pathname.startsWith(e.pathname); });
 }
+// Claude's own apps send people back to claude.ai / claude.com; anything else is shown on the approval page by its address.
+const isClaude = u => { try { const x = new URL(u); return x.protocol === 'https:' && ['claude.ai', 'claude.com', 'www.claude.ai', 'www.claude.com'].includes(x.hostname); } catch (e) { return false; } };
 
 const issuer = () => config.appUrl;
 const resource = () => `${config.appUrl}/mcp`;
@@ -46,7 +49,14 @@ async function form(req) {
 const oerr = (res, status, error, description) => send(res, status, { error, error_description: description }, { 'Access-Control-Allow-Origin': '*' });
 
 /* ---------- Dynamic Client Registration ---------- */
+// At most 10 registrations per address per hour and 200 in total; registrations never used within a day are removed.
+const regs = new Map();
 async function register(req, res) {
+  const ip = clientIp(req), t = Date.now();
+  const recent = (regs.get(ip) || []).filter(x => t - x < 3600e3);
+  if (recent.length >= 10) return oerr(res, 429, 'too_many_requests', 'Too many registrations from this address. Try again in an hour.');
+  regs.set(ip, [...recent, t]);
+  if (db.prepare('SELECT COUNT(*) n FROM oauth_clients').get().n >= 200) return oerr(res, 503, 'temporarily_unavailable', 'Too many registered apps. Ask an admin.');
   const b = await form(req);
   const uris = Array.isArray(b.redirect_uris) ? b.redirect_uris.map(String) : [];
   if (!uris.length || uris.some(u => !redirectAllowed(u))) return oerr(res, 400, 'invalid_redirect_uri', 'This redirect address is not allowed by the Design Center.');
@@ -84,7 +94,7 @@ async function authorize(req, res, url) {
   if (!enabled()) return fail('Connecting Claude is switched off. An admin can switch it on in Admin → Integrations → Claude.');
   const user = auth.getUser(req, res);
   if (!user) { res.writeHead(302, { Location: '/login?next=' + encodeURIComponent(url.pathname + url.search) }); return res.end(); }
-  if (user.mustChangePassword) return fail('Open the Design Center in your browser and set your own password first, then try connecting again.');
+  if (user.mustChangePassword || user.mustSetup2fa) return fail('Open the Design Center in your browser and finish setting up your sign-in (password and two-step sign-in) first, then try connecting again.');
   const cid = rnd(18);
   pending.set(cid, { at: Date.now(), user: user.id, client: c.client_id, redirect: ru, challenge: q.get('code_challenge'), state: q.get('state') || '', scope: q.get('scope') || 'design' });
   const writes = store.config('claude').allowWrites === true;
@@ -93,7 +103,8 @@ async function authorize(req, res, url) {
     // allow the approval form to continue on to Claude
     'Content-Security-Policy': `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; form-action 'self' ${origin}; frame-ancestors 'none'; base-uri 'none'` });
   res.end(page('Allow access', `
-    <h2>Allow <b>${esc(c.name || 'Claude')}</b> to use the Design Center as ${esc(user.name)}?</h2>
+    <h2>Allow <b>${isClaude(ru) ? 'Claude' : 'an app at ' + esc(new URL(ru).host)}</b> to use the Design Center as ${esc(user.name)}?</h2>
+    <p class="muted">It will send you back to <b>${esc(new URL(ru).host)}</b>${c.name ? ` · it calls itself “${esc(String(c.name).slice(0, 60))}”` : ''}. If that is not the app you are connecting, press Cancel.</p>
     <p>It will be able to ${writes ? 'see, and make small changes to,' : 'see'} what <b>you</b> can, with <b>your</b> permissions — your Design Center projects (points, floors, cabinets, drawings), live project progress, site reports and your notifications. Everything it does is recorded under your name.</p>
     <p class="muted">You can disconnect it at any time: Design Center → your name → Connect Claude.</p>
     <form method="post" action="/oauth/authorize" class="auth-actions">
@@ -106,7 +117,7 @@ async function decide(req, res) {
   const b = await form(req);
   const p = pending.get(String(b.consent || ''));
   const user = auth.getUser(req, res);
-  if (!p || !user || user.id !== p.user) { res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(page('Expired', '<p>This approval page has expired. Start connecting again from Claude.</p>')); }
+  if (!p || !user || user.id !== p.user || user.mustChangePassword || user.mustSetup2fa) { res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(page('Expired', '<p>This approval page has expired. Start connecting again from Claude.</p>')); }
   pending.delete(String(b.consent));
   const u = new URL(p.redirect);
   if (p.state) u.searchParams.set('state', p.state);
@@ -121,6 +132,11 @@ async function decide(req, res) {
 }
 
 /* ---------- Token endpoint ---------- */
+// Active, own password chosen, and two-step sign-in set up where it is required.
+function signInOk(userId) {
+  const u = db.prepare('SELECT * FROM users WHERE id=?').get(userId);
+  return !!u && !!u.active && !u.must_change_password && !(P.twoFactorRequired(u) && !u.totp_enabled);
+}
 function clientAuth(req, b) {
   let cid = b.client_id, secret = b.client_secret;
   const h = String(req.headers.authorization || '');
@@ -147,19 +163,22 @@ async function token(req, res) {
     const row = db.prepare('SELECT * FROM oauth_codes WHERE code_hash=?').get(sha(b.code || ''));
     if (row) db.prepare('DELETE FROM oauth_codes WHERE code_hash=?').run(row.code_hash); // single use
     if (!row || row.client_id !== c.client_id || row.expires_at < now()) return oerr(res, 400, 'invalid_grant', 'The code is invalid or expired.');
-    if (b.redirect_uri && b.redirect_uri !== row.redirect_uri) return oerr(res, 400, 'invalid_grant', 'redirect_uri mismatch');
+    if (b.redirect_uri !== row.redirect_uri) return oerr(res, 400, 'invalid_grant', 'redirect_uri missing or does not match');
     const chal = crypto.createHash('sha256').update(String(b.code_verifier || '')).digest('base64url');
     if (chal !== row.challenge) return oerr(res, 400, 'invalid_grant', 'PKCE verification failed.');
-    const u = db.prepare('SELECT active FROM users WHERE id=?').get(row.user_id);
-    if (!u || !u.active) return oerr(res, 400, 'invalid_grant', 'User is not active.');
+    if (!signInOk(row.user_id)) return oerr(res, 400, 'invalid_grant', 'User is not active or must finish setting up the sign-in.');
     return send(res, 200, issue(c.client_id, row.user_id, id()), { 'Access-Control-Allow-Origin': '*' });
   }
   if (b.grant_type === 'refresh_token') {
-    const row = db.prepare("SELECT * FROM oauth_tokens WHERE token_hash=? AND kind='refresh'").get(sha(b.refresh_token || ''));
+    const row = db.prepare("SELECT * FROM oauth_tokens WHERE token_hash=? AND kind IN ('refresh','used')").get(sha(b.refresh_token || ''));
+    if (row && row.kind === 'used') { // an old refresh token came back: it was copied. End that whole connection.
+      db.prepare('DELETE FROM oauth_tokens WHERE grant_id=?').run(row.grant_id);
+      store.log('claude', 'error', 'A used Claude refresh token was presented again; that connection was disconnected.');
+      return oerr(res, 400, 'invalid_grant', 'The refresh token was already used. Connect again.');
+    }
     if (!row || row.client_id !== c.client_id || row.expires_at < now()) return oerr(res, 400, 'invalid_grant', 'The refresh token is invalid or expired.');
-    const u = db.prepare('SELECT active FROM users WHERE id=?').get(row.user_id);
-    if (!u || !u.active) return oerr(res, 400, 'invalid_grant', 'User is not active.');
-    db.prepare('DELETE FROM oauth_tokens WHERE token_hash=?').run(row.token_hash); // rotate
+    if (!signInOk(row.user_id)) return oerr(res, 400, 'invalid_grant', 'User is not active or must finish setting up the sign-in.');
+    db.prepare("UPDATE oauth_tokens SET kind='used' WHERE token_hash=?").run(row.token_hash); // rotate; kept until it expires to spot reuse
     db.prepare("DELETE FROM oauth_tokens WHERE grant_id=? AND kind='access' AND expires_at < ?").run(row.grant_id, now());
     return send(res, 200, issue(c.client_id, row.user_id, row.grant_id), { 'Access-Control-Allow-Origin': '*' });
   }
@@ -179,7 +198,7 @@ function userFromBearer(req) {
   const row = db.prepare("SELECT * FROM oauth_tokens WHERE token_hash=? AND kind='access'").get(sha(h.slice(7).trim()));
   if (!row || row.expires_at < now()) return null;
   const u = db.prepare('SELECT * FROM users WHERE id=? AND active=1').get(row.user_id);
-  if (!u) return null;
+  if (!u || u.must_change_password || (P.twoFactorRequired(u) && !u.totp_enabled)) return null;
   db.prepare('UPDATE oauth_tokens SET last_used_at=? WHERE token_hash=?').run(now(), row.token_hash);
   return { ...auth.toUser(u), viaClaude: (client(row.client_id) || {}).name || 'Claude' };
 }
@@ -187,11 +206,18 @@ function userFromBearer(req) {
 // "Connect Claude" screen: this person's connections
 function connections(userId) {
   return db.prepare(`SELECT t.grant_id, c.name, MIN(t.created_at) since, MAX(COALESCE(t.last_used_at, t.created_at)) last
-    FROM oauth_tokens t LEFT JOIN oauth_clients c ON c.client_id=t.client_id WHERE t.user_id=? AND t.expires_at > ? GROUP BY t.grant_id ORDER BY last DESC`).all(userId, now())
+    FROM oauth_tokens t LEFT JOIN oauth_clients c ON c.client_id=t.client_id WHERE t.user_id=? AND t.kind != 'used' AND t.expires_at > ? GROUP BY t.grant_id ORDER BY last DESC`).all(userId, now())
     .map(r => ({ id: r.grant_id, name: r.name || 'Claude', since: r.since, lastUsed: r.last }));
 }
 function disconnect(userId, grantId) { db.prepare('DELETE FROM oauth_tokens WHERE user_id=? AND grant_id=?').run(userId, grantId); }
 function disconnectAll() { db.prepare('DELETE FROM oauth_tokens').run(); }
-setInterval(() => { db.prepare('DELETE FROM oauth_tokens WHERE expires_at < ?').run(now()); db.prepare('DELETE FROM oauth_codes WHERE expires_at < ?').run(now()); }, 3600e3).unref();
+// Password changed or reset, two-step sign-in reset, or person switched off: every Claude connection of theirs stops at once.
+function disconnectUser(userId) { db.prepare('DELETE FROM oauth_tokens WHERE user_id=?').run(userId); db.prepare('DELETE FROM oauth_codes WHERE user_id=?').run(userId); }
+setInterval(() => {
+  db.prepare('DELETE FROM oauth_tokens WHERE expires_at < ?').run(now()); db.prepare('DELETE FROM oauth_codes WHERE expires_at < ?').run(now());
+  db.prepare(`DELETE FROM oauth_clients WHERE created_at < ? AND client_id NOT IN (SELECT client_id FROM oauth_tokens) AND client_id NOT IN (SELECT client_id FROM oauth_codes)`)
+    .run(new Date(Date.now() - 864e5).toISOString());
+  const t = Date.now(); for (const [k, l] of regs) if (!l.some(x => t - x < 3600e3)) regs.delete(k);
+}, 3600e3).unref();
 
-module.exports = { metadataAS, metadataPR, register, authorize, token, revoke, userFromBearer, connections, disconnect, disconnectAll, resource, enabled };
+module.exports = { metadataAS, metadataPR, register, authorize, token, revoke, userFromBearer, connections, disconnect, disconnectAll, disconnectUser, resource, enabled };

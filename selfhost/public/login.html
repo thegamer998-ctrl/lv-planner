@@ -17,6 +17,7 @@
       <h2>Sign in</h2>
       <label>Username<input class="in" id="u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus></label>
       <label>Password<input class="in" id="p" name="password" type="password" autocomplete="current-password" required></label>
+      <label id="codeField" hidden>Code from your authenticator app<input class="in code-in" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" placeholder="123 456"></label>
       <p class="err" id="err" role="alert"></p>
       <button class="btn pri wide" type="submit" id="go">Sign in</button>
       <p class="muted small">Forgot your password? Ask Husain or Aziz to reset it.</p>
@@ -28,6 +29,18 @@
       <label>Type it again<input class="in" id="n2" type="password" autocomplete="new-password" minlength="8" required></label>
       <p class="err" id="err2" role="alert"></p>
       <button class="btn pri wide" type="submit">Save and continue</button>
+    </form>
+    <form id="twofa" hidden>
+      <h2>Set up two-step sign-in</h2>
+      <p class="muted">Admins sign in with their password <b>and</b> a code from an authenticator app on their phone (Google Authenticator, Microsoft Authenticator, 1Password, Apple Passwords…).</p>
+      <ol class="steps">
+        <li>In the app, add an account and scan this code:<div class="qr"><img id="qr" alt="QR code for your authenticator app" width="180" height="180"></div>
+          <span class="muted small">Can’t scan? Type this key instead: <code id="key"></code></span></li>
+        <li>Type the 6-digit code the app shows:<input class="in code-in" id="code2" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" placeholder="123 456" required></li>
+      </ol>
+      <p class="err" id="err3" role="alert"></p>
+      <button class="btn pri wide" type="submit">Turn on and continue</button>
+      <p class="muted small">Lost your phone later? Ask Husain or Aziz to reset your two-step sign-in.</p>
     </form>
   </div>
 </main>

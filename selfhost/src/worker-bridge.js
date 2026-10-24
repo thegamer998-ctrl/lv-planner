@@ -131,6 +131,7 @@ async function handle(req, res, url, getUser, hooks) {
     user = getUser();
     if (!user) throw new HttpError(401, 'Please sign in.', { signIn: true });
     if (user.mustChangePassword) throw new HttpError(403, 'Please set your own password first.', { mustChangePassword: true });
+    if (user.mustSetup2fa) throw new HttpError(403, 'Please set up two-step sign-in first.', { mustSetup2fa: true });
     const p = user.perms;
     const officeOnly = path === '/site/publish' || path === '/site/list' || path === '/site/staff' || path.startsWith('/site/zoho');
     if (/^\/site\/staff\/./.test(path) || (path === '/site/staff' && req.method === 'POST'))

@@ -5,6 +5,9 @@ const { db, now, id } = require('./db');
 const config = require('./config');
 const { HttpError, parseCookies, clientIp } = require('./http');
 const P = require('./perms');
+const totp = require('./totp');
+const secrets = require('./secrets');
+const totpSecret = enc => { try { return enc ? secrets.decrypt(enc).s : ''; } catch (e) { return ''; } };
 
 const COOKIE = 'et_sid';
 
@@ -51,7 +54,8 @@ function destroySession(req, res) {
 function toUser(row) {
   const perms = P.permsOf(row);
   return { id: row.id, name: row.name, username: row.username, email: row.email, phone: row.phone, perms, staffId: row.staff_id || null,
-    mustChangePassword: !!row.must_change_password, firstName: String(row.name || '').split(/\s+/)[0] };
+    mustChangePassword: !!row.must_change_password, twoFactor: !!row.totp_enabled, mustSetup2fa: P.twoFactorRequired(row) && !row.totp_enabled,
+    firstName: String(row.name || '').split(/\s+/)[0] };
 }
 
 // Returns the signed-in user or null. Sessions slide: renewed when less than half their life remains.
@@ -70,7 +74,19 @@ function getUser(req, res) {
   return (req._user = toUser(row));
 }
 
-// Brute-force protection: max 10 failed attempts per IP+login in 15 minutes, 50 per IP.
+// The same person, read again from the database (open live-update streams call this before every event, so signing out,
+// deactivation, a password reset or a permission change takes effect on open screens straight away).
+function recheck(req) {
+  const t = parseCookies(req)[COOKIE];
+  if (!t) return null;
+  const row = db.prepare('SELECT s.expires_at, u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?').get(sha(t));
+  if (!row || row.expires_at < now() || !row.active) return null;
+  const u = toUser(row);
+  return u.mustChangePassword || u.mustSetup2fa ? null : u;
+}
+
+// Brute-force protection, per 15 minutes: 10 failed attempts per IP+login, 50 per IP, and 20 per login from anywhere
+// (so changing address doesn't help).
 const fails = new Map();
 function throttle(key, limit) {
   const t = Date.now(), win = 15 * 60e3;
@@ -86,15 +102,25 @@ const findLogin = login => {
   if (!l) return null;
   return db.prepare('SELECT * FROM users WHERE username = ?').get(l) || (l.includes('@') ? db.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE').get(l) : null);
 };
-function login(req, res, username, password) {
-  const ip = clientIp(req), k1 = 'ip:' + ip, k2 = 'u:' + ip + ':' + String(username).toLowerCase();
-  throttle(k1, 50); throttle(k2, 10);
+// Checked against unknown logins too, so a wrong username takes as long as a wrong password.
+const DUMMY_HASH = hashPassword(crypto.randomBytes(16).toString('hex'));
+function login(req, res, username, password, code) {
+  const ln = String(username || '').trim().toLowerCase();
+  const ip = clientIp(req), k1 = 'ip:' + ip, k2 = 'u:' + ip + ':' + ln, k3 = 'l:' + ln;
+  throttle(k1, 50); throttle(k2, 10); throttle(k3, 20);
   const u = findLogin(username);
-  if (!u || !u.active || !verifyPassword(password || '', u.password_hash)) {
-    recordFail(k1); recordFail(k2);
+  const ok = verifyPassword(password || '', u ? u.password_hash : DUMMY_HASH);
+  if (!u || !u.active || !ok) {
+    recordFail(k1); recordFail(k2); recordFail(k3);
     throw new HttpError(401, 'Wrong username or password.');
   }
-  fails.delete(k2);
+  if (u.totp_enabled) { // second step: the code from their authenticator app
+    if (!String(code || '').trim()) throw new HttpError(401, 'Enter the 6-digit code from your authenticator app.', { needCode: true });
+    const step = totp.verify(totpSecret(u.totp_secret), code, u.totp_last_step);
+    if (!step) { recordFail(k1); recordFail(k2); recordFail(k3); throw new HttpError(401, 'That code is not right. Use the current code from your authenticator app.', { needCode: true }); }
+    db.prepare('UPDATE users SET totp_last_step=? WHERE id=?').run(step, u.id);
+  }
+  fails.delete(k2); fails.delete(k3);
   db.prepare('UPDATE users SET last_login_at=? WHERE id=?').run(now(), u.id);
   createSession(res, req, u.id);
   return u;
@@ -133,4 +159,4 @@ function ensureAdmin() {
   console.log(`[expresstech] Created the admin login “${a.username || a.email}”. A new password is asked at the first sign-in.`);
 }
 
-module.exports = { COOKIE, hashPassword, verifyPassword, checkPasswordStrength, tempPassword, getUser, login, destroySession, createSession, createUser, ensureAdmin, checkUsername, toUser, sha };
+module.exports = { recheck, totpSecret, COOKIE, hashPassword, verifyPassword, checkPasswordStrength, tempPassword, getUser, login, destroySession, createSession, createUser, ensureAdmin, checkUsername, toUser, sha };

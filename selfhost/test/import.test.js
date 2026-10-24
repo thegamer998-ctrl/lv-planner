@@ -2,6 +2,7 @@
 // Moving from Cloudflare: a stand-in old server (test/fake-cloudflare.js) gets a project with a drawing, a photo, a staff
 // member and a saved planner file; the new server copies everything and the client link keeps working.
 const { test, before, after } = require('node:test');
+const totp = require('../src/totp');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -47,6 +48,8 @@ test('everything comes over from the old server', async () => {
   // the new server: admin + a login for Kutub, then import
   let r = await api('POST', '/api/auth/login', { username: 'husain', password: 'FirstPass123' });
   await api('POST', '/api/me/password', { current: 'FirstPass123', next: 'HusainPass1' });
+  { const st = await api('POST', '/api/me/2fa/setup'); const sec = st.data.secret.replace(/ /g, '');
+    assert.equal((await api('POST', '/api/me/2fa/enable', { code: totp.codeAt(sec, totp.stepNow()) })).status, 200); }   // admins: two-step sign-in
   r = await api('POST', '/api/admin/users', { name: 'Kutbuddin Hussain', username: 'kutub', perms: { site: 'tech' } });
   const wrong = await api('POST', '/api/admin/import', { url: `http://127.0.0.1:${OLD}`, key: 'nope' });
   assert.equal(wrong.status, 202);

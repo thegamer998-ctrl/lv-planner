@@ -25,7 +25,7 @@
       if (last && /^[A-Za-z0-9]{6,32}-[A-Za-z0-9]{8,64}$/.test(last) && !location.hash){ location.replace("/#" + last); location.reload(); return; }
       location.replace("/login?next=" + encodeURIComponent("/" + location.hash)); return;
     }
-    if (u.mustChangePassword){ location.replace("/login?next=" + encodeURIComponent("/" + location.hash)); return; }
+    if (u.mustChangePassword || u.mustSetup2fa){ location.replace("/login?next=" + encodeURIComponent("/" + location.hash)); return; }
     me = u; cfg = E.config;
     shell(); route();
     window.addEventListener("hashchange", route);
@@ -219,11 +219,37 @@
       '<div class="two"><section><h2 class="sec">Phone notifications</h2><div class="card" style="padding:16px" id="np"><div class="empty">Loading…</div></div></section>' +
       '<section><h2 class="sec">Password</h2><div class="card" style="padding:16px"><form id="pw"><label>Current password<input class="in" type="password" id="pc" autocomplete="current-password" required></label>' +
       '<label>New password (8 characters or more)<input class="in" type="password" id="pn" autocomplete="new-password" minlength="8" required></label><p class="err" id="pe"></p><button class="btn pri" type="submit">Change password</button>' +
-      '<p class="muted small" style="margin:10px 0 0">Changing it signs you out on your other devices.</p></form></div>' +
+      '<p class="muted small" style="margin:10px 0 0">Changing it signs you out on your other devices and disconnects your Claude.</p></form></div>' +
+      '<h2 class="sec">Two-step sign-in</h2><div class="card" style="padding:16px" id="tf"></div>' +
       '<h2 class="sec">Contact</h2><div class="card" style="padding:16px"><div class="form-grid"><label>Email<input class="in" id="em" value="' + esc(me.email) + '"></label><label>Mobile<input class="in" id="ph" value="' + esc(me.phone) + '"></label></div><button type="button" class="btn" id="saveC">Save</button></div></section></div>';
     document.getElementById("pw").onsubmit = function(e){ e.preventDefault(); document.getElementById("pe").textContent = "";
       api("POST", "/api/me/password", { current:document.getElementById("pc").value, next:document.getElementById("pn").value }).then(function(){ toast("Password changed"); document.getElementById("pw").reset(); }).catch(function(x){ document.getElementById("pe").textContent = x.message; }); };
     document.getElementById("saveC").onclick = function(){ api("PATCH", "/api/me", { email:document.getElementById("em").value, phone:document.getElementById("ph").value }).then(function(){ toast("Saved"); me.email = document.getElementById("em").value; }).catch(function(x){ toast(x.message); }); };
+    function renderTwofa(){
+      var el = document.getElementById("tf"); if (!el) return;
+      var on = me.twoFactor, req = !!me.perms.admin;
+      el.innerHTML = '<p style="margin:0 0 10px">' + (on ? '<span class="pill green">On</span> You sign in with your password and a code from your authenticator app.' : '<span class="pill">Off</span> Add a code from an authenticator app on your phone to your password, so a stolen password alone is not enough.') + "</p>" +
+        (on ? (req ? '<p class="muted small" style="margin:0">Required for admins. New phone? Ask another admin to reset it, then set it up again at your next sign-in.</p>' : '<button type="button" class="btn" id="tfOff">Turn off</button>') : '<button type="button" class="btn pri" id="tfOn">Set up two-step sign-in</button>');
+      var b = document.getElementById("tfOn"); if (b) b.onclick = setupTwofa;
+      b = document.getElementById("tfOff"); if (b) b.onclick = offTwofa;
+    }
+    function setupTwofa(){
+      api("POST", "/api/me/2fa/setup").then(function(j){
+        var m = modal({ title:"Set up two-step sign-in", width:440, html:
+          '<ol class="steps"><li>In your authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Apple Passwords…) add an account and scan:<div class="qr"><img alt="QR code" width="180" height="180" src="' + j.qr + '"></div><span class="muted small">Or type this key: <code>' + esc(j.secret) + '</code></span></li>' +
+          '<li>Type the 6-digit code it shows:<input class="in code-in" id="tfc" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" autofocus></li></ol><p class="err" id="tfe"></p>',
+          buttons:[{ label:"Cancel" }, { label:"Turn on", kind:"pri", onClick:function(close){
+            api("POST", "/api/me/2fa/enable", { code:m.body.querySelector("#tfc").value.replace(/\s/g, "") }).then(function(){ close(); me.twoFactor = true; toast("Two-step sign-in is on. Your other devices sign in again."); renderTwofa(); })
+              .catch(function(x){ m.body.querySelector("#tfe").textContent = x.message; }); } }] });
+      }).catch(function(x){ toast(x.message); });
+    }
+    function offTwofa(){
+      var m = modal({ title:"Turn off two-step sign-in?", width:420, html:'<label>Your password<input class="in" type="password" id="tfp" autocomplete="current-password" autofocus></label><label>Code from your authenticator app<input class="in code-in" id="tfc" inputmode="numeric" maxlength="7" placeholder="123 456"></label><p class="err" id="tfe"></p>',
+        buttons:[{ label:"Cancel" }, { label:"Turn off", kind:"danger", onClick:function(close){
+          api("POST", "/api/me/2fa/disable", { password:m.body.querySelector("#tfp").value, code:m.body.querySelector("#tfc").value.replace(/\s/g, "") }).then(function(){ close(); me.twoFactor = false; toast("Two-step sign-in is off"); renderTwofa(); })
+            .catch(function(x){ m.body.querySelector("#tfe").textContent = x.message; }); } }] });
+    }
+    renderTwofa();
     function renderPush(){
       api("GET", "/api/me/notifications").then(function(j){
         var el = document.getElementById("np"); if (!el) return;
@@ -284,7 +310,7 @@
           if (p.allDesigns && !p.admin) chips.push('<span class="pill">All designs</span>');
           if (p.office && !p.admin) chips.push('<span class="pill amber">Live projects office</span>');
           if (!chips.length && !p.site) chips.push('<span class="pill">No access</span>');
-          return '<tr class="click" data-u="' + u.id + '"' + (u.active ? "" : ' style="opacity:.55"') + '><td><div class="who"><span class="av' + (u.active ? "" : " off") + '">' + esc(E.initials(u.name)) + "</span><div><b>" + esc(u.name) + "</b><small>" + esc(u.username) + (u.active ? "" : " · switched off") + (u.mustChangePassword && u.active ? " · hasn’t chosen a password yet" : "") + "</small></div></div></td>" +
+          return '<tr class="click" data-u="' + u.id + '"' + (u.active ? "" : ' style="opacity:.55"') + '><td><div class="who"><span class="av' + (u.active ? "" : " off") + '">' + esc(E.initials(u.name)) + "</span><div><b>" + esc(u.name) + "</b><small>" + esc(u.username) + (u.active ? "" : " · switched off") + (u.mustChangePassword && u.active ? " · hasn’t chosen a password yet" : "") + (u.twoFactor ? " · two-step on" : u.twoFactorRequired && u.active && !u.mustChangePassword ? " · two-step sign-in not set up yet" : "") + "</small></div></div></td>" +
             '<td><div class="chips">' + chips.join("") + "</div></td><td>" + (p.site ? '<span class="pill green">' + esc(cfg.siteRoles[p.site]) + "</span>" : '<span class="muted">—</span>') + "</td>" +
             '<td class="muted">' + (u.lastLoginAt ? esc(ago(u.lastLoginAt)) : "never") + '</td><td style="text-align:right"><button type="button" class="btn sm">Edit</button></td></tr>';
         }).join("");
@@ -308,7 +334,7 @@
       '<div class="toggles">' + flagRows + '<label class="tog"><span style="flex:1"><b>Site app role</b><small>What they do on site: technicians install and align, the site engineer configures, managers see every live project.</small></span><select class="sel" id="fs">' +
       A.siteRoles.map(function(r){ return '<option value="' + r.id + '">' + esc(r.label) + "</option>"; }).join("") + "</select></label>" +
       '<label class="tog" id="stRow"><span style="flex:1"><b>Site app person</b><small>Pick their name if they already used a personal site app link, so their projects and history carry on.</small></span><select class="sel" id="fst" style="max-width:280px">' + staffOpts + "</select></label></div>",
-      buttons:(isNew ? [] : [{ label:"Reset password", onClick:function(){ resetPw(u); } }, { label:u.active ? "Switch off login" : "Switch on login", kind:"danger", onClick:function(close){ save(close, { active:!u.active }); } }])
+      buttons:(isNew ? [] : (u.twoFactor ? [{ label:"Reset two-step", onClick:function(){ reset2fa(u); } }] : []).concat([{ label:"Reset password", onClick:function(){ resetPw(u); } }, { label:u.active ? "Switch off login" : "Switch on login", kind:"danger", onClick:function(close){ save(close, { active:!u.active }); } }]))
         .concat([{ label:"Cancel" }, { label:isNew ? "Add login" : "Save", kind:"pri", onClick:function(close){ save(close); } }]) });
     var B = m.body;
     function paint(){
@@ -339,6 +365,10 @@
   function resetPw(u){
     modal({ title:"Reset " + u.name + "’s password?", width:460, html:'<p style="margin-top:0">They get a new temporary password, are signed out everywhere, and choose their own at the next sign-in.</p>',
       buttons:[{ label:"Cancel" }, { label:"Reset password", kind:"pri", onClick:function(close){ api("POST", "/api/admin/users/" + u.id + "/reset-password").then(function(r){ close(); showPassword(u, r.password, false); }).catch(function(e){ toast(e.message); }); } }] });
+  }
+  function reset2fa(u){
+    modal({ title:"Reset " + u.name + "’s two-step sign-in?", width:460, html:'<p style="margin-top:0">For a lost or new phone. They are signed out everywhere (and their Claude is disconnected). ' + (u.twoFactorRequired ? "As an admin they set it up again at their next sign-in." : "They can set it up again under My account.") + "</p>",
+      buttons:[{ label:"Cancel" }, { label:"Reset two-step", kind:"pri", onClick:function(close){ api("POST", "/api/admin/users/" + u.id + "/reset-2fa").then(function(){ close(); document.querySelectorAll(".etx-veil").forEach(function(v){ v.remove(); }); toast("Two-step sign-in reset for " + u.name); adminUsers(document.getElementById("ad")); }).catch(function(e){ toast(e.message); }); } }] });
   }
   function showPassword(u, pw, isNew){
     var link = location.origin + "/login";

@@ -66,15 +66,41 @@ online; without it (GitHub Pages) they work exactly as before.
 
 ## Security notes
 
-- Passwords: scrypt; sessions: random token in an HttpOnly, Secure, SameSite=Lax cookie (only its hash is stored);
-  10 failed sign-ins per address and username in 15 minutes are blocked.
-- Every state-changing API call needs the `X-Express: 1` header (cross-site requests can't send it).
+The same strategy as LeadzIN (its 20 Oct 2026 security review and two-step sign-in), applied here. `npm test` checks it
+(`test/security.test.js`).
+
+- **Passwords:** scrypt; each person chooses their own at the first sign-in. **Sessions:** a random token in an HttpOnly,
+  Secure, SameSite=Lax cookie (only its hash is stored).
+- **Two-step sign-in** (authenticator-app codes, RFC 6238): **required for admins**, who set it up at their first sign-in;
+  anyone else can switch it on under My account. A code works once (no replay). The secrets are stored encrypted. Lost
+  phone: another admin → Logins & permissions → the person → **Reset two-step**.
+- **Sign-in throttling** (15 minutes): 10 failures per address + username, 50 per address, and 20 per username from
+  anywhere (changing address doesn't help). Unknown usernames take as long and get the same answer as a wrong password.
+  The visitor's address is taken from what Caddy adds, never from what the visitor sends (`TRUST_CLOUDFLARE=true` only
+  if the site is ever put behind a Cloudflare tunnel).
+- **Cut off at once:** changing or resetting a password, resetting two-step sign-in or switching a login off signs that
+  person out everywhere, disconnects their Claude, and closes their open live-update streams. Every live-update stream
+  re-checks the session and permissions before each event.
+- Every state-changing API call needs the `X-Express: 1` header (cross-site requests can't send it). Strict
+  Content-Security-Policy; the sign-in page only ever returns to pages of this site.
+- **No outside scripts:** the planner's and site app's libraries (pdf.js, jsPDF, pdf-lib, the barcode reader) are fetched
+  once by the Docker build (`scripts/vendor-libs.js`, pinned versions in `vendor/libs.json`) and served from
+  `/app/vendor/…`; the pages and the offline cache are pointed there and the CSP then allows no CDN. The only outside
+  call left is the planner's optional AI scan to `api.anthropic.com` (with the person's own key).
 - The office key of the live-project server is random, made at each start and never leaves the server process. A key
   sent by a browser in `X-Admin-Key` is dropped.
 - MAC addresses are never sent to customers (the worker removes them for the customer role).
 - Integration keys are stored encrypted (AES-256-GCM) with `data/secret.key` (or `SECRET_KEY` from `.env`).
-- The Claude connector uses OAuth 2.1 with PKCE; each person approves their own Claude; access tokens last 1 hour,
-  refresh tokens 60 days and rotate. Admin → Integrations → Claude can make it read-only (default) or switch it off.
+- **Phone notifications** are end-to-end encrypted (Web Push) and only sent to the real push services (Google, Apple,
+  Mozilla, Microsoft) — any other address is refused.
+- **Claude connector:** OAuth 2.1 with PKCE; each person approves their own Claude. The approval page shows where it
+  sends you back to; `redirect_uri` must match exactly; access tokens last 1 hour, refresh tokens 60 days and rotate —
+  an old refresh token used again ends that connection (it was copied). App registrations are rate-limited and unused
+  ones removed. Admin → Integrations → Claude can make it read-only (default) or switch it off.
+- **Hardware CSV** from the planner: cells starting with = + - @ are written as text, so a shared project can't put a
+  formula into Excel / Zoho.
+- Keep `.env` and `data/` readable only by the server user, keep the server patched (`unattended-upgrades`), and copy
+  `data/` off the server regularly.
 
 ## Health
 
