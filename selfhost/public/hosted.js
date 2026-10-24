@@ -10,7 +10,7 @@
   var E = window.EXPRESS = window.EXPRESS || {};
   E.hosted = true;
   var path = location.pathname;
-  var PAGE = /\/app\/site\.html$/.test(path) ? "site" : /^\/app\/(index\.html)?$/.test(path) ? "planner" : "portal";
+  var PAGE = /^(\/app)?\/site\.html$/.test(path) ? "site" : /^\/app\/(index\.html)?$/.test(path) ? "planner" : "portal";
   E.page = PAGE;
 
   /* ================= small helpers ================= */

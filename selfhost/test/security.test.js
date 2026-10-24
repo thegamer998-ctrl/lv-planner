@@ -202,3 +202,17 @@ test('the planner loads its libraries from this server, not from outside sites',
   const site = await S.admin('GET', '/app/site.html');
   assert.ok(!/cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com/.test(site.data));
 });
+
+test('addresses from the GitHub Pages days still work (site app on the Home Screen, its offline cache)', async () => {
+  const site = await fetch(BASE + '/site.html');
+  assert.equal(site.status, 200);
+  const html = await site.text();
+  assert.match(html, /<script src="\/hosted\.js/); assert.ok(!/cdnjs\.cloudflare\.com/.test(html));
+  const sw = await (await fetch(BASE + '/sw.js')).text();
+  assert.match(sw, /lvplanner-v\d+/); assert.match(sw, /\/app\/vendor\/cdnjs\//);
+  assert.equal((await fetch(BASE + '/site.webmanifest')).status, 200);
+  assert.equal((await fetch(BASE + '/site-icon-192.png')).status, 200);
+  const old = await fetch(BASE + '/index.html?site=abc', { redirect: 'manual' });
+  assert.equal(old.status, 302); assert.equal(old.headers.get('location'), '/app/?site=abc');
+  assert.equal((await fetch(BASE + '/server.js')).status, 404);
+});

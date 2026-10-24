@@ -383,6 +383,15 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/app' || pathname === '/planner' || pathname === '/planner/') return redirect(res, '/app/' + url.search);
       if (pathname === '/site' || pathname === '/site-app') return redirect(res, '/app/site.html');
       if (pathname.startsWith('/app/')) { if (serveApp(req, res, url, getUser)) return; return send(res, 404, 'Not found'); }
+      // Addresses from the GitHub Pages days: phones that added the site app to the Home Screen open /site.html (with their
+      // own link after #), and its offline cache is /sw.js. They are served here too, so nobody has to install anything again.
+      if (pathname === '/index.html') return redirect(res, '/app/' + url.search);
+      if (pathname === '/site.html' || pathname === '/sw.js' || pathname === '/site.webmanifest' || pathname === '/version.json' ||
+          (/^\/[\w-]+\.png$/.test(pathname) && !fs.existsSync(path.join(config.publicDir, pathname.slice(1))))) {
+        H.securityHeaders(res, vendored() ? 'app-local' : 'app');
+        const rel = pathname.slice(1);
+        return H.serveFile(req, res, config.appDir, rel, { allow: APP_EXT, transform: plugHosted, transformJs: rel === 'sw.js' }) || send(res, 404, 'Not found');
+      }
       H.securityHeaders(res, 'strict');
       if (pathname === '/login' || pathname === '/') return H.serveFile(req, res, config.publicDir, pathname === '/' ? 'index.html' : 'login.html') || send(res, 404, 'Not found');
       if (pathname === '/brand-logo.png' || pathname === '/brand-mark.png' || pathname === '/favicon.ico') {
