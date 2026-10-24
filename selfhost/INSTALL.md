@@ -127,8 +127,8 @@ the last changes over.
 3. Tell the team: open **https://design.expresskw.com**, sign in with your username, add it to the home screen
    (site app: `https://design.expresskw.com/app/site.html`). The old personal links stop being needed.
 4. Customers' links keep working (same address, same key), and so does the site app people already added to their
-   Home Screen (it opens the same `design.expresskw.com/site.html`) — nobody installs anything again. The first time
-   it opens after the switch it asks the person to sign in with their username (their old personal link also still works).
+   Home Screen (it opens the same `design.expresskw.com/site.html` with their personal link) — nobody installs anything
+   again. They can also sign in with their own username from then on.
 
 The old Cloudflare server and the GitHub Pages planner keep running until you switch them off (see HANDOVER.md).
 
