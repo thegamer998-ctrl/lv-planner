@@ -827,7 +827,7 @@
   <header class="appbar">
     <img class="bmark" src="brand-mark.png" alt="Express Tech">
     <div class="proj">
-      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-10-24.1</span></small>
+      <small><b>Express Tech</b> &middot; Villa LV Planner <span class="ver">v2026-11-02.1</span></small>
       <input type="text" class="proj-name-input" id="projectNameInput" value="Untitled Project" placeholder="Customer name" title="Customer name &mdash; also used as the project file name">
     </div>
     <div class="floor-tabs"><div id="floorList"></div><button class="add-floor-btn" id="addFloorBtn" title="Add floor">+</button></div>
@@ -991,6 +991,7 @@
       <div class="section">
         <p class="section-label" style="display:flex;justify-content:space-between;align-items:center;">Live projects on site <button type="button" class="st-mini" id="lpRefresh">Refresh</button></p>
         <div id="liveProjects"><p class="popover-hint" style="margin:0;">Loading…</p></div>
+        <button type="button" class="tbtn" id="lpNewList" style="width:100%;justify-content:center;margin:2px 0 6px;" title="Old villas with no drawing: a site survey and the device list, or the approved Zoho quotation">+ New project without drawing</button>
         <p class="popover-hint" style="margin:6px 0 0;font-size:11.5px;"><b>Disable</b>: greyed out in the team's app, nothing can be changed until you enable it. <b>Delete</b>: gone from every app for good.</p>
       </div>
       <div class="section">
@@ -1025,7 +1026,7 @@
         <p class="section-label">AI scan</p>
         <button class="action-btn" id="aiKeyLink">Anthropic API key&hellip;</button>
       </div>
-      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-10-24.1</p>
+      <p class="pane-note">Express Tech Villa LV Planner &middot; v2026-11-02.1</p>
     </section>
   </aside>
 
@@ -7046,6 +7047,10 @@
   function renderLiveProjects(){
     var box = document.getElementById("liveProjects"); if (!box) return;
     var r = zRelay();
+    // projects without a drawing (old villas): made in the site app from the device list or the approved Zoho quotation
+    var nl = document.getElementById("lpNewList");
+    if (nl){ nl.style.display = r.url || HOSTED ? "" : "none";
+      nl.onclick = function(){ window.open(SITE_PAGE + (HOSTED ? "#new" : "#office&s=" + encodeURIComponent(r.url) + "&new=1"), "_blank"); }; }
     if (!r.url){ box.innerHTML = '<p class="popover-hint" style="margin:0;">Connect the Express Tech server first (toolbar <b>Start</b> → Express Tech server).</p>'; return; }
     siteFetch("/site/list").then(function(j){
       var list = j.projects || [];
