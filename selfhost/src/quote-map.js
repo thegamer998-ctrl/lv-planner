@@ -14,29 +14,38 @@ const KIT = { gw: 'Gateway / UDM', sw: 'Switch', nvr: 'NVR', hdd: 'Hard disk', u
 const LTof = t => LT.find(x => x[0] === t) || LT[LT.length - 1];
 
 function kindOf(l) {
-  const s = `${l.name || ''} ${l.sku || ''} ${l.description || ''}`.toLowerCase();
-  if (/labou?r|installation (charge|fee|work)|professional services?|service charge|support|warranty|delivery|configuration|programming|termination|testing/.test(s)) return '';
-  if (/\budm\b|dream machine|dream router|gateway|firewall|\bucg\b|router/.test(s)) return 'kit:gw';
-  if (/\bu?nvr\b|recorder/.test(s)) return 'kit:nvr';
-  if (/\bhdd\b|hard ?dis[kc]|surveillance (disk|drive)/.test(s)) return 'kit:hdd';
-  if (/switch|\busw\b/.test(s)) return 'kit:sw';
-  if (/\bups\b/.test(s)) return 'kit:ups';
-  if (/patch ?panel/.test(s)) return 'kit:pp';
-  if (/\bpbx\b|yeastar p\d/.test(s)) return 'kit:pbx';
-  if (/\bdac\b|sfp/.test(s)) return 'kit:dac';
-  if (/cabinet|\brack\b|\b\d{1,2} ?u\b/.test(s)) return 'rack';
-  const ap = /\bu[67]\b|\bu[67][+-]|\bu[67] |access point|\buap\b|wi-?fi|nanohd|\be7\b|in-?wall/.test(s);
-  const cam = /camera|cctv|\bg[3-6]\b|\bg[3-6][ -]|dome|bullet|turret|\bptz\b|\bai (pro|360|bullet|theta|dome)/.test(s);
-  if (/doorbell|door ?station|intercom|door ?phone/.test(s)) return /screen|monitor|viewer|indoor station|display/.test(s) ? 'intercomscreen' : 'intercom';
-  if (/viewport/.test(s)) return 'viewport';
-  if (ap) return /outdoor|mesh|\bpro max outdoor|ultra/.test(s) ? 'outdoorwifi' : 'wifi';
-  if (cam) return /bullet|turret|ptz|outdoor/.test(s) ? 'cctvoutdoor' : 'cctv';
-  if (/ip ?phone|yealink|fanvil|\bt[3-5]\d[a-z]?\b|desk ?phone|dect|\bgxp/.test(s)) return 'ipphone';
-  if (/data point|network point|lan point|data outlet/.test(s)) return 'network';
-  if (/tv point|satellite|\bcoax/.test(s)) return 'tv';
-  if (/speaker/.test(s)) return 'speaker';
-  if (/cable|cat ?[5-8]|fib(er|re)|connector|rj ?45|patch cord|bracket|mount|box|trunking|conduit|clip|screw|faceplate|keystone|adapter|injector/.test(s)) return '';
-  return '?';
+  // The item's name decides first: a description can say "support", "Wi-Fi", "NVR" or "cable" about a device.
+  var n = ((l.name || "") + " " + (l.sku || "")).toLowerCase(), s = (n + " " + (l.description || "")).toLowerCase();
+  var SERVICE = /labou?r|installation (charge|fee|work)|professional services?|service charge|support|warranty|delivery|configuration|programming|termination|testing/;
+  var ACCESSORY = /cable|cat ?[5-8]|fib(er|re)|connector|rj ?45|patch cord|bracket|mount|\bbox\b|trunking|conduit|clip|screw|faceplate|keystone|adapter|injector/;
+  function kit(t){
+    if (/\budm\b|dream machine|dream router|gateway|firewall|\bucg\b|router/.test(t)) return "kit:gw";
+    if (/\bu?nvr\b|recorder/.test(t)) return "kit:nvr";
+    if (/\bhdd\b|hard ?dis[kc]|surveillance (disk|drive)/.test(t)) return "kit:hdd";
+    if (/switch|\busw\b/.test(t)) return "kit:sw";
+    if (/\bups\b/.test(t)) return "kit:ups";
+    if (/patch ?panel/.test(t)) return "kit:pp";
+    if (/\bpbx\b|yeastar p\d/.test(t)) return "kit:pbx";
+    if (/\bdac\b|sfp/.test(t)) return "kit:dac";
+    if (/cabinet|\brack\b|\b\d{1,2} ?u\b/.test(t)) return "rack";
+    return null;
+  }
+  function dev(t){
+    if (/data point|network point|lan point|data outlet/.test(t)) return "network";
+    if (/tv point|satellite|\bcoax/.test(t)) return "tv";
+    if (/doorbell|door ?station|intercom|door ?phone/.test(t)) return /screen|monitor|viewer|indoor station|display/.test(s) ? "intercomscreen" : "intercom";
+    if (/viewport/.test(t)) return "viewport";
+    if (/camera|cctv|\bg[3-6]\b|\bg[3-6][ -]|dome|bullet|turret|\bptz\b|\bai (pro|360|bullet|theta|dome)/.test(t)) return /bullet|turret|ptz|outdoor/.test(s) ? "cctvoutdoor" : "cctv";
+    if (/\bu[67]\b|\bu[67][+-]|\bu[67] |access point|\bap\b|\buap\b|wi-?fi|nanohd|\be7\b|in-?wall/.test(t)) return /outdoor|mesh|\bpro max outdoor|ultra/.test(s) ? "outdoorwifi" : "wifi";
+    if (/ip ?phone|yealink|fanvil|\bt[3-5]\d[a-z]?\b|desk ?phone|dect|\bgxp/.test(t)) return "ipphone";
+    if (/speaker/.test(t)) return "speaker";
+    return null;
+  }
+  if (SERVICE.test(n)) return "";
+  var k = (/point|outlet/.test(n) && dev(n)) || kit(n);
+  if (k) return k;
+  if (ACCESSORY.test(n)) return "";   // a bracket, cable or box for a device is not the device
+  return dev(n) || dev(s) || kit(s) || (SERVICE.test(s) || ACCESSORY.test(s) ? "" : "?");
 }
 
 const rid = () => 'r' + Math.random().toString(36).slice(2, 8);
@@ -50,7 +59,8 @@ function fromLines(lines, area) {
     if (k === '') { skipped.push(name); continue; }
     if (k === '?') { unknown.push(`${q} × ${name}`); continue; }
     if (k.startsWith('kit:')) { kit[k.slice(4)] = (kit[k.slice(4)] || 0) + q; continue; }
-    rows.push({ id: rid(), type: k, model: name.slice(0, 60), qty: Math.min(200, q), area });
+    const d = String(l.description || '').split('\n')[0].trim();   // "Network Point" → its description says which one
+    rows.push({ id: rid(), type: k, model: (/^(network|data|lan|tv) point$/i.test(name.trim()) && d ? d : name).slice(0, 60), qty: Math.min(200, q), area });
   }
   if (Object.keys(kit).length && !rows.some(r => r.type === 'rack')) rows.push({ id: rid(), type: 'rack', model: '', qty: 1, area });
   return { rows, kit, skipped, unknown };
