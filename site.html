@@ -1255,7 +1255,8 @@
       '<div class="lbl" style="margin-top:14px">Areas</div><div class="areas">' + ed.areas.map(function(a){ return "<span>" + esc(a.name) + (ed.areas.length > 1 ? '<button type="button" data-rmarea="' + esc(a.id) + '" aria-label="Remove">×</button>' : '<button type="button" data-renarea="' + esc(a.id) + '" aria-label="Rename">✎</button>') + "</span>"; }).join("") +
         '<button type="button" class="add" id="edArea">+ Area</button></div><p class="note" style="margin:0 2px 8px">Floors or places the team works in — Ground floor, First floor, Outdoor, Majlis… Devices are listed by area.</p>' +
       '<button type="button" class="btn" id="edZoho" style="width:100%;margin:8px 0 4px">Fill from the Zoho quotation</button>' +
-      (ed.from ? '<p class="note" style="margin:2px 2px 6px">From quotation <b>' + esc(ed.from.number) + "</b>" + (ed.from.date ? " · " + esc(ed.from.date) : "") + "</p>" : "") +
+      (ed.from ? '<p class="note" style="margin:2px 2px 6px">From quotation <b>' + esc(ed.from.number) + "</b>" + (ed.from.date ? " · " + esc(ed.from.date) : "") +
+        (ed.from.status ? (quoteApproved(ed.from) ? ' · <b style="color:#12a150">approved (' + esc(ed.from.status.replace(/_/g, " ")) + ")</b>" : ' · <b style="color:#c2410c">' + esc(ed.from.status.replace(/_/g, " ")) + " — not approved yet</b>") : "") + "</p>" : "") +
       '<div class="lbl" style="margin-top:14px">Devices</div>' + (rows || '<p class="note" style="margin:0 2px 8px">No devices yet — add them below or fill them from the Zoho quotation.</p>') +
       '<div class="lbl" style="margin-top:14px">Add a device</div><div class="addtypes">' + LT.map(function(t){ return '<button type="button" data-add="' + t[0] + '"><span class="dot" style="background:' + t[3] + '"></span>' + esc(t[1]) + "</button>"; }).join("") + "</div>" +
       (Object.keys(KIT).some(function(k){ return ed.kit[k] > 0; }) || ed.rows.some(function(r){ return r.type === "rack"; }) ? '<div class="lbl">In the cabinet</div><div class="addtypes">' + Object.keys(KIT).map(function(k){ return '<span class="dev" style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;margin:0">' + KIT[k] + '<span class="qty" style="height:32px"><button type="button" data-km="' + k + '" style="height:32px;width:32px">−</button><input data-kq="' + k + '" inputmode="numeric" value="' + (ed.kit[k] || 0) + '" style="width:34px;height:32px"><button type="button" data-kp="' + k + '" style="height:32px;width:32px">+</button></span></span>'; }).join("") + '</div><p class="note" style="margin:0 2px 10px">The cabinet checklist shows the steps for this hardware.</p>' : "") +
@@ -1298,8 +1299,14 @@
     B.querySelectorAll("[data-tm]").forEach(function(c){ c.onchange = function(){ ed.team = Array.prototype.filter.call(B.querySelectorAll("[data-tm]"), function(x){ return x.checked; }).map(function(x){ return x.dataset.tm; }); }; });
     if ($("edSave")) $("edSave").onclick = function(){ saveList(false); };
     if ($("edSurvey")) $("edSurvey").onclick = function(){ saveList("survey"); };
-    if ($("edStart")) $("edStart").onclick = function(){ saveList("start"); };
+    if ($("edStart")) $("edStart").onclick = function(){
+      // the installation starts once the customer approved the quotation (accepted in Zoho, or already turned into an invoice)
+      if (ed.from && ed.from.status && !quoteApproved(ed.from) && !confirm("Quotation " + ed.from.number + " is " + ed.from.status.replace(/_/g, " ") + " in Zoho Books — not approved yet. Start the installation anyway?")) return;
+      saveList("start"); };
   }
+  // a generic line name ("Network Point") says less than its description ("Cat6 A Uplink cable")
+  function lineModel(l){ var d = String(l.description || "").split("\n")[0].trim(); return (/^(network|data|lan|tv) point$/i.test(String(l.name).trim()) && d ? d : l.name).slice(0, 60); }
+  function quoteApproved(f){ return /^(accepted|approved|invoiced|partially_invoiced)$/.test(String(f && f.status || "")); }
   // the points the list makes: AP-01, AP-02… CAM-01… numbered in the list's order; a cabinet's hardware goes on its checklist
   function listPayload(){
     var pts = [], n = {}, racks = [], types = {}, nrack = ed.rows.filter(function(r){ return r.type === "rack"; }).reduce(function(a, r){ return a + (parseInt(r.qty, 10) || 0); }, 0);
@@ -1337,28 +1344,38 @@
 
   // ---- fill from the approved Zoho quotation: each line is matched to a device type (or the cabinet's hardware); check it, then add
   function zohoKind(l){
-    var s = (l.name + " " + l.sku + " " + l.description).toLowerCase();
-    if (/labou?r|installation (charge|fee|work)|professional services?|service charge|support|warranty|delivery|configuration|programming|termination|testing/.test(s)) return "";
-    if (/\budm\b|dream machine|dream router|gateway|firewall|\bucg\b|router/.test(s)) return "kit:gw";
-    if (/\bu?nvr\b|recorder/.test(s)) return "kit:nvr";
-    if (/\bhdd\b|hard ?dis[kc]|surveillance (disk|drive)/.test(s)) return "kit:hdd";
-    if (/switch|\busw\b/.test(s)) return "kit:sw";
-    if (/\bups\b/.test(s)) return "kit:ups";
-    if (/patch ?panel/.test(s)) return "kit:pp";
-    if (/\bpbx\b|yeastar p\d/.test(s)) return "kit:pbx";
-    if (/\bdac\b|sfp/.test(s)) return "kit:dac";
-    if (/cabinet|\brack\b|\b\d{1,2} ?u\b/.test(s)) return "rack";
-    var ap = /\bu[67]\b|\bu[67][+-]|\bu[67] |access point|\buap\b|wi-?fi|nanohd|\be7\b|in-?wall/.test(s), cam = /camera|cctv|\bg[3-6]\b|\bg[3-6][ -]|dome|bullet|turret|\bptz\b|\bai (pro|360|bullet|theta|dome)/.test(s);
-    if (/doorbell|door ?station|intercom|door ?phone/.test(s)) return /screen|monitor|viewer|indoor station|display/.test(s) ? "intercomscreen" : "intercom";
-    if (/viewport/.test(s)) return "viewport";
-    if (ap) return /outdoor|mesh|\bpro max outdoor|ultra/.test(s) ? "outdoorwifi" : "wifi";
-    if (cam) return /bullet|turret|ptz|outdoor/.test(s) ? "cctvoutdoor" : "cctv";
-    if (/ip ?phone|yealink|fanvil|\bt[3-5]\d[a-z]?\b|desk ?phone|dect|\bgxp/.test(s)) return "ipphone";
-    if (/data point|network point|lan point|data outlet/.test(s)) return "network";
-    if (/tv point|satellite|\bcoax/.test(s)) return "tv";
-    if (/speaker/.test(s)) return "speaker";
-    if (/cable|cat ?[5-8]|fib(er|re)|connector|rj ?45|patch cord|bracket|mount|box|trunking|conduit|clip|screw|faceplate|keystone|adapter|injector/.test(s)) return "";
-    return "?";
+    // The item's name decides first: a description can say "support", "Wi-Fi", "NVR" or "cable" about a device.
+    var n = ((l.name || "") + " " + (l.sku || "")).toLowerCase(), s = (n + " " + (l.description || "")).toLowerCase();
+    var SERVICE = /labou?r|installation (charge|fee|work)|professional services?|service charge|support|warranty|delivery|configuration|programming|termination|testing/;
+    var ACCESSORY = /cable|cat ?[5-8]|fib(er|re)|connector|rj ?45|patch cord|bracket|mount|\bbox\b|trunking|conduit|clip|screw|faceplate|keystone|adapter|injector/;
+    function kit(t){
+      if (/\budm\b|dream machine|dream router|gateway|firewall|\bucg\b|router/.test(t)) return "kit:gw";
+      if (/\bu?nvr\b|recorder/.test(t)) return "kit:nvr";
+      if (/\bhdd\b|hard ?dis[kc]|surveillance (disk|drive)/.test(t)) return "kit:hdd";
+      if (/switch|\busw\b/.test(t)) return "kit:sw";
+      if (/\bups\b/.test(t)) return "kit:ups";
+      if (/patch ?panel/.test(t)) return "kit:pp";
+      if (/\bpbx\b|yeastar p\d/.test(t)) return "kit:pbx";
+      if (/\bdac\b|sfp/.test(t)) return "kit:dac";
+      if (/cabinet|\brack\b|\b\d{1,2} ?u\b/.test(t)) return "rack";
+      return null;
+    }
+    function dev(t){
+      if (/data point|network point|lan point|data outlet/.test(t)) return "network";
+      if (/tv point|satellite|\bcoax/.test(t)) return "tv";
+      if (/doorbell|door ?station|intercom|door ?phone/.test(t)) return /screen|monitor|viewer|indoor station|display/.test(s) ? "intercomscreen" : "intercom";
+      if (/viewport/.test(t)) return "viewport";
+      if (/camera|cctv|\bg[3-6]\b|\bg[3-6][ -]|dome|bullet|turret|\bptz\b|\bai (pro|360|bullet|theta|dome)/.test(t)) return /bullet|turret|ptz|outdoor/.test(s) ? "cctvoutdoor" : "cctv";
+      if (/\bu[67]\b|\bu[67][+-]|\bu[67] |access point|\bap\b|\buap\b|wi-?fi|nanohd|\be7\b|in-?wall/.test(t)) return /outdoor|mesh|\bpro max outdoor|ultra/.test(s) ? "outdoorwifi" : "wifi";
+      if (/ip ?phone|yealink|fanvil|\bt[3-5]\d[a-z]?\b|desk ?phone|dect|\bgxp/.test(t)) return "ipphone";
+      if (/speaker/.test(t)) return "speaker";
+      return null;
+    }
+    if (SERVICE.test(n)) return "";
+    var k = (/point|outlet/.test(n) && dev(n)) || kit(n);
+    if (k) return k;
+    if (ACCESSORY.test(n)) return "";   // a bracket, cable or box for a device is not the device
+    return dev(n) || dev(s) || kit(s) || (SERVICE.test(s) || ACCESSORY.test(s) ? "" : "?");
   }
   function renderZoho(){
     var h = '<div class="ed"><div class="lbl" style="margin-top:12px">Zoho quotation</div>' +
@@ -1373,7 +1390,7 @@
         '<div class="lbl">Put the devices in</div><select class="in" id="zArea" style="margin-bottom:12px">' + ed.areas.map(function(a){ return '<option value="' + esc(a.id) + '">' + esc(a.name) + "</option>"; }).join("") + '</select><p class="note" style="margin:-4px 2px 12px">You can move each line to its own area afterwards.</p>' +
         '<button type="button" class="big pri" id="zAdd">Add to the device list</button><button type="button" class="big undo" id="zBack" style="margin-top:8px">Back</button>';
     } else if (ed.zres){
-      h += ed.zres.length ? '<div class="card" style="margin:12px 0">' + ed.zres.map(function(e){ return '<button type="button" class="rowi" data-ze="' + esc(e.id) + '"><span class="t"><b>' + esc(e.number) + " · " + esc(e.customer) + "</b><small>" + esc(e.date) + " · " + esc(e.currency || "") + " " + esc(String(e.total)) + " · " + esc(e.status) + (e.reference ? " · " + esc(e.reference) : "") + "</small></span></button>"; }).join("") + "</div>"
+      h += ed.zres.length ? '<div class="card" style="margin:12px 0">' + ed.zres.map(function(e){ return '<button type="button" class="rowi" data-ze="' + esc(e.id) + '"><span class="t"><b>' + esc(e.number) + " · " + esc(e.customer) + "</b><small>" + esc(e.date) + " · " + esc(e.currency || "") + " " + esc(String(e.total)) + " · " + (quoteApproved(e) ? "✓ " : "") + esc(String(e.status || "").replace(/_/g, " ")) + (e.reference ? " · " + esc(e.reference) : "") + "</small></span></button>"; }).join("") + "</div>"
         : '<div class="empty">No quotation found. Try the customer’s name as it is in Zoho, or the quotation number.</div>';
       h += '<button type="button" class="big undo" id="zBack">Back</button>';
     } else h += '<p class="note" style="margin:10px 2px">Search Zoho Books for the approved quotation; its devices fill the list (cables, labour and services are left out).</p><button type="button" class="big undo" id="zBack">Back</button>';
@@ -1396,11 +1413,11 @@
         e2.lines.forEach(function(l){
           if (!l.on || !l.kind || !l.quantity) return;
           if (l.kind.indexOf("kit:") === 0){ var k = l.kind.slice(4); ed.kit[k] = (ed.kit[k] || 0) + l.quantity; needRack = true; return; }
-          ed.rows.push({ id:rid(), type:l.kind, model:l.name.slice(0, 60), qty:l.quantity, area:area }); added += l.quantity;
+          ed.rows.push({ id:rid(), type:l.kind, model:lineModel(l), qty:l.quantity, area:area }); added += l.quantity;
         });
         if (needRack && !ed.rows.some(function(r){ return r.type === "rack"; })) ed.rows.push({ id:rid(), type:"rack", model:"", qty:1, area:area });
         if (!ed.name.trim()) ed.name = e2.customer;
-        ed.from = { id:e2.id, number:e2.number, date:e2.date };
+        ed.from = { id:e2.id, number:e2.number, date:e2.date, status:e2.status || "" };
         ed.mode = "list"; ed.zest = null; renderEditor(); toast(added + " device" + (added === 1 ? "" : "s") + " added from " + e2.number);
       };
     }
@@ -2166,7 +2183,7 @@
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && P){ load(true); flush(); } if (!document.hidden) checkUpdate(); });
   // a phone that keeps the app open for days still gets every update: when a newer site app is published it reloads itself
   // (at once if nothing is open, otherwise when the sheet is closed); the version shows in the header menu for checking
-  var SITE_VER = "2026-10-21.2", updWaiting = false;
+  var SITE_VER = "2026-11-02.1", updWaiting = false;
   function checkUpdate(){
     fetch("version.json?t=" + Date.now(), { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){
       if (!j || !j.site || j.site <= SITE_VER || updWaiting) return;
